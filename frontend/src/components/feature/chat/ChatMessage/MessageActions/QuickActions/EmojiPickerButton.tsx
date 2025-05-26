@@ -1,10 +1,10 @@
-import { lazy, Suspense } from 'react'
-import { Box, Flex, IconButton, IconButtonProps, Popover, Portal, Tooltip } from '@radix-ui/themes'
-import { DIALOG_CONTENT_CLASS } from '@/utils/layout/dialog'
 import { Loader } from '@/components/common/Loader'
-import { QUICK_ACTION_BUTTON_CLASS } from './QuickActionButton'
-import { LuSmilePlus } from 'react-icons/lu'
+import { DIALOG_CONTENT_CLASS } from '@/utils/layout/dialog'
+import { Box, Flex, IconButtonProps, Popover, Portal, Tooltip } from '@radix-ui/themes'
 import clsx from 'clsx'
+import { lazy, Suspense } from 'react'
+import { LuSmilePlus } from 'react-icons/lu'
+import { QUICK_ACTION_BUTTON_CLASS } from './QuickActionButton'
 
 const EmojiPicker = lazy(() => import('@/components/common/EmojiPicker/EmojiPicker'))
 
@@ -37,16 +37,19 @@ export const EmojiPickerButton = ({
       <Flex>
         <Tooltip content='Add reaction'>
           <Popover.Trigger>
-            <IconButton
-              variant='soft'
-              size='2'
-              color='gray'
+            <button
               aria-label='pick emoji'
               {...iconButtonProps}
-              className={clsx(QUICK_ACTION_BUTTON_CLASS, iconButtonProps?.className)}
+              className={clsx(
+                'w-8 h-8 flex items-center justify-center rounded-md transition-colors',
+                'text-gray-12 hover:bg-atom-3 hover:border-atom-5',
+                'dark:text-gray-12 dark:hover:bg-atom-4 dark:hover:border-atom-5',
+                QUICK_ACTION_BUTTON_CLASS,
+                iconButtonProps?.className
+              )}
             >
               <LuSmilePlus size={iconSize} />
-            </IconButton>
+            </button>
           </Popover.Trigger>
         </Tooltip>
         <Portal>

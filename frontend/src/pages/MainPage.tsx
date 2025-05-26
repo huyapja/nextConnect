@@ -15,12 +15,13 @@ import { useActiveSocketConnection } from '@/hooks/useActiveSocketConnection'
 import { useFrappeEventListener, useSWRConfig } from 'frappe-react-sdk'
 import { useUnreadThreadsCountEventListener } from '@/hooks/useUnreadThreadsCount'
 import { UserContext } from '@/utils/auth/UserProvider'
+import { SidebarModeProvider } from '@/utils/layout/sidebar'
+import { CircleUserListProvider } from '@/utils/users/CircleUserListProvider'
 
 const AddRavenUsersPage = lazy(() => import('@/pages/AddRavenUsersPage'))
 
 export const MainPage = () => {
   const isRavenUser = hasRavenUserRole()
-
   if (isRavenUser) {
     return <MainPageContent />
   } else {
@@ -101,16 +102,20 @@ const MainPageContent = () => {
   return (
     <UserListProvider>
       <ChannelListProvider>
-        <Flex>
-          {!isMobile && (
-            <Box className={`w-80 bg-gray-2 border-r-gray-3 border-r dark:bg-gray-1`} left='0' top='0' position='fixed'>
-              <Sidebar />
-            </Box>
-          )}
-          <Box className='md:ml-[var(--sidebar-width)] w-[calc(100vw-var(--sidebar-width)-0rem)] dark:bg-gray-2'>
-            <Outlet />
-          </Box>
-        </Flex>
+        <SidebarModeProvider>
+          <CircleUserListProvider>
+            <Flex>
+              {!isMobile && (
+                <Box className={`w-90 bg-gray-2 border-r-gray-3 dark:bg-gray-1`}>
+                  <Sidebar />
+                </Box>
+              )}
+              <Box className='w-[calc(100vw-var(--sidebar-width)-0rem)] dark:bg-gray-2'>
+                <Outlet />
+              </Box>
+            </Flex>
+          </CircleUserListProvider>
+        </SidebarModeProvider>
         <CommandMenu />
         <MessageActionController />
       </ChannelListProvider>

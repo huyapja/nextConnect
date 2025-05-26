@@ -7,7 +7,13 @@ import { getErrorMessage } from '@/components/layout/AlertBanner/ErrorBanner'
 import { RavenChannel } from '@/types/RavenChannelManagement/RavenChannel'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 
-export type UnreadChannelCountItem = { name: string; user_id?: string; unread_count: number; is_direct_message: 0 | 1 }
+export type UnreadChannelCountItem = {
+  name: string
+  user_id?: string
+  unread_count: number
+  is_direct_message: 0 | 1
+  last_message_timestamp: string
+}
 
 export type UnreadCountData = UnreadChannelCountItem[]
 
@@ -203,4 +209,50 @@ export const useUpdateLastMessageInChannelList = () => {
   }
 
   return { updateLastMessageInChannelList }
+}
+
+export const useUpdateLastMessageDetails = () => {
+  const { mutate } = useChannelList()
+
+  const updateLastMessageForChannel = (channelID: string, message: any) => {
+    mutate(
+      (prev) => {
+        if (!prev) return prev
+
+        const newChannels = prev.message.channels.map((channel) => {
+          if (channel.name === channelID) {
+            return {
+              ...channel,
+              last_message_details: message,
+              last_message_timestamp: new Date().toISOString(),
+              unread_count: 0
+            }
+          }
+          return channel
+        })
+
+        const newDMChannels = prev.message.dm_channels.map((channel) => {
+          if (channel.name === channelID) {
+            return {
+              ...channel,
+              last_message_details: message,
+              last_message_timestamp: new Date().toISOString(),
+              unread_count: 0
+            }
+          }
+          return channel
+        })
+
+        return {
+          message: {
+            channels: newChannels,
+            dm_channels: newDMChannels
+          }
+        }
+      },
+      { revalidate: false }
+    )
+  }
+
+  return { updateLastMessageForChannel }
 }

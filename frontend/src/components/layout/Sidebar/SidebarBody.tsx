@@ -1,5 +1,5 @@
 import { ChannelList } from '../../feature/channels/ChannelList'
-import { DirectMessageList } from '../../feature/direct-messages/DirectMessageList'
+import { DirectMessageList } from '../../feature/direct-messages/DirectMessageListCustom'
 import { SidebarBadge, SidebarItem } from './SidebarComp'
 import { AccessibleIcon, Box, Flex, ScrollArea, Text } from '@radix-ui/themes'
 import { useFetchUnreadMessageCount } from '@/hooks/useUnreadMessageCount'
