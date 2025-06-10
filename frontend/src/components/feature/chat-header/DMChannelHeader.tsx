@@ -13,6 +13,7 @@ import useIsUserOnLeave from '@/hooks/fetchers/useIsUserOnLeave'
 import { UserContext } from '@/utils/auth/UserProvider'
 import { replaceCurrentUserFromDMChannelName } from '@/utils/operations'
 import { useIsDesktop } from '@/hooks/useMediaQuery'
+import VideoCall from '../call-stringee/CallStringee'
 
 interface DMChannelHeaderProps {
   channelData: DMChannelListItem
@@ -41,7 +42,7 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
     }
   }, [channelMembers, peer])
 
-  const user = useGetUser(peer)
+  const user = useGetUser(peer)  
 
   const isUserOnLeave = useIsUserOnLeave(peer)
 
@@ -108,6 +109,7 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
       </Flex>
       <Flex className='mr-3' gap='4' align='center'>
         <ChannelHeaderMenu channelData={channelData} />
+        <VideoCall toUserId={peer}/>
       </Flex>
     </PageHeader>
   )

@@ -463,7 +463,8 @@ def mark_channel_as_done(channel_id):
         "Raven Channel Member",
         {"channel_id": channel_id, "user_id": user},
         "is_done",
-        1
+        1,
+        update_modified=True
     )
 
     frappe.publish_realtime(

@@ -18,7 +18,7 @@ export const DoneChannelList = () => {
     }
   }, [data, setDoneList])
 
-  useFrappeEventListener('channel_done_updated', (data) => {    
+  useFrappeEventListener('channel_done_updated', (data) => {
     setDoneList((prev) =>
       data.is_done
         ? prev.includes(data.channel_id)
@@ -29,14 +29,13 @@ export const DoneChannelList = () => {
     mutate()
   })
 
-
   useFrappeEventListener('channel_done_updated', (data) => {
-  console.log('📩 Nhận được event channel_done_updated:', data)
-})
+    console.log('📩 Nhận được event channel_done_updated:', data)
+  })
 
-// useFrappeEventListener('raven:channel_done_updated', (data) => {
-//   console.log('📩 Nhận được event raven:channel_done_updated:', data)
-// })
+  // useFrappeEventListener('raven:channel_done_updated', (data) => {
+  //   console.log('📩 Nhận được event raven:channel_done_updated:', data)
+  // })
 
   const doneChannels = useMemo(() => {
     return data?.message || []

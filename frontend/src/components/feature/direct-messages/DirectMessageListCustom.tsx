@@ -94,7 +94,7 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
         </main>
       </ContextMenu.Trigger>
       <ContextMenu.Content className='z-50 bg-white dark:bg-gray-800 border dark:border-gray-600 shadow rounded p-1 text-black dark:text-white'>
-        <ContextMenu.Item onClick={() => markAsUnread(dm_channel)} className='dark:hover:bg-gray-700 px-2 py-1 rounded'>
+        <ContextMenu.Item onClick={() => markAsUnread(dm_channel)} className='dark:hover:bg-gray-700 px-2 py-1 rounded cursor-pointer'>
           {dm_channel.unread_count > 0 || isManuallyMarked(dm_channel.name) ? 'Đánh dấu đã đọc' : 'Đánh dấu chưa đọc'}
         </ContextMenu.Item>
         <ContextMenu.Item
@@ -187,7 +187,7 @@ export const DirectMessageItemElement = ({ channel }: { channel: UnifiedChannel 
           </Text>
         </Flex>
         <Text size='1' color='gray' className='truncate'>
-          {formatLastMessage(channel, currentUser, channel.peer_user_name)}
+          {channel && formatLastMessage(channel, currentUser, channel.peer_user_name)}
         </Text>
       </Flex>
 

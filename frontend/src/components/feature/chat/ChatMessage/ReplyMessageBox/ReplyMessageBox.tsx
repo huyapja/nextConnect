@@ -67,7 +67,8 @@ export const ReplyMessageBox = ({ currentUser, message, children, className, ...
             </Flex>
           ) : (
             <Text as='span' size='2' className='line-clamp-2 text-ellipsis'>
-              {parse((message as TextMessage).content ?? '')}
+              {/* {parse((message as TextMessage).content ?? '')} */}
+              {message?.content}
             </Text>
           )}
         </Box>
