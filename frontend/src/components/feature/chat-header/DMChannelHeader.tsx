@@ -45,6 +45,7 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
   const user = useGetUser(peer)  
 
   const isUserOnLeave = useIsUserOnLeave(peer)
+  
 
   const userName = fullName ?? peer ?? replaceCurrentUserFromDMChannelName(channelData.channel_name, currentUser)
 
