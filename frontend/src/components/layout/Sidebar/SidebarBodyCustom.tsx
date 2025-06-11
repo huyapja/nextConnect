@@ -1,33 +1,44 @@
-import { ChannelListContext, ChannelListContextType } from '@/utils/channel/ChannelListProvider'
-import { Flex, ScrollArea } from '@radix-ui/themes'
+// src/components/sidebar/SidebarBody.tsx
 import { useContext, useEffect } from 'react'
-import { DirectMessageList } from '../../feature/direct-messages/DirectMessageListCustom'
+import { useDispatch, useSelector } from 'react-redux'
+import { Flex, ScrollArea } from '@radix-ui/themes'
+
+import { ChannelListContext, ChannelListContextType } from '@/utils/channel/ChannelListProvider'
+import { setSortedChannels } from '@/store/slices/channelSlice'
+
 import CircleUserList from './CircleUserList'
-import { useIsTablet } from '@/hooks/useMediaQuery'
 import IsTabletSidebarNav from './IsTabletSidebarNav'
-import { useSetAtom } from 'jotai'
-import { prepareSortedChannels, sortedChannelsAtom } from '@/utils/channel/ChannelAtom'
+import { useIsTablet } from '@/hooks/useMediaQuery'
+import { DirectMessageList } from '../../feature/direct-messages/DirectMessageListCustom'
+import { prepareSortedChannels } from '@/hooks/useEnrichedChannels'
+import { useUnreadMessages } from '@/utils/layout/sidebar'
+import { RootState } from '@/store'
 
 export type SidebarBodyProps = {
   size: number
 }
 
-export const SidebarBody = ({ size }: SidebarBodyProps) => {
+export const SidebarBody = () => {
+  // khởi tạo danh sách channel -> rồi sort
+  const dispatch = useDispatch()
   const { channels, dm_channels } = useContext(ChannelListContext) as ChannelListContextType
-  const setSortedChannels = useSetAtom(sortedChannelsAtom)
-  useEffect(() => {
-    setSortedChannels(prepareSortedChannels(channels, dm_channels))
-  }, [channels, dm_channels, setSortedChannels])
+  const unreadList = useSelector((state: RootState) => state.unread.message)
 
   const isTablet = useIsTablet()
+
+  useEffect(() => {
+    if (channels && dm_channels) {
+      const sorted = prepareSortedChannels(channels, dm_channels, unreadList ?? [])
+      dispatch(setSortedChannels(sorted))
+    }
+  }, [channels, dm_channels, unreadList, dispatch])
 
   return (
     <ScrollArea type='hover' scrollbars='vertical' className='h-[calc(100vh-4rem)] sidebar-scroll'>
       <Flex direction='column' gap='2' className='overflow-x-hidden pb-12 sm:pb-0' px='2'>
-        <Flex direction='column' gap='1' className='pb-0.5'></Flex>
-        <CircleUserList />
+        <Flex direction='column' gap='1' className='pb-0.5' />
+        {/* <CircleUserList /> */}
         {isTablet && <IsTabletSidebarNav />}
-        {/* <PinnedChannels unread_count={unread_count?.message} /> */}
         <DirectMessageList />
       </Flex>
     </ScrollArea>

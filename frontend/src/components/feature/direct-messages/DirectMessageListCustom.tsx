@@ -20,18 +20,20 @@ import { HiCheck } from 'react-icons/hi'
 import { DoneChannelList } from '../channels/DoneChannelList'
 import MentionList from '../chat/ChatInput/MentionListCustom'
 import { MessageSaved } from './DirectMessageSaved'
-import clsx from 'clsx'
 import { useIsTablet } from '@/hooks/useMediaQuery'
 import UserChannelList from '../channels/UserChannelList'
-import { useEnrichedChannels } from '@/utils/channel/ChannelAtom'
 import ThreadsCustom from '../threads/ThreadsCustom'
 import { formatLastMessage } from '@/utils/channel/useFormatLastMessage'
 import { useChannelDone } from '@/hooks/useChannelDone'
+import { useDispatch, useSelector } from 'react-redux'
+import { filteredChannelsSelector } from '@/store/selectors/channelSelectors'
+import { pushSelectedChannel, removeSelectedChannel } from '@/store/slices/channelSlice'
 
 type UnifiedChannel = ChannelWithUnreadCount | DMChannelWithUnreadCount | any
 
 export const DirectMessageList = () => {
-  const enriched = useEnrichedChannels()
+  const enriched = useSelector(filteredChannelsSelector)
+
   return (
     <SidebarGroup pb='4'>
       <SidebarGroup>
@@ -84,8 +86,8 @@ export const DirectMessageItemList = ({ channel_list }: any) => {
   )
 }
 export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnreadCount }) => {
-  const { isPinned, togglePin, markAsUnread, isManuallyMarked } = useChannelActions()
-
+  const { markAsUnread, isManuallyMarked } = useChannelActions()
+  const dispatch = useDispatch()
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger>
@@ -98,10 +100,12 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
           {dm_channel.unread_count > 0 || isManuallyMarked(dm_channel.name) ? 'Đánh dấu đã đọc' : 'Đánh dấu chưa đọc'}
         </ContextMenu.Item>
         <ContextMenu.Item
-          onClick={() => togglePin(dm_channel)}
+          onClick={() => {
+            dispatch(pushSelectedChannel(dm_channel))
+          }}
           className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded'
         >
-          {isPinned(dm_channel.name) ? 'Unpin message' : 'Pin message to top'}
+          {removeSelectedChannel(dm_channel.name) ? 'Bỏ ghim tin nhắn' : 'Ghim lên đầu'}
         </ContextMenu.Item>
       </ContextMenu.Content>
     </ContextMenu.Root>
@@ -120,7 +124,7 @@ export const DirectMessageItemElement = ({ channel }: { channel: UnifiedChannel 
   const { workspaceID, channelID } = useParams<{ workspaceID: string; channelID: string }>()
   const manuallyMarked = useAtomValue(manuallyMarkedAtom)
   const { clearManualMark } = useChannelActions()
-  const { markAsDone, markAsNotDone } = useChannelDone()
+  // const { markAsDone, markAsNotDone } = useChannelDone()
 
   // 2. Tính toán các biến phụ (không gọi hook nữa ở đây)
   const isGroupChannel = !channel.is_direct_message && !channel.is_self_message
@@ -187,7 +191,7 @@ export const DirectMessageItemElement = ({ channel }: { channel: UnifiedChannel 
           </Text>
         </Flex>
         <Text size='1' color='gray' className='truncate'>
-          {formatLastMessage(channel, currentUser, channel.peer_user_name)}
+          {/* {formatLastMessage(channel, currentUser, channel.peer_user_name)} */}
         </Text>
       </Flex>
 
@@ -196,7 +200,7 @@ export const DirectMessageItemElement = ({ channel }: { channel: UnifiedChannel 
           <button
             onClick={(e) => {
               e.stopPropagation()
-              channel.is_done ? markAsNotDone(channel.name) : markAsDone(channel.name)
+              // channel.is_done ? markAsNotDone(channel.name) : markAsDone(channel.name)
             }}
             className='absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 rounded-full bg-gray-200 hover:bg-gray-300 h-[20px] w-[20px] flex items-center justify-center cursor-pointer'
             title={channel.is_done ? 'Chưa xong' : 'Đã xong'}

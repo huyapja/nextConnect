@@ -6,7 +6,7 @@ import useUnreadMessageCount from '@/hooks/useUnreadMessageCount'
 import { useFrappePostCall } from 'frappe-react-sdk'
 
 export const useChannelActions = () => {
-  const { pushChannel, removeChannel, selectedChannels } = useCircleUserList()
+  // const { pushChannel, removeChannel, selectedChannels } = useCircleUserList()
   const { updateCount } = useUnreadMessageCount()
   const { call } = useFrappePostCall('raven.api.raven_channel_member.mark_channel_as_unread')
 
@@ -14,15 +14,15 @@ export const useChannelActions = () => {
   const addManuallyMarked = useSetAtom(addToMarked)
   const removeManuallyMarked = useSetAtom(removeFromMarked)
 
-  const isPinned = (channelId: string) => selectedChannels.some((c) => c.name === channelId)
+  // const isPinned = (channelId: string) => selectedChannels.some((c) => c.name === channelId)
 
-  const togglePin = (channel: any) => {
-    if (isPinned(channel.name)) {
-      removeChannel(channel.name)
-    } else {
-      pushChannel(channel)
-    }
-  }
+  // const togglePin = (channel: any) => {
+  //   if (isPinned(channel.name)) {
+  //     removeChannel(channel.name)
+  //   } else {
+  //     pushChannel(channel)
+  //   }
+  // }
 
   const markAsUnread = async (channel: any) => {
     await call({ channel_id: channel.name })
@@ -57,8 +57,8 @@ export const useChannelActions = () => {
   }
 
   return {
-    isPinned,
-    togglePin,
+    // isPinned,
+    // togglePin,
     markAsUnread,
     clearManualMark,
     isManuallyMarked,

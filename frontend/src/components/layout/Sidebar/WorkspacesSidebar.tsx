@@ -6,7 +6,7 @@ import AddWorkspaceSidebarButton from '@/components/feature/workspaces/AddWorksp
 import { Link, useLocation, useParams } from 'react-router-dom'
 import clsx from 'clsx'
 import { useContext, useMemo } from 'react'
-import useUnreadMessageCount from '@/hooks/useUnreadMessageCount'
+// import useUnreadMessageCount from '@/hooks/useUnreadMessageCount'
 import { ChannelListContext, ChannelListContextType } from '@/utils/channel/ChannelListProvider'
 import { generateAvatarColor } from '@/components/feature/selectDropdowns/GenerateAvatarColor'
 import { getInitials } from '@/components/common/UserAvatar'
@@ -14,7 +14,8 @@ import { getInitials } from '@/components/common/UserAvatar'
 const WorkspacesSidebar = () => {
   const { data } = useFetchWorkspaces()
 
-  const { unread_count } = useUnreadMessageCount()
+  // const { unread_count } = useUnreadMessageCount()
+  const unread_count = 1
   const { channels } = useContext(ChannelListContext) as ChannelListContextType
 
   const myWorkspaces: (WorkspaceFields & { unread_count: number })[] = useMemo(() => {

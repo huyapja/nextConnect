@@ -1,31 +1,29 @@
-import { useChannelActions } from '@/hooks/useChannelActions'
-import { useGetUser } from '@/hooks/useGetUser'
-import { useIsMobile } from '@/hooks/useMediaQuery'
-import { ChannelWithGroupType, sortedChannelsAtom } from '@/utils/channel/ChannelAtom'
-import { useUnreadMessages } from '@/utils/layout/sidebar'
-import { ChannelInfo, useCircleUserList } from '@/utils/users/CircleUserListProvider'
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import { Tooltip } from '@radix-ui/themes'
 import clsx from 'clsx'
-import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useMemo, useState } from 'react'
 import { FaUsers } from 'react-icons/fa6'
 import { IoTriangle } from 'react-icons/io5'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
+
+import { useChannelActions } from '@/hooks/useChannelActions'
+import { useGetUser } from '@/hooks/useGetUser'
+import { useIsMobile } from '@/hooks/useMediaQuery'
+import { setSelectedChannels } from '@/store/slices/channelSlice'
+import { RootState } from '@/store'
 
 interface Props {
-  channel: ChannelInfo
+  channel: any
   isActive?: boolean
   onActivate?: () => void
 }
 
-const LOCAL_STORAGE_KEY = 'raven_selected_channels'
-let saveTimeout: ReturnType<typeof setTimeout> | null = null
-
-const SortableCircleUserItem = ({ channel, isActive, onActivate }: Props) => {
+// components hiển thị danh sách kéo thả circle user
+const SortableCircleUserItem = ({ channel, onActivate }: Props) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: channel.name })
 
   const style = {
@@ -37,24 +35,27 @@ const SortableCircleUserItem = ({ channel, isActive, onActivate }: Props) => {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <CircleUserItem channel={channel} isActive={isActive} onActivate={onActivate} />
+      <CircleUserItem channel={channel} onActivate={onActivate} />
     </div>
   )
 }
 
-const CircleUserItem = ({ channel, isActive, onActivate }: Props) => {
+const CircleUserItem = ({ channel, onActivate }: Props) => {
   const navigate = useNavigate()
+    const channelID = useParams().channelID || ''
   const isDM = channel.is_direct_message === 1
-  const userInfo = useGetUser(channel?.peer_user_id ?? undefined)
+  const userInfo = useGetUser(channel?.peer_user_id)
   const displayName = isDM ? userInfo?.full_name : channel.channel_name
   const { clearManualMark } = useChannelActions()
   const { workspaceID } = useParams()
   const isMobile = useIsMobile()
-
   const [dragging, setDragging] = useState(false)
 
+  const isActive = channelID === channel.name
+
+
   const handleClick = (e: React.MouseEvent) => {
-    if (e.button !== 0 || dragging) return // Chỉ điều hướng nếu là chuột trái và không đang kéo
+    if (e.button !== 0 || dragging) return
     clearManualMark(channel.name)
     onActivate?.()
     navigate(`/${workspaceID}/${channel.name}`)
@@ -87,9 +88,7 @@ const CircleUserItem = ({ channel, isActive, onActivate }: Props) => {
               )}
             >
               {isDM ? (
-                <span className='text-[12px] font-semibold flex items-center justify-center'>
-                  {displayName?.slice(0, 2).toUpperCase()}
-                </span>
+                <span className='text-[12px] font-semibold'>{displayName?.slice(0, 2).toUpperCase()}</span>
               ) : (
                 <FaUsers className='w-4 h-4 text-teal-500' />
               )}
@@ -108,115 +107,59 @@ const CircleUserItem = ({ channel, isActive, onActivate }: Props) => {
   )
 }
 
-const ChannelItemWithContext = ({
-  channel,
-  isActive,
-  markAsUnread,
-  togglePin,
-  isPinned,
-  isManuallyMarked,
-  refresh
-}: {
-  channel: any
-  isActive: boolean
-  markAsUnread: (channel: any) => void
-  togglePin: (channel: any) => void
-  isPinned: (id: string) => boolean
-  isManuallyMarked: (id: string) => boolean
-  refresh: () => void
-}) => (
-  <ContextMenu.Root>
-    <ContextMenu.Trigger asChild>
-      <div className='select-none'>
-        <SortableCircleUserItem channel={channel} isActive={isActive} onActivate={() => {}} />
-      </div>
-    </ContextMenu.Trigger>
-    <ContextMenu.Portal>
-      <ContextMenu.Content className='z-50 bg-white dark:bg-gray-800 text-black dark:text-white rounded shadow-md p-1'>
-        <ContextMenu.Item
-          className='px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer'
-          onClick={() => {
-            markAsUnread(channel)
-            refresh()
-          }}
-        >
-          {channel.unread_count > 0 || isManuallyMarked(channel.name)
-            ? 'Đánh dấu đã đọc'
-            : 'Đánh dấu chưa đọc'}
-        </ContextMenu.Item>
-        <ContextMenu.Item
-          className='px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer'
-          onClick={() => togglePin(channel)}
-        >
-          {isPinned(channel.name) ? 'Bỏ ghim khỏi danh sách' : 'Ghim lên đầu'}
-        </ContextMenu.Item>
-      </ContextMenu.Content>
-    </ContextMenu.Portal>
-  </ContextMenu.Root>
-)
-
-
 export const CircleUserList = () => {
-  const { channelID = '' } = useParams()
-  const channels = useAtomValue(sortedChannelsAtom)
-  const setChannels = useSetAtom(sortedChannelsAtom)
+  const dispatch = useDispatch()
+  const channelID = useParams().channelID || ''
+  const selectedChannels = useSelector((state: RootState) => state.channel.selectedChannels)
 
-  const unread_count = useUnreadMessages()
-
-
-  const isMobile = useIsMobile()
-  const [rows, setRows] = useState<string[][]>([])
-  const [showExtraList, setShowExtraList] = useState(false)
+  const { markAsUnread, isManuallyMarked } = useChannelActions()
+  const [items, setItems] = useState(selectedChannels.map((c) => c.name))
   const [showAll, setShowAll] = useState(false)
 
-  const { isPinned, togglePin, markAsUnread, isManuallyMarked } = useChannelActions()
-
-  const itemsPerRow = 5
-  // const hasMoreRows = isMobile && Math.ceil(items.length / itemsPerRow) > 1
-
-  // useEffect(() => {
-  //   if (!isMobile) return
-
-  //   const tempRows: string[][] = []
-  //   for (let i = 0; i < items.length; i += itemsPerRow) {
-  //     tempRows.push(items.slice(i, i + itemsPerRow))
-  //   }
-
-  //   if (tempRows.length > 1 && tempRows[0]) {
-  //     tempRows[0].push('__TOGGLE__')
-  //   }
-
-  //   setRows(tempRows)
-  // }, [items, isMobile])
+  useEffect(() => {
+    setItems(selectedChannels.map((c) => c.name))
+  }, [selectedChannels])
 
   const sensors = useSensors(useSensor(PointerSensor))
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
 
-  // const handleDragEnd = (event: any) => {
-  //   const { active, over } = event
-  //   if (!over || active.id === over.id) return
+    const oldIndex = items.indexOf(active.id)
+    const newIndex = items.indexOf(over.id)
+    const newItems = arrayMove(items, oldIndex, newIndex)
+    setItems(newItems)
 
-  //   const oldIndex = items.indexOf(active.id)
-  //   const newIndex = items.indexOf(over.id)
-  //   const newItems = arrayMove(items, oldIndex, newIndex)
-  //   setItems(newItems)
+    const reordered = newItems.map((name) => selectedChannels.find((c) => c.name === name)).filter(Boolean)
 
-  //   const reordered = newItems
-  //     .map((name) => enrichedChannels.find((c) => c.name === name))
-  //     .filter(Boolean) as ChannelWithGroupType[]
+    dispatch(setSelectedChannels(reordered))
+  }
 
-  //   setChannels(reordered)
+  const isMobile = useIsMobile()
+  const [showExtraList, setShowExtraList] = useState(false)
+  const [rows, setRows] = useState<string[][]>([])
+  const itemsPerRow = 5
 
-  //   if (saveTimeout) clearTimeout(saveTimeout)
-  //   saveTimeout = setTimeout(() => {
-  //     localStorage.setItem('circle_user_list', JSON.stringify(reordered))
-  //   }, 1000)
-  // }
+  useEffect(() => {
+    if (!isMobile) return
+    const tempRows: string[][] = []
 
-  // if (!enrichedChannels.length) return null
+    for (let i = 0; i < items.length; i += itemsPerRow) {
+      tempRows.push(items.slice(i, i + itemsPerRow))
+    }
+
+    if (tempRows.length > 1 && tempRows[0]) {
+      tempRows[0].push('__TOGGLE__')
+    }
+
+    setRows(tempRows)
+  }, [items, isMobile])
+
+  if (!selectedChannels.length) return null
 
   return (
     <div className='w-full overflow-hidden'>
-      {/* <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={items} strategy={rectSortingStrategy}>
           {isMobile ? (
             <div className='flex flex-col gap-5 w-full'>
@@ -228,14 +171,13 @@ export const CircleUserList = () => {
                     {row.map((channelName) => {
                       if (channelName === '__TOGGLE__') {
                         return (
-                          <div key='__TOGGLE__' className='flex flex-col items-center ml-auto space-y-1'>
-                            <button onClick={() => setShowExtraList((prev) => !prev)}>
+                          <div key='__TOGGLE__' className='flex flex-col items-center space-y-1 ml-auto'>
+                            <button className="bg-transparent" onClick={() => setShowExtraList((prev) => !prev)}>
                               <div className='w-8 h-8 border-2 rounded-full flex items-center justify-center'>
                                 <IoTriangle
-                                  className={clsx(
-                                    'w-3 h-3 transition-transform duration-200 dark:text-gray-200',
-                                    !showExtraList && '-rotate-180'
-                                  )}
+                                  className={`w-3 h-3 transition-transform duration-200 dark:text-gray-200 ${
+                                    showExtraList ? '' : '-rotate-180'
+                                  }`}
                                 />
                               </div>
                               <span className='text-xs mt-1 dark:text-gray-200'>
@@ -246,20 +188,42 @@ export const CircleUserList = () => {
                         )
                       }
 
-                      const channel = enrichedChannels.find((c) => c.name === channelName)
+                      const channel = selectedChannels.find((c) => c.name === channelName)
                       if (!channel) return null
 
                       return (
-                        <ChannelItemWithContext
-                          key={channel.name}
-                          channel={channel}
-                          isActive={channel.name === channelID}
-                          markAsUnread={markAsUnread}
-                          togglePin={togglePin}
-                          isPinned={isPinned}
-                          isManuallyMarked={isManuallyMarked}
-                          refresh={() => setChannels((prev) => [...prev])}
-                        />
+                        <ContextMenu.Root key={channel.name}>
+                          <ContextMenu.Trigger asChild>
+                            <div className='select-none'>
+                              <SortableCircleUserItem
+                                channel={channel}
+                                // isActive={channel.name === channelID}
+                                onActivate={() => {}}
+                              />
+                            </div>
+                          </ContextMenu.Trigger>
+                          <ContextMenu.Portal>
+                            <ContextMenu.Content className='z-50 bg-white dark:bg-gray-800 text-black dark:text-white rounded shadow-md p-1'>
+                              <ContextMenu.Item
+                                className='px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer'
+                                onClick={() => {
+                                  markAsUnread(channel)
+                                  dispatch(setSelectedChannels([...selectedChannels]))
+                                }}
+                              >
+                                {channel.unread_count > 0 || isManuallyMarked(channel.name)
+                                  ? 'Đánh dấu đã đọc'
+                                  : 'Đánh dấu chưa đọc'}
+                              </ContextMenu.Item>
+                              <ContextMenu.Item
+                                className='px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer'
+                                // onClick={() => togglePin(channel)}
+                              >
+                                {/* {isPinned(channel.name) ? 'Bỏ ghim khỏi danh sách' : 'Ghim lên đầu'} */}
+                              </ContextMenu.Item>
+                            </ContextMenu.Content>
+                          </ContextMenu.Portal>
+                        </ContextMenu.Root>
                       )
                     })}
                   </div>
@@ -275,20 +239,42 @@ export const CircleUserList = () => {
                 )}
               >
                 {items.map((channelName) => {
-                  const channel = enrichedChannels.find((c) => c.name === channelName)
+                  const channel = selectedChannels.find((c) => c.name === channelName)
                   if (!channel) return null
 
                   return (
-                    <ChannelItemWithContext
-                      key={channel.name}
-                      channel={channel}
-                      isActive={channel.name === channelID}
-                      markAsUnread={markAsUnread}
-                      togglePin={togglePin}
-                      isPinned={isPinned}
-                      isManuallyMarked={isManuallyMarked}
-                      refresh={() => setChannels((prev) => [...prev])}
-                    />
+                    <ContextMenu.Root key={channel.name}>
+                      <ContextMenu.Trigger asChild>
+                        <div className='w-[50px] h-[50px]'>
+                          <SortableCircleUserItem
+                            channel={channel}
+                            isActive={channel.name === channelID}
+                            onActivate={() => {}}
+                          />
+                        </div>
+                      </ContextMenu.Trigger>
+                      <ContextMenu.Portal>
+                        <ContextMenu.Content className='z-50 bg-white dark:bg-gray-800 text-black dark:text-white rounded shadow-md p-1'>
+                          <ContextMenu.Item
+                            className='px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer'
+                            onClick={() => {
+                              markAsUnread(channel)
+                              dispatch(setSelectedChannels([...selectedChannels]))
+                            }}
+                          >
+                            {channel.unread_count > 0 || isManuallyMarked(channel.name)
+                              ? 'Đánh dấu đã đọc'
+                              : 'Đánh dấu chưa đọc'}
+                          </ContextMenu.Item>
+                          <ContextMenu.Item
+                            className='px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer'
+                            // onClick={() => togglePin(channel)}
+                          >
+                            {/* {isPinned(channel.name) ? 'Bỏ ghim khỏi danh sách' : 'Ghim lên đầu'} */}
+                          </ContextMenu.Item>
+                        </ContextMenu.Content>
+                      </ContextMenu.Portal>
+                    </ContextMenu.Root>
                   )
                 })}
               </div>
@@ -304,7 +290,7 @@ export const CircleUserList = () => {
             </div>
           )}
         </SortableContext>
-      </DndContext> */}
+      </DndContext>
     </div>
   )
 }
