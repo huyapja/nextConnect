@@ -34,18 +34,25 @@ const ConversationList = ({ filter='all' }: ConversationListProps) => {
     const { dm_channels, error, isLoading, channels } = useContext(ChannelListContext) as ChannelListContextType;
 
     const allDMs = useMemo(() => {
-        const allRecord: RecordType[] = [];
-        for (const item of dm_channels) {
-            allRecord.push({
-                ...item,
-                unread_count: 0,
-            });
+        let allRecord: RecordType[] = [];
+        if (filter !== 'group') {
+            for (const item of dm_channels) {
+                allRecord.push({
+                    ...item,
+                    unread_count: 0,
+                });
+            }
         }
-        for (const item of channels) {
-            allRecord.push({
-                ...item,
-                unread_count: unread_count?.message.find(item => item.name === item.name)?.unread_count ?? 0
-            });
+        if (filter !== 'private') {
+            for (const item of channels) {
+                allRecord.push({
+                    ...item,
+                    unread_count: unread_count?.message.find(item => item.name === item.name)?.unread_count ?? 0
+                });
+            }
+        }
+        if (filter === 'unread') {
+            allRecord = allRecord.filter(r => (r.unread_count > 0))
         }
         const sortedRecord = sortByLatestMessage(allRecord);
         return sortedRecord;
