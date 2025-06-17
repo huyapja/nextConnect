@@ -1,7 +1,7 @@
 import { RavenChannel } from "@raven/types/RavenChannelManagement/RavenChannel";
 
 export type ChannelListItem = Pick<RavenChannel, 'name' | 'channel_name' | 'type' |
-    'channel_description' | 'is_direct_message' | 'is_self_message' |
+    'channel_description' | 'is_direct_message' | 'is_self_message' | 'is_done' |
     'is_archived' | 'creation' | 'owner' | 'last_message_details' | 'last_message_timestamp' | 'workspace' | 'pinned_messages_string'> & { member_id: string }
 
 export interface DMChannelListItem extends ChannelListItem {

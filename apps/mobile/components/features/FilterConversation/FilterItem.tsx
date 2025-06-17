@@ -8,7 +8,7 @@ interface MenuItemProps {
 
 const FilterItem = ({item}: {item: MenuItemProps}) => {
   return (
-    <Link href={`../conversations/${item.path}`} asChild>
+    <Link href={item.path} asChild>
       <Pressable
             className='flex flex-row relative items-center gap-3 py-3 px-4 ios:active:bg-linkColor'
             android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}

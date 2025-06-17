@@ -33,7 +33,7 @@ const DmRow = ({ dm }: { dm: DMChannelWithUnreadCount }) => {
         let lastMessageContent = ''
         if (dm.last_message_details) {
             try {
-                const parsedDetails = JSON.parse(dm.last_message_details)
+                const parsedDetails = typeof dm.last_message_details === 'object' ? dm.last_message_details : JSON.parse(dm.last_message_details)
                 isSentByUser = parsedDetails.owner === myProfile?.name
                 lastMessageContent = parsedDetails.content?.trim() || ''
             } catch (e) {

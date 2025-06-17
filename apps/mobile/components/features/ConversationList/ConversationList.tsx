@@ -37,18 +37,22 @@ const ConversationList = ({ filter='all' }: ConversationListProps) => {
         let allRecord: RecordType[] = [];
         if (filter !== 'group') {
             for (const item of dm_channels) {
-                allRecord.push({
-                    ...item,
-                    unread_count: 0,
-                });
+                if (item.is_done === 0) {
+                    allRecord.push({
+                        ...item,
+                        unread_count: 0,
+                    });
+                }
             }
         }
         if (filter !== 'private') {
             for (const item of channels) {
-                allRecord.push({
-                    ...item,
-                    unread_count: unread_count?.message.find(item => item.name === item.name)?.unread_count ?? 0
-                });
+                if (item.is_done === 0) {
+                    allRecord.push({
+                        ...item,
+                        unread_count: unread_count?.message.find(item => item.name === item.name)?.unread_count ?? 0
+                    });
+                }
             }
         }
         if (filter === 'unread') {

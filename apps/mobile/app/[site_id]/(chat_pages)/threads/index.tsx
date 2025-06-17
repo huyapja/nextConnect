@@ -10,7 +10,7 @@ export default function Threads() {
     return (
         <>
             <Stack.Screen options={{
-                title: 'Threads',
+                title: 'Chủ đề',
                 headerLargeTitle: false,
                 headerStyle: { backgroundColor: colors.background },
             }} />

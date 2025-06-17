@@ -10,11 +10,11 @@ export const FilterItems = {
     },
     flagged: {
         title: 'Đã gắn cờ',
-        path: '../conversations/flagged',
+        path: '../saved-messages',
     },
     mention: {
         title: 'Nhắc đến',
-        path: '../conversations/mention',
+        path: '../mentions',
     },
     label: {
         title: 'Nhãn',
@@ -30,11 +30,11 @@ export const FilterItems = {
     },
     topic: {
         title: 'Chủ đề',
-        path: '../conversations/topic',
+        path: '../threads',
     },
     done: {
         title: 'Xong',
-        path: '../conversations/done',
+        path: '../done-messages',
     },
     members: {
         title: 'Thành viên',
