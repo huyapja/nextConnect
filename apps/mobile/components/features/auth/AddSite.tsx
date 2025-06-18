@@ -54,11 +54,9 @@ const AddSite = ({ useBottomSheet = false }: Props) => {
 
         fetch(`${url}/api/method/raven.api.raven_mobile.get_client_id`)
             .then(res => {
-                console.log("res")
                 return res.json();
             })
             .then(data => {
-                console.log("data", JSON.stringify(data, null, 2))
                 if (data.message && data.message.client_id) {
                     setSiteInformation({
                         url,

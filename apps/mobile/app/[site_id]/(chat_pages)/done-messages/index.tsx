@@ -1,6 +1,5 @@
 import HeaderBackButton from '@components/common/Buttons/HeaderBackButton'
 import ChannelRow from '@components/features/ConversationList/ChannelRow'
-import ConversationList from '@components/features/ConversationList/ConversationList'
 import DMListEmptyState from '@components/features/ConversationList/DMListEmptyState'
 import DmRow from '@components/features/ConversationList/DMRow'
 import { FilterItems } from '@components/features/FilterConversation/FilterList'
@@ -8,18 +7,15 @@ import { Divider } from '@components/layout/Divider'
 import { useColorScheme } from '@hooks/useColorScheme'
 import { useDoneMessages } from '@hooks/useDoneMessages'
 import { LegendList } from '@legendapp/list'
-import { Stack, useLocalSearchParams } from 'expo-router'
+import { Stack } from 'expo-router'
 import { ActivityIndicator, SafeAreaView, Text, View } from 'react-native'
 import { ScrollView } from 'react-native-gesture-handler'
-import { FilterConversationType } from 'types/FilterConversationTypes'
 
 type FilterItemKey = keyof typeof FilterItems;
 
 const index = () => {
     const { colors } = useColorScheme();
     const { data, isLoading } = useDoneMessages();
-
-    console.log(JSON.stringify(data, null, 2))
 
     if (isLoading) {
         return (
