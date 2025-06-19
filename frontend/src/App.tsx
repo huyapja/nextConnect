@@ -10,6 +10,7 @@ import router from './router'
 import { ThemeProvider } from './ThemeProvider'
 import AppUpdateProvider from './utils/AppUpdateProvider'
 import { UserProvider } from './utils/auth/UserProvider'
+import { FCMProvider } from './components/FCMProvider'
 
 /** Following keys will not be cached in app cache */
 // const NO_CACHE_KEYS = [
@@ -65,19 +66,21 @@ function App() {
       siteName={getSiteName()}
     >
       <UserProvider>
-        <Toaster richColors />
-        <ThemeProvider
-          appearance={appearance}
-          // grayColor='slate'
-          accentColor='iris'
-          panelBackground='translucent'
-          setAppearance={setAppearance}
-        >
-          <Suspense fallback={<></>}>
-            <RouterProvider router={router} />
-          </Suspense>
-          <AppUpdateProvider />
-        </ThemeProvider>
+        <FCMProvider>
+          <Toaster richColors />
+          <ThemeProvider
+            appearance={appearance}
+            // grayColor='slate'
+            accentColor='iris'
+            panelBackground='translucent'
+            setAppearance={setAppearance}
+          >
+            <Suspense fallback={<></>}>
+              <RouterProvider router={router} />
+            </Suspense>
+            <AppUpdateProvider />
+          </ThemeProvider>
+        </FCMProvider>
       </UserProvider>
     </FrappeProvider>
   )

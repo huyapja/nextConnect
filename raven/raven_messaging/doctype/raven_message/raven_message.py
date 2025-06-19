@@ -372,10 +372,21 @@ class RavenMessage(Document):
 		):
 			return
 
+		# Gọi FCM notification thay vì notification.py
 		if frappe.request and hasattr(frappe.request, "after_response"):
-			frappe.request.after_response.add(lambda: send_notification_for_message(self))
+			frappe.request.after_response.add(lambda: self.send_fcm_notification())
 		else:
-			send_notification_for_message(self)
+			self.send_fcm_notification()
+
+	def send_fcm_notification(self):
+		"""
+		Gửi FCM notification cho tin nhắn mới
+		"""
+		try:
+			from raven.fcm_utils import send_message_notification
+			send_message_notification(self)
+		except Exception as e:
+			frappe.log_error(f"Failed to send FCM notification: {str(e)}", "FCM Error")
 
 	def get_notification_message_content(self):
 		"""

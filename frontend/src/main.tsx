@@ -4,28 +4,37 @@ import App from './App'
 import '@radix-ui/themes/styles.css'
 import './index.css'
 
+// Import hệ thống FCM tùy chỉnh
+import { registerFCMToken, setupForegroundMessageListener } from './firebase-config'
+
+// Vô hiệu hóa FrappePushNotification để tránh xung đột
 // @ts-ignore
-import FrappePushNotification from '../public/frappe-push-notification'
+// import FrappePushNotification from '../public/frappe-push-notification'
 
 const registerServiceWorker = () => {
+  // Vô hiệu hóa FrappePushNotification
   // @ts-ignore
-  window.frappePushNotification = new FrappePushNotification('raven')
+  // window.frappePushNotification = new FrappePushNotification('raven')
 
   if ('serviceWorker' in navigator) {
-    // @ts-ignore
-    window.frappePushNotification
-      .appendConfigToServiceWorkerURL('/assets/raven/raven/sw.js')
-      .then((url: string) => {
-        navigator.serviceWorker
-          .register(url, {
-            type: 'classic'
-          })
-          .then((registration) => {
-            // @ts-ignore
-            window.frappePushNotification.initialize(registration).then(() => {
-              console.info('Frappe Push Notification initialized')
-            })
-          })
+    // Sử dụng service worker tùy chỉnh cho FCM
+    navigator.serviceWorker
+      .register('/firebase-messaging-sw.js', {
+        type: 'module'
+      })
+      .then((registration) => {
+        console.info('Custom FCM Service Worker registered')
+        
+        // Khởi tạo hệ thống FCM tùy chỉnh
+        registerFCMToken().then((token) => {
+          if (token) {
+            console.info('FCM Token registered successfully')
+            // Thiết lập listener cho foreground messages
+            setupForegroundMessageListener()
+          }
+        }).catch((err) => {
+          console.error('Failed to register FCM token', err)
+        })
       })
       .catch((err: any) => {
         console.error('Failed to register service worker', err)
