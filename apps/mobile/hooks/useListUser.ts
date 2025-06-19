@@ -20,7 +20,6 @@ export function useListUser() {
         }
     )
 
-    // Khi data từ API có, mà cache chưa có → lưu vào atom
     useEffect(() => {
         if (data && shouldCallApi) {
             setCachedData(data.message);

@@ -18,7 +18,7 @@ export const FilterItems = {
     },
     label: {
         title: 'Nhãn',
-        path: '../conversations/label',
+        path: '../labeled-messages',
     },
     private: {
         title: 'Cuộc trò chuyện riêng tư',

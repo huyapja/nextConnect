@@ -2,15 +2,16 @@ import { atom } from "jotai";
 import { useFrappeGetCall } from "frappe-react-sdk";
 import { useAtom } from "jotai";
 import { useEffect } from "react";
+import { LabeledMessageItem } from "types/LabeledMessageType";
 
-const doneMessagesAtom = atom(null);
+const doneMessagesAtom = atom<LabeledMessageItem[] | undefined>();
 
-export function useDoneMessages() {
+export function useLabeledMessages() {
     const [cachedData, setCachedData] = useAtom(doneMessagesAtom);
     const shouldCallApi = !cachedData;
 
     const { data, error, isLoading, mutate } = useFrappeGetCall(
-        "raven.api.raven_channel.get_done_channels",
+        "raven.api.user_label.get_my_labels",
         {},
         { execute: shouldCallApi },
     );
