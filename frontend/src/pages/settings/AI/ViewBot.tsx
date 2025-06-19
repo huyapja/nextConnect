@@ -1,5 +1,6 @@
 import { Loader } from '@/components/common/Loader'
 import BotForm from '@/components/feature/settings/ai/bots/BotForm'
+import CommonSettingsMenu from '@/components/feature/settings/common/CommonSettingsMenu'
 import { ErrorBanner } from '@/components/layout/AlertBanner/ErrorBanner'
 import { FullPageLoader } from '@/components/layout/Loaders/FullPageLoader'
 import PageContainer from '@/components/layout/Settings/PageContainer'
@@ -73,10 +74,11 @@ const ViewBotContent = ({ data, mutate }: { data: RavenBot; mutate: SWRResponse[
             headerBadges={isDirty ? [{ label: 'Not Saved', color: 'red' }] : undefined}
             actions={
               <HStack>
+                <CommonSettingsMenu doctype='Raven Bot' docname={data.name} label={'Agent'} />
                 <OpenChatButton bot={data} />
                 <Button type='submit' disabled={loading}>
                   {loading && <Loader className='text-white' />}
-                  {loading ? 'Saving' : 'Save'}
+                  {loading ? 'Đang lưu' : 'Lưu'}
                 </Button>
               </HStack>
             }

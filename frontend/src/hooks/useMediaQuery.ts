@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 const useMediaQuery = (query: string) => {
-  const [value, setValue] = useState(false)
+  const [value, setValue] = useState(matchMedia(query).matches)
 
   useEffect(() => {
     function onChange(event: MediaQueryListEvent) {
@@ -31,7 +31,6 @@ export const useIsMobile = () => {
 
   return isMobile
 }
-
 
 export const useIsTablet = () => {
   const isTablet = useMediaQuery('(max-width: 1024px)')

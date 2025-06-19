@@ -15,7 +15,6 @@ interface UnreadContextValue {
   message: UnreadItem[]
 }
 
-// Tạo context với kiểu dữ liệu chính xác
 const UnreadCountContext = createContext<UnreadContextValue | undefined>(undefined)
 
 export const UnreadCountProvider = ({ children }: { children: ReactNode }) => {
@@ -24,16 +23,16 @@ export const UnreadCountProvider = ({ children }: { children: ReactNode }) => {
   const value = useMemo<UnreadContextValue>(() => {
     return unreadData ?? { message: [] }
   }, [unreadData])
+
   return <UnreadCountContext.Provider value={value}>{children}</UnreadCountContext.Provider>
 }
 
 export const useUnreadMessages = (): UnreadContextValue => {
   const context = useContext(UnreadCountContext)
-  if (!context) return { message: [] } // fallback an toàn
+  if (!context) return { message: [] }
   return context
 }
 
-// Hook trả về toàn bộ context (đối tượng có field message)
 export const useUnreadContext = (): UnreadContextValue => {
   const context = useContext(UnreadCountContext)
   if (!context) {
@@ -43,25 +42,24 @@ export const useUnreadContext = (): UnreadContextValue => {
 }
 
 export type SidebarMode = 'default' | 'hide-filter' | 'show-only-icons'
+type TitleType = string | { labelId: string; labelName: string }
 
 interface SidebarModeContextValue {
-  // trạng thái chính thức
   mode: SidebarMode
   setMode: (mode: SidebarMode) => void
-
-  // trạng thái UI tạm thời (trong khi kéo)
   tempMode: SidebarMode
   setTempMode: (mode: SidebarMode) => void
-
-  // tiêu đề bộ lọc được chọn
-  title: string
-  setTitle: (title: string) => void
+  title: TitleType
+  setTitle: (title: TitleType) => void
+  labelID: string
+  setLabelID: (labelID: string) => void
 }
 
 const SidebarModeContext = createContext<SidebarModeContextValue | undefined>(undefined)
 
 export const SidebarModeProvider = ({ children }: { children: ReactNode }) => {
   const LOCAL_STORAGE_SIDEBAR_MODE = 'sidebar-mode'
+  const LOCAL_STORAGE_SIDEBAR_TITLE = 'sidebar-title'
 
   const [mode, setModeRaw] = useState<SidebarMode>(() => {
     if (typeof window !== 'undefined') {
@@ -70,8 +68,21 @@ export const SidebarModeProvider = ({ children }: { children: ReactNode }) => {
     }
     return 'default'
   })
+
+  const [title, setTitleRaw] = useState<TitleType>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(LOCAL_STORAGE_SIDEBAR_TITLE)
+      try {
+        return saved ? JSON.parse(saved) : 'Trò chuyện'
+      } catch {
+        return 'Trò chuyện'
+      }
+    }
+    return 'Trò chuyện'
+  })
+
   const [tempMode, setTempMode] = useState<SidebarMode>('default')
-  const [title, setTitle] = useState('Trò chuyện')
+  const [labelID, setLabelID] = useState('')
 
   useEffect(() => {
     setTempMode(mode)
@@ -82,9 +93,14 @@ export const SidebarModeProvider = ({ children }: { children: ReactNode }) => {
     setModeRaw(newMode)
   }
 
-  const contextValue = useMemo(
-    () => ({ mode, setMode, tempMode, setTempMode, title, setTitle }),
-    [mode, tempMode, title]
+  const setTitle = (newTitle: TitleType) => {
+    localStorage.setItem(LOCAL_STORAGE_SIDEBAR_TITLE, JSON.stringify(newTitle))
+    setTitleRaw(newTitle)
+  }
+
+  const contextValue = useMemo<SidebarModeContextValue>(
+    () => ({ mode, setMode, tempMode, setTempMode, title, setTitle, labelID, setLabelID }),
+    [mode, tempMode, title, labelID]
   )
 
   return (
@@ -129,4 +145,10 @@ export const useLocalChannelList = (): LocalChannelListContextValue => {
     throw new Error('useLocalChannelList must be used within LocalChannelListProvider')
   }
   return context
+}
+
+export const useUnreadCount = () => {
+  const ctx = useContext(UnreadCountContext)
+  if (!ctx) throw new Error('useUnreadCount must be used within an UnreadCountProvider')
+  return ctx
 }

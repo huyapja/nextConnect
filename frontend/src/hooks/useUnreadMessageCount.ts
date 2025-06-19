@@ -1,11 +1,16 @@
+import { manuallyMarkedAtom } from '@/utils/atoms/manuallyMarkedAtom'
 import { UserContext } from '@/utils/auth/UserProvider'
 import { UnreadCountData, useChannelList, useUpdateLastMessageInChannelList } from '@/utils/channel/ChannelListProvider'
-import { FrappeConfig, FrappeContext, useFrappeEventListener, useFrappeGetCall, useFrappePostCall } from 'frappe-react-sdk'
-import { useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useParams } from 'react-router-dom'
-import { useGetUser } from './useGetUser'
+import {
+  FrappeConfig,
+  FrappeContext,
+  useFrappeEventListener,
+  useFrappeGetCall,
+  useFrappePostCall
+} from 'frappe-react-sdk'
 import { useAtomValue } from 'jotai'
-import { manuallyMarkedAtom } from '@/utils/atoms/manuallyMarkedAtom'
+import { useContext, useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { useNotificationAudio } from './useNotificationAudio'
 
 export const useUnreadMessageCount = () => {
@@ -75,7 +80,11 @@ export const useFetchUnreadMessageCount = () => {
                 unread_count: info.unread_count,
                 channel_name: info.channel_name,
                 is_direct_message: info.is_direct_message,
-                peer_user_id: info.peer_user_id
+                peer_user_id: info.peer_user_id,
+                last_message_details: info.last_message_details,
+                last_message_timestamp: info.last_message_timestamp,
+                last_message_sender_name: info.last_message_sender_name,
+                last_message_content: info.last_message_content
               }
 
               if (index === -1) {
@@ -93,42 +102,45 @@ export const useFetchUnreadMessageCount = () => {
   }
 
   const { channelID } = useParams()
-  const { state } = useLocation()
   const { updateLastMessageInChannelList } = useUpdateLastMessageInChannelList()
 
   const { call: trackVisit } = useFrappePostCall('raven.api.raven_channel_member.track_visit')
 
   const { play } = useNotificationAudio()
 
-  useFrappeEventListener('raven:unread_channel_count_updated', (event) => {
+  useFrappeEventListener('raven:unread_channel_count_updated', async (event) => {
     if (event.sent_by !== currentUser) {
-      if (channelID === event.channel_id) {
-        trackVisit({ channel_id: channelID })
+      const isCurrentChannel = channelID === event.channel_id
 
-        const currentUnread = unread_count?.message.find((c) => c.name === event.channel_id)?.unread_count || 0
-        const isManuallyMarked = manuallyMarked.has(event.channel_id)
+      // if (isCurrentChannel && !document.hidden) {
+      //   // Chỉ trackVisit khi tab active
+      //   trackVisit({ channel_id: channelID })
+      // }
 
-        const shouldPlay = !isManuallyMarked || (isManuallyMarked && currentUnread > 1)
+      const currentUnread = unread_count?.message.find((c) => c.name === event.channel_id)?.unread_count || 0
+      const isManuallyMarked = manuallyMarked.has(event.channel_id)
 
-        setLatestUnreadData({
-          name: event.channel_id,
-          last_message_sender_name: event.last_message_sender_name,
-          is_direct_message: event.is_direct_message,
-          channel_name: event.channel_name,
-          last_message_timestamp: event.last_message_timestamp
-        })
+      const shouldPlay = !isManuallyMarked || (isManuallyMarked && currentUnread > 1)
 
-        if (shouldPlay) {
-          play(event.last_message_timestamp)
-        }
-      } else {
-        fetchUnreadCountForChannel(event.channel_id)
+      setLatestUnreadData({
+        name: event.channel_id,
+        last_message_sender_name: event.last_message_sender_name,
+        is_direct_message: event.is_direct_message,
+        channel_name: event.channel_name,
+        last_message_timestamp: event.last_message_timestamp
+      })
+
+      if (shouldPlay) {
+        play(event.last_message_timestamp)
       }
+
+      // 🚀 Luôn gọi fetch để cập nhật updatedChannel
+      fetchUnreadCountForChannel(event.channel_id)
     } else {
       updateUnreadCountToZero(event.channel_id)
     }
 
-    updateLastMessageInChannelList(event.channel_id, event.last_message_timestamp)
+    updateLastMessageInChannelList(event.channel_id, event.last_message_timestamp, event.last_message_details)
   })
 
   const updateUnreadCountToZero = (channel_id?: string) => {
@@ -146,21 +158,11 @@ export const useFetchUnreadMessageCount = () => {
     )
   }
 
-  const dmWithUnread = useMemo(() => {
-    return unread_count?.message.filter((c) => c.unread_count > 0 && c.is_direct_message === 1) || []
-  }, [unread_count])
-
-  const dmChannel = useMemo(() => {
-    return dm_channels.find((c) => c.name === dmWithUnread?.name)
-  }, [dmWithUnread, dm_channels])
-  const lastPlayedMessageIdRef = useRef<string | null>(null)
-
   useEffect(() => {
     const app_name = window.app_name || 'Raven'
     let blinkInterval: NodeJS.Timeout
     let blinkState = false
     let activeTitle = app_name
-
 
     const allChannelMap = new Map((unread_count?.message || []).map((c) => [c.name, c]))
     const manualOnly = Array.from(manuallyMarked).filter((id) => !allChannelMap.has(id))
@@ -235,4 +237,21 @@ export const useFetchUnreadMessageCount = () => {
   }, [unread_count, channels, latestUnreadData, manuallyMarked])
 
   return unread_count
+}
+
+export const useUpdateUnreadCountToZero = () => {
+  const { updateCount } = useUnreadMessageCount()
+
+  const updateUnreadCountToZero = (channel_id?: string) => {
+    updateCount(
+      (d) => {
+        const currentList = d?.message ?? []
+        const newList = currentList.map((c) => (c.name === channel_id ? { ...c, unread_count: 0 } : c))
+        return { message: newList }
+      },
+      { revalidate: false }
+    )
+  }
+
+  return updateUnreadCountToZero
 }

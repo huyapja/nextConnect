@@ -1,14 +1,15 @@
-import { Button, Flex, FlexProps, IconButton, Text } from '@radix-ui/themes'
-import { forwardRef, useImperativeHandle, useState } from 'react'
-import { Accept, useDropzone } from 'react-dropzone'
-import { toast } from 'sonner'
-import { useGetFilePreviewUrl } from '@/hooks/useGetFilePreviewUrl'
 import { Loader } from '@/components/common/Loader'
-import { BiTrash } from 'react-icons/bi'
-import { CustomFile } from '../../file-upload/FileDrop'
-import { FileUploadProgress } from '../../chat/ChatInput/FileInput/useFileUpload'
-import { getFileSize } from '../../file-upload/FileListItem'
+import { useGetFilePreviewUrl } from '@/hooks/useGetFilePreviewUrl'
+import { FileExtensionIcon } from '@/utils/layout/FileExtIcon'
 import { __ } from '@/utils/translations'
+import { Button, Flex, FlexProps, IconButton, Text } from '@radix-ui/themes'
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
+import { Accept, useDropzone } from 'react-dropzone'
+import { BiPauseCircle, BiPlayCircle, BiTrash } from 'react-icons/bi'
+import { toast } from 'sonner'
+import { FileUploadProgress } from '../../chat/ChatInput/FileInput/useFileUpload'
+import { CustomFile } from '../../file-upload/FileDrop'
+import { getFileSize } from '../../file-upload/FileListItem'
 
 export type FileUploadBoxProps = FlexProps & {
   /** File to be uploaded */
@@ -77,8 +78,8 @@ export const FileUploadBox = forwardRef((props: FileUploadBoxProps, ref) => {
   const toHide = hideIfLimitReached && file
 
   const supportedFormats = accept
-    ? `Supported formats: ${Object.values(accept).flat().join(', ')}`
-    : __('Supported formats: {0}, {1}, {2}', ['.jpeg', '.jpg', '.png'])
+    ? `Định dạng được hỗ trợ: ${Object.values(accept).flat().join(', ')}`
+    : __('Định dạng được hỗ trợ: {0}, {1}, {2}', ['.jpeg', '.jpg', '.png'])
 
   return (
     <Flex direction='column' pt='2' gap='2' {...getRootProps()} {...compProps}>
@@ -94,7 +95,7 @@ export const FileUploadBox = forwardRef((props: FileUploadBoxProps, ref) => {
       >
         <Flex gap={'1'}>
           <Text as='span' size='2' color='gray'>
-            {__('Drag and drop your file here or')}
+            {__('Kéo và thả tệp của bạn vào đây hoặc')}
           </Text>
           <Button
             variant={'ghost'}
@@ -102,7 +103,7 @@ export const FileUploadBox = forwardRef((props: FileUploadBoxProps, ref) => {
             onClick={open}
             className={'underline not-cal hover:bg-transparent cursor-pointer'}
           >
-            {__('choose file')}
+            {__('Chọn file')}
           </Button>
         </Flex>
         <input type='file' style={{ display: 'none' }} {...getInputProps()} />
@@ -132,16 +133,58 @@ const FileItem = ({ file, removeFile, uploadProgress }: FileItemProps) => {
   const isUploadComplete = uploadProgress?.[file.fileID]?.isComplete ?? false
   const progress = uploadProgress?.[file.fileID]?.progress ?? 0
 
+  const [audioEl, setAudioEl] = useState<HTMLAudioElement | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+
+  useEffect(() => {
+    if (previewURL && file.type?.startsWith('audio')) {
+      const audio = new Audio(previewURL)
+      setAudioEl(audio)
+      const handleEnded = () => setIsPlaying(false)
+      audio.addEventListener('ended', handleEnded)
+      return () => {
+        audio.pause()
+        audio.currentTime = 0
+        audio.removeEventListener('ended', handleEnded)
+      }
+    }
+  }, [previewURL, file.type])
+
+  const handleTogglePlay = () => {
+    if (!audioEl) return
+    if (isPlaying) {
+      audioEl.pause()
+      setIsPlaying(false)
+    } else {
+      audioEl
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch(console.error)
+    }
+  }
+
   return (
-    <Flex width='100%' gap='2' mt='2' px='4' className='border rounded-md border-slate-8' justify={'between'}>
+    <Flex width='100%' gap='2' mt='2' px='4' py='1' className='border rounded-md border-slate-8' justify={'between'}>
       <Flex align='center' justify='center' gap='2'>
         <Flex align='center' justify='center' className='w-12 h-12'>
-          {previewURL && (
+          {file.type?.startsWith('audio') ? (
+            <IconButton
+              variant='ghost'
+              color='blue'
+              title={isPlaying ? 'Pause Audio' : 'Play Audio'}
+              onClick={handleTogglePlay}
+              size='3'
+            >
+              {isPlaying ? <BiPauseCircle size={24} /> : <BiPlayCircle size={24} />}
+            </IconButton>
+          ) : previewURL ? (
             <img src={previewURL} alt='File preview' className='w-10 h-10 aspect-square object-cover rounded-md' />
+          ) : (
+            <FileExtensionIcon ext={file.name.split('.').pop() ?? ''} size='24' />
           )}
         </Flex>
         <Flex direction='column' width='100%' className='overflow-hidden whitespace-nowrap gap-0.5'>
-          <Text as='span' size='1' className='overflow-hidden text-ellipsis whitespace-nowrap'>
+          <Text as='span' size='2' className='overflow-hidden text-ellipsis whitespace-nowrap'>
             {file.name}
           </Text>
           <Text size='1' color='gray'>

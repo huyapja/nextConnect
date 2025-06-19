@@ -34,9 +34,7 @@ export const useGetFilePreviewUrl = (file: CustomFile): string => {
 
     // free memory when ever this component is unmounted
     return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl)
-      }
+      objectUrl && URL.revokeObjectURL(objectUrl)
     }
   }, [file])
 

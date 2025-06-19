@@ -1,16 +1,14 @@
 const MAX_PREVIEW_LENGTH = 20
 
-const truncateText = (text: string, maxLength: number = MAX_PREVIEW_LENGTH): string =>
-  text.length > maxLength ? text.slice(0, maxLength) + '...' : text
+const truncateText = (text: string, maxLength: number = MAX_PREVIEW_LENGTH): string => {
+  return text.length > maxLength ? text.slice(0, maxLength) + '...' : text
+}
 
-const isImageFile = (filename: string = ''): boolean =>
-  /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(filename)
+const isImageFile = (filename: string = ''): boolean => /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(filename)
 
-const isVideoFile = (filename: string = ''): boolean =>
-  /\.(mp4|mov|avi|wmv|flv|webm|mkv)$/i.test(filename)
+const isVideoFile = (filename: string = ''): boolean => /\.(mp4|mov|avi|wmv|flv|webm|mkv)$/i.test(filename)
 
-const isAudioFile = (filename: string = ''): boolean =>
-  /\.(mp3|wav|ogg|m4a|aac)$/i.test(filename)
+const isAudioFile = (filename: string = ''): boolean => /\.(mp3|wav|ogg|m4a|aac)$/i.test(filename)
 
 const stripHtmlTags = (html: string): string => html.replace(/<\/?[^>]+(>|$)/g, '')
 
@@ -19,11 +17,7 @@ interface Channel {
   last_message_details: any
 }
 
-export function formatLastMessage(
-  channel: Channel,
-  currentUser: string,
-  senderName?: string
-): string {
+export function formatLastMessage(channel: Channel, currentUser: string, senderName?: string): string {
   if (!channel?.last_message_details) return ''
 
   let raw: any
@@ -37,7 +31,11 @@ export function formatLastMessage(
   }
 
   const isCurrentUser = raw.owner === currentUser
-  const senderLabel = isCurrentUser ? 'Bạn' : senderName ?? raw.owner ?? 'Người dùng'
+  const senderLabel = isCurrentUser
+    ? 'Bạn'
+    : channel.is_direct_message
+      ? '' // tin nhắn riêng: không cần hiển thị người gửi nếu không phải mình
+      : senderName || raw.owner || 'Người dùng'
 
   let contentLabel = ''
 
@@ -52,15 +50,18 @@ export function formatLastMessage(
         contentLabel = 'gửi âm thanh'
         break
       case 'File':
-        contentLabel = isImageFile(filename)
-          ? 'gửi ảnh'
-          : isVideoFile(filename)
-            ? 'gửi video'
-            : isAudioFile(filename)
-              ? 'gửi âm thanh'
-              : 'gửi file'
+        if (isImageFile(filename)) {
+          contentLabel = 'gửi ảnh'
+        } else if (isVideoFile(filename)) {
+          contentLabel = 'gửi video'
+        } else if (isAudioFile(filename)) {
+          contentLabel = 'gửi âm thanh'
+        } else {
+          contentLabel = 'gửi file'
+        }
         break
       case 'Text':
+        // eslint-disable-next-line no-case-declarations
         const text = stripHtmlTags(filename)
         contentLabel = truncateText(text)
         break
@@ -69,9 +70,5 @@ export function formatLastMessage(
 
   if (!contentLabel) return ''
 
-  if (raw.message_type === 'Text' && !isCurrentUser) {
-    return contentLabel // chỉ hiển thị nội dung nếu là text và không phải mình
-  }
-
-  return `${senderLabel}${isCurrentUser ? ':' : ''} ${contentLabel}`
+  return senderLabel ? `${senderLabel}: ${contentLabel}` : contentLabel
 }

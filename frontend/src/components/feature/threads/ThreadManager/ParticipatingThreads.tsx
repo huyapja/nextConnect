@@ -4,10 +4,11 @@ import { useState } from 'react'
 import { ChannelFilter, SearchFilter, UnreadFilter } from './Filters'
 import ThreadsList from './ThreadsList'
 
+type Props = {}
 /**
  * Component for displaying participating threads - where the user is a member of the thread
  */
-const ParticipatingThreads = () => {
+const ParticipatingThreads = (props: Props) => {
   const [search, setSearch] = useState('')
 
   const debouncedSearch = useDebounce(search, 250)
@@ -18,7 +19,7 @@ const ParticipatingThreads = () => {
 
   return (
     <div>
-      <div className='flex gap-2 justify-between p-2 border-b border-gray-4'>
+      <div className='flex gap-2 flex-wrap justify-between p-2 border-b border-gray-4'>
         <SearchFilter search={search} setSearch={setSearch} />
 
         <div className='flex gap-2'>

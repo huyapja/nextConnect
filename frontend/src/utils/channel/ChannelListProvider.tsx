@@ -33,7 +33,11 @@ export type ChannelListItem = Pick<
   | 'workspace'
   | 'pinned_messages_string'
   | 'group_type'
-> & { member_id: string }
+> & {
+  member_id: string
+  is_done: number // <== thêm dòng này
+  user_labels?: string[]
+}
 
 export interface DMChannelListItem extends ChannelListItem {
   peer_user_id: string
@@ -74,15 +78,14 @@ export const useChannelList = (): ChannelListContextType => {
  * Hook to fetch the channel list - all channels + DM's + other users if any
  * Also listens to the channel_list_updated event to update the channel list
  */
-const useFetchChannelList = (): ChannelListContextType => {
+export const useFetchChannelList = (): ChannelListContextType => {
   const isMobile = useIsMobile()
 
   const { mutate: globalMutate } = useSWRConfig()
   const { data, mutate, ...rest } = useFrappeGetCall<{ message: ChannelList }>(
     'raven.api.raven_channel.get_all_channels',
     {
-      hide_archived: false,
-      filter_done: 'only_not_done'
+      hide_archived: false
     },
     `channel_list`,
     {
@@ -101,7 +104,7 @@ const useFetchChannelList = (): ChannelListContextType => {
     let timeout: NodeJS.Timeout | undefined
     if (newUpdatesAvailable) {
       timeout = setTimeout(() => {
-        mutate()
+        // mutate()
         // Also update the unread channel count
         globalMutate('unread_channel_count')
         setNewUpdatesAvailable(0)
@@ -150,7 +153,11 @@ const useFetchChannelList = (): ChannelListContextType => {
 export const useUpdateLastMessageInChannelList = () => {
   const { mutate: globalMutate } = useSWRConfig()
 
-  const updateLastMessageInChannelList = async (channelID: string, lastMessageTimestamp: string) => {
+  const updateLastMessageInChannelList = async (
+    channelID: string,
+    lastMessageTimestamp: string,
+    lastMessageDetails?: any
+  ) => {
     globalMutate(
       `channel_list`,
       async (channelList?: { message: ChannelList }) => {
@@ -173,7 +180,8 @@ export const useUpdateLastMessageInChannelList = () => {
                 if (channel.name === channelID) {
                   return {
                     ...channel,
-                    last_message_timestamp: lastMessageTimestamp
+                    last_message_timestamp: lastMessageTimestamp,
+                    last_message_details: lastMessageDetails ?? channel.last_message_details // ✅
                   }
                 }
                 return channel
@@ -185,7 +193,8 @@ export const useUpdateLastMessageInChannelList = () => {
                 if (channel.name === channelID) {
                   return {
                     ...channel,
-                    last_message_timestamp: lastMessageTimestamp
+                    last_message_timestamp: lastMessageTimestamp,
+                    last_message_details: lastMessageDetails ?? channel.last_message_details // ✅
                   }
                 }
                 return channel

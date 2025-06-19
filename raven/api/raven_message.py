@@ -8,7 +8,6 @@ from frappe.query_builder.functions import Coalesce, Count, Max, Coalesce
 from raven.api.raven_channel import create_direct_message_channel, get_peer_user_id
 from raven.utils import get_channel_member, is_channel_member, track_channel_visit
 
-
 @frappe.whitelist(methods=["POST"])
 def send_message(
     channel_id,
@@ -40,7 +39,30 @@ def send_message(
 
     doc.insert()
 
-    # Cập nhật nội dung cuối cùng của channel
+    # ✅ RESET lại is_done = 0 cho các user đã từng đánh dấu là xong
+    done_members = frappe.get_all(
+        "Raven Channel Member",
+        filters={"channel_id": channel_id, "is_done": 1},
+        fields=["name", "user_id"]
+    )
+
+    if done_members:
+        for member in done_members:
+            # Cập nhật is_done = 0
+            frappe.db.set_value("Raven Channel Member", member.name, "is_done", 0)
+
+            # Emit realtime event cho user bị reset done
+            frappe.publish_realtime(
+                event="raven:channel_done_updated",
+                message={
+                    "channel_id": channel_id,
+                    "is_done": 0
+                },
+                user=member.user_id,
+                after_commit=True
+            )
+
+    # ✅ Cập nhật nội dung cuối cùng của channel
     message_type = doc.message_type or "Text"
     content = text
 
@@ -62,34 +84,12 @@ def send_message(
         "last_message_timestamp": doc.creation
     })
 
-    # ✅ RESET lại is_done = 0 cho các user đã từng đánh dấu là xong
-    done_members = frappe.get_all(
-        "Raven Channel Member",
-        filters={"channel_id": channel_id, "is_done": 1},
-        fields=["name", "user_id"]
-    )
-
-    for member in done_members:
-        # Cập nhật is_done về 0
-        frappe.db.set_value("Raven Channel Member", member.name, "is_done", 0)
-
-        # Gửi realtime chỉ cho đúng user bị reset
-        frappe.publish_realtime(
-            event="channel_done_updated",
-            message={
-                "channel_id": channel_id,
-                "is_done": 0
-            },
-            user=member.user_id,
-            after_commit=True
-        )
-
-    # ✅ Gửi sự kiện realtime tới các user khác trong channel
+    # ✅ Gửi sự kiện realtime tới các user khác trong channel (không gửi cho người gửi)
     members = frappe.get_all("Raven Channel Member", filters={"channel_id": channel_id}, pluck="user_id")
 
     for member in members:
         if member != frappe.session.user:
-            # Thông báo có tin nhắn mới
+            # Gửi event new_message cho user khác
             frappe.publish_realtime(
                 event="new_message",
                 message={
@@ -97,13 +97,6 @@ def send_message(
                     "user": frappe.session.user,
                     "seen_at": frappe.utils.now_datetime(),
                 },
-                user=member
-            )
-
-            # Thông báo danh sách channel có update
-            frappe.publish_realtime(
-                event="channel_list_updated",
-                message={"channel_id": channel_id},
                 user=member
             )
 
@@ -536,20 +529,39 @@ def get_unread_count_for_channels():
 @frappe.whitelist()
 def get_unread_count_for_channel(channel_id):
     user = frappe.session.user
+
+    # Lấy thông tin channel
     channel_doc = frappe.get_cached_doc("Raven Channel", channel_id)
 
-    # Tính số lượng tin chưa đọc
-    last_visit = frappe.db.get_value("Raven Channel Member", {"channel_id": channel_id, "user_id": user}, "last_visit") or "2000-11-11"
-    unread_count = frappe.db.count(
-        "Raven Message",
-        filters={
-            "channel_id": channel_id,
-            "creation": (">", last_visit),
-            "message_type": ["!=", "System"],
-        },
-    )
+    # Lấy thời gian last_visit
+    last_visit = frappe.db.get_value(
+        "Raven Channel Member",
+        {"channel_id": channel_id, "user_id": user},
+        "last_visit"
+    ) or "2000-11-11"
 
-    # Lấy thông tin message mới nhất
+    # Tính số tin chưa đọc
+    if channel_doc.is_direct_message or frappe.db.exists("Raven Channel Member", {"channel_id": channel_id, "user_id": user}):
+        unread_count = frappe.db.count(
+            "Raven Message",
+            filters={
+                "channel_id": channel_id,
+                "creation": (">", last_visit),
+                "message_type": ["!=", "System"],
+            },
+        )
+    elif channel_doc.type == "Open":
+        unread_count = frappe.db.count(
+            "Raven Message",
+            filters={
+                "channel_id": channel_id,
+                "message_type": ["!=", "System"],
+            },
+        )
+    else:
+        unread_count = 0
+
+    # Lấy message mới nhất
     latest_msg = frappe.db.sql(
         """
         SELECT content, creation, owner
@@ -573,7 +585,7 @@ def get_unread_count_for_channel(channel_id):
         sender_name = user_doc.full_name
         sender_image = user_doc.user_image
 
-    # Base kết quả
+    # Xây dựng kết quả
     result = {
         "name": channel_id,
         "channel_name": channel_doc.channel_name,
@@ -583,68 +595,6 @@ def get_unread_count_for_channel(channel_id):
         "last_message_sender_id": sender_id,
         "last_message_sender_name": sender_name,
         "last_message_sender_image": sender_image,
-        "is_direct_message": 1 if channel_doc.is_direct_message else 0,
-    }
-
-    if channel_doc.is_direct_message:
-        result["peer_user_id"] = frappe.db.get_value(
-            "Raven Channel Member",
-            {"channel_id": channel_id, "user_id": ["!=", user]},
-            "user_id"
-        )
-
-    return result
-
-    user = frappe.session.user
-
-    # Lấy thông tin channel
-    channel_doc = frappe.get_cached_doc("Raven Channel", channel_id)
-
-    # Lấy số tin chưa đọc
-    if channel_doc.is_direct_message or frappe.db.exists("Raven Channel Member", {"channel_id": channel_id, "user_id": user}):
-        channel_member = frappe.get_value("Raven Channel Member", {"channel_id": channel_id, "user_id": user}, "last_visit")
-        last_visit = channel_member or "2000-11-11"
-        unread_count = frappe.db.count(
-            "Raven Message",
-            filters={
-                "channel_id": channel_id,
-                "creation": (">", last_visit),
-                "message_type": ["!=", "System"],
-            },
-        )
-    elif channel_doc.type == "Open":
-        unread_count = frappe.db.count(
-            "Raven Message",
-            filters={
-                "channel_id": channel_id,
-                "message_type": ["!=", "System"],
-            },
-        )
-    else:
-        unread_count = 0
-
-    # Lấy message mới nhất
-    latest_msg = frappe.db.sql(
-        """
-        SELECT content, creation
-        FROM `tabRaven Message`
-        WHERE channel_id = %s AND message_type != 'System'
-        ORDER BY creation DESC
-        LIMIT 1
-        """,
-        (channel_id,),
-        as_dict=True,
-    )
-    latest_content = latest_msg[0].content if latest_msg else ""
-    latest_time = latest_msg[0].creation if latest_msg else None
-
-    # Xây dựng kết quả
-    result = {
-        "name": channel_id,
-        "channel_name": channel_doc.channel_name,
-        "unread_count": unread_count,
-        "last_message_content": latest_content,
-        "last_message_timestamp": latest_time,
         "is_direct_message": 1 if channel_doc.is_direct_message else 0,
     }
 
@@ -665,6 +615,7 @@ def get_unread_count_for_channel(channel_id):
         result["peer_user_ids"] = peer_user_ids
 
     return result
+
 
 @frappe.whitelist()
 def get_timeline_message_content(doctype, docname):
@@ -926,9 +877,6 @@ def add_forwarded_message_to_channel(channel_id, forwarded_message):
 
 @frappe.whitelist()
 def retract_message(message_id: str):
-    """
-    Đánh dấu tin nhắn là đã thu hồi nếu người hiện tại là người gửi
-    """
     user = frappe.session.user
     message = frappe.get_doc("Raven Message", message_id)
 
@@ -945,7 +893,9 @@ def retract_message(message_id: str):
             "channel_id": message.channel_id,
             "is_thread": message.is_thread
         },
-		doctype="Raven Channel",
-        docname=message.channel_id
+        doctype="Raven Channel",
+        docname=message.channel_id,
+        after_commit=True
     )
+
     return {"message": "Đã thu hồi tin nhắn"}

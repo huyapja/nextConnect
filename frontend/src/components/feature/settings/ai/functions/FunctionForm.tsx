@@ -1,16 +1,16 @@
-import { Label, ErrorText, HelperText } from '@/components/common/Form'
-import { Stack, HStack } from '@/components/layout/Stack'
-import { RavenAIFunction } from '@/types/RavenAI/RavenAIFunction'
-import { Box, Checkbox, Text, TextField, Select, TextArea, Tabs, Grid } from '@radix-ui/themes'
-import { Controller, useFormContext } from 'react-hook-form'
-import { FUNCTION_TYPES } from './FunctionConstants'
-import { ChangeEvent } from 'react'
-import VariableBuilder from './VariableBuilder'
+import { ErrorText, HelperText, Label } from '@/components/common/Form'
 import LinkFormField from '@/components/common/LinkField/LinkFormField'
+import { HStack, Stack } from '@/components/layout/Stack'
+import { RavenAIFunction } from '@/types/RavenAI/RavenAIFunction'
+import { in_list } from '@/utils/validations'
+import { Box, Checkbox, Grid, Select, Tabs, Text, TextArea, TextField } from '@radix-ui/themes'
+import { ChangeEvent } from 'react'
+import { Controller, useFormContext } from 'react-hook-form'
+import { LuSquareFunction, LuVariable } from 'react-icons/lu'
 import AINotEnabledCallout from '../AINotEnabledCallout'
 import DoctypeVariableBuilder from './DoctypeVariableBuilder'
-import { LuSquareFunction, LuVariable } from 'react-icons/lu'
-import { in_list } from '@/utils/validations'
+import { FUNCTION_TYPES } from './FunctionConstants'
+import VariableBuilder from './VariableBuilder'
 
 const ICON_PROPS = {
   size: 18,
@@ -35,7 +35,10 @@ const FunctionForm = ({ isEdit }: { isEdit?: boolean }) => {
               'Get Multiple Documents',
               'Delete Document',
               'Delete Multiple Documents',
-              'Attach File to Document'
+              'Attach File to Document',
+              'Submit Document',
+              'Cancel Document',
+              'Get Amended Document'
             ],
             type
           )}
@@ -321,12 +324,17 @@ const ReferenceDoctypeField = () => {
     'Get Document',
     'Get Multiple Documents',
     'Get List',
+    'Get Value',
+    'Set Value',
     'Create Document',
     'Create Multiple Documents',
     'Update Document',
     'Update Multiple Documents',
     'Delete Document',
-    'Delete Multiple Documents'
+    'Delete Multiple Documents',
+    'Submit Document',
+    'Cancel Document',
+    'Get Amended Document'
   ]
 
   const onReferenceDoctypeChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -346,6 +354,14 @@ const ReferenceDoctypeField = () => {
       if (type === 'Get List') {
         description = `This function fetches a list of ${e.target.value} from the system.`
         function_name = `get_${e.target.value.toLowerCase().replace(/\s/g, '_')}_list`
+      }
+      if (type === 'Get Value') {
+        description = `This function fetches a value from a ${e.target.value} in the system.`
+        function_name = `get_${e.target.value.toLowerCase().replace(/\s/g, '_')}_value`
+      }
+      if (type === 'Set Value') {
+        description = `This function sets a value in a ${e.target.value} in the system.`
+        function_name = `set_${e.target.value.toLowerCase().replace(/\s/g, '_')}_value`
       }
       if (type === 'Create Document') {
         description = `This function creates a ${e.target.value} in the system.`
@@ -370,6 +386,19 @@ const ReferenceDoctypeField = () => {
       if (type === 'Delete Multiple Documents') {
         description = `This function deletes multiple ${e.target.value} from the system.`
         function_name = `delete_${e.target.value.toLowerCase().replace(/\s/g, '_')}s`
+      }
+      if (type === 'Submit Document') {
+        description = `This function submits a ${e.target.value} in the system.`
+        function_name = `submit_${e.target.value.toLowerCase().replace(/\s/g, '_')}`
+      }
+      if (type === 'Cancel Document') {
+        description = `This function cancels a ${e.target.value} in the system.`
+        function_name = `cancel_${e.target.value.toLowerCase().replace(/\s/g, '_')}`
+      }
+
+      if (type === 'Get Amended Document') {
+        description = `This function gets the amended document for a ${e.target.value} in the system.`
+        function_name = `get_amended_${e.target.value.toLowerCase().replace(/\s/g, '_')}`
       }
 
       if (function_name && !function_name_exists) {

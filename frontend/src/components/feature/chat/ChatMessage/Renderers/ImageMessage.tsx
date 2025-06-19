@@ -1,14 +1,14 @@
-import { getFileName } from '@/utils/operations'
-import { ImageMessage } from '../../../../../../../types/Messaging/Message'
-import { Box, Button, Dialog, Flex, IconButton, Link } from '@radix-ui/themes'
-import { Suspense, lazy, memo, useState, useRef, useMemo } from 'react'
-import { DIALOG_CONTENT_CLASS } from '@/utils/layout/dialog'
-import { BiDownload, BiChevronDown, BiChevronRight, BiX } from 'react-icons/bi'
-import { UserFields } from '@/utils/users/UserListProvider'
-import { DateMonthAtHourMinuteAmPm } from '@/utils/dateConversions'
-import { clsx } from 'clsx'
 import { useIsMobile } from '@/hooks/useMediaQuery'
+import { DateMonthAtHourMinuteAmPm } from '@/utils/dateConversions'
+import { DIALOG_CONTENT_CLASS } from '@/utils/layout/dialog'
+import { getFileName } from '@/utils/operations'
+import { UserFields } from '@/utils/users/UserListProvider'
+import { Box, Button, Dialog, Flex, IconButton, Link } from '@radix-ui/themes'
+import { clsx } from 'clsx'
+import { Suspense, lazy, memo, useMemo, useRef, useState } from 'react'
 import { Blurhash } from 'react-blurhash'
+import { BiChevronDown, BiChevronRight, BiDownload, BiX } from 'react-icons/bi'
+import { ImageMessage } from '../../../../../../../types/Messaging/Message'
 
 const ImageViewer = lazy(() => import('@/components/common/ImageViewer'))
 
@@ -59,6 +59,11 @@ export const ImageMessageBlock = memo(({ message, isScrolling = false, user }: I
     }, 200)
   }
 
+  const [isImageLoaded, setIsImageLoaded] = useState(false)
+  const onLoad = () => {
+    setIsImageLoaded(true)
+  }
+
   return (
     <Flex direction='column' gap='1'>
       <Flex className='py-1 items-center'>
@@ -100,7 +105,7 @@ export const ImageMessageBlock = memo(({ message, isScrolling = false, user }: I
             width: width + 'px'
           }}
         >
-          {message.blurhash ? (
+          {message.blurhash && message.blurhash.length === 28 && !isImageLoaded ? (
             <Blurhash hash={message.blurhash} width={width + 'px'} height={height + 'px'} />
           ) : (
             <Box
@@ -125,6 +130,7 @@ export const ImageMessageBlock = memo(({ message, isScrolling = false, user }: I
             minHeight: height + 'px',
             minWidth: width + 'px'
           }}
+          onLoad={onLoad}
           width={width}
           alt={`Image file sent by ${message.owner} at ${message.creation}`}
           onContextMenu={(e) => {

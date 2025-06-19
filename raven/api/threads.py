@@ -76,6 +76,7 @@ def get_all_threads(
 		.where(channel_member.user_id == frappe.session.user)
 		.where(channel.is_thread == 1)
 		.where(channel.is_ai_thread == is_ai_thread)
+		.where(message.name.isnotnull())  # ✅ Chặn các thread không còn message gốc
 		.limit(limit)
 		.offset(start_after)
 		.groupby(channel.name)

@@ -17,7 +17,7 @@ from raven.notification import (
 	send_notification_to_topic,
 	send_notification_to_user,
 )
-from raven.utils import refresh_thread_reply_count, track_channel_visit
+from raven.utils import get_raven_room, refresh_thread_reply_count, track_channel_visit
 
 
 class RavenMessage(Document):
@@ -336,7 +336,7 @@ class RavenMessage(Document):
 					"number_of_replies": reply_count,
 				},
 				after_commit=True,
-				room="all",
+				room=get_raven_room(),
 			)
 		else:
 			# This event needs to be published to all users on Raven (desk + website)
@@ -349,9 +349,10 @@ class RavenMessage(Document):
 					"is_dm_channel": False,
 					"is_thread": channel_doc.is_thread,
 					"last_message_timestamp": self.creation,
+					"last_message_details": last_message_details,  # ✅ THÊM DÒNG NÀY
 				},
 				after_commit=True,
-				room="all",
+				room=get_raven_room(),
 			)
 
 	def send_push_notification(self):
@@ -436,6 +437,7 @@ class RavenMessage(Document):
 				"content": self.content if self.message_type == "Text" else self.file,
 				"from_user": self.owner,
 				"type": "New message",
+				"image": owner_image,
 				"creation": get_milliseconds_since_epoch(self.creation),
 			},
 		)
@@ -543,6 +545,7 @@ class RavenMessage(Document):
 						"is_bot_message": self.is_bot_message,
 						"bot": self.bot,
 						"hide_link_preview": self.hide_link_preview,
+						"blurhash": self.blurhash,
 					},
 				},
 				doctype="Raven Channel",
@@ -596,6 +599,7 @@ class RavenMessage(Document):
 						"is_bot_message": self.is_bot_message,
 						"bot": self.bot,
 						"hide_link_preview": self.hide_link_preview,
+						"blurhash": self.blurhash,
 					},
 				},
 				doctype="Raven Channel",
