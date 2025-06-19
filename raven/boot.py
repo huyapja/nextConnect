@@ -1,4 +1,5 @@
 import frappe
+import os
 
 
 def boot_session(bootinfo):
@@ -22,7 +23,7 @@ def boot_session(bootinfo):
 	if tenor_api_key:
 		bootinfo.tenor_api_key = tenor_api_key
 	else:
-		bootinfo.tenor_api_key = "AIzaSyAWkuhLwbMxOlvn_o5fxBke1grUZ7F3ma4"  # should we remove this?
+		bootinfo.tenor_api_key = os.getenv('TENOR_API_KEY', "AIzaSyAWkuhLwbMxOlvn_o5fxBke1grUZ7F3ma4")
 
 	bootinfo.chat_style = chat_style if chat_style else "Simple"
 

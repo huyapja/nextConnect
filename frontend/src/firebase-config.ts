@@ -1,16 +1,30 @@
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
+// Hàm helper để lấy biến môi trường
+const getEnvVar = (key: string, defaultValue: string): string => {
+  // Try to get from window object (set by backend)
+  if (typeof window !== 'undefined' && (window as any).__ENV__ && (window as any).__ENV__[key]) {
+    return (window as any).__ENV__[key];
+  }
+  // Try to get from meta tag
+  const metaTag = document.querySelector(`meta[name="${key}"]`);
+  if (metaTag) {
+    return metaTag.getAttribute('content') || defaultValue;
+  }
+  return defaultValue;
+};
+
 // Cấu hình Firebase - bạn cần thay thế bằng config thực tế từ Firebase Console
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-    apiKey: "AIzaSyBjvUyp3VClva2ZEJYlumonaYnwE9_WYC8",
-    authDomain: "erpnextvn-d0ec7.firebaseapp.com",
-    projectId: "erpnextvn-d0ec7",
-    storageBucket: "erpnextvn-d0ec7.firebasestorage.app",
-    messagingSenderId: "771489672323",
-    appId: "1:771489672323:web:04698dae5fd6db76af7fb6",
-    measurementId: "G-13L796L4FB"
+    apiKey: getEnvVar('FIREBASE_API_KEY', "AIzaSyBjvUyp3VClva2ZEJYlumonaYnwE9_WYC8"),
+    authDomain: getEnvVar('FIREBASE_AUTH_DOMAIN', "erpnextvn-d0ec7.firebaseapp.com"),
+    projectId: getEnvVar('FIREBASE_PROJECT_ID', "erpnextvn-d0ec7"),
+    storageBucket: getEnvVar('FIREBASE_STORAGE_BUCKET', "erpnextvn-d0ec7.firebasestorage.app"),
+    messagingSenderId: getEnvVar('FIREBASE_MESSAGING_SENDER_ID', "771489672323"),
+    appId: getEnvVar('FIREBASE_APP_ID', "1:771489672323:web:04698dae5fd6db76af7fb6"),
+    measurementId: getEnvVar('FIREBASE_MEASUREMENT_ID', "G-13L796L4FB")
   };
 
 // Khởi tạo Firebase app
@@ -20,7 +34,7 @@ const firebaseApp = initializeApp(firebaseConfig);
 const messaging = getMessaging(firebaseApp);
 
 // VAPID Key - bạn cần lấy từ Firebase Console
-const VAPID_KEY = "BDSp283ejn319EfnQTWDrD-4Vq587ulgFEMrl9hgA6tfyuci3PfNIsGu3wmwbHAJPgh0zLW59LG4PGyidiJoCUQ";
+const VAPID_KEY = getEnvVar('VAPID_KEY', "BDSp283ejn319EfnQTWDrD-4Vq587ulgFEMrl9hgA6tfyuci3PfNIsGu3wmwbHAJPgh0zLW59LG4PGyidiJoCUQ");
 
 export { messaging, getToken, onMessage, VAPID_KEY };
 
