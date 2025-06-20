@@ -12,6 +12,7 @@ import { Link } from "expo-router"
 import { useMemo } from "react"
 import { Pressable, View } from "react-native"
 import { ChannelWithUnreadCount } from "./ConversationList"
+import { getRandomRgba } from 'utils/functions'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -147,11 +148,3 @@ const LastMessageTimestamp = ({ timestamp }: LastMessageTimestampProps) => {
 }
 
 export default ChannelRow
-
-function getRandomRgba() {
-    const r = 180 + Math.floor(Math.random() * 56);
-    const g = 180 + Math.floor(Math.random() * 56);
-    const b = 180 + Math.floor(Math.random() * 56);
-    const a = 0.3 + Math.random() * 0.2;
-    return `rgba(${r}, ${g}, ${b}, ${a.toFixed(2)})`;
-}

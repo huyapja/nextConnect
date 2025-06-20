@@ -4,6 +4,7 @@ import { useColorScheme } from '@hooks/useColorScheme';
 import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LabeledMessageItem } from 'types/LabeledMessageType';
+import ChannelRow from './ChannelRow';
 
 const styles = StyleSheet.create({
     container: {
@@ -28,15 +29,16 @@ const styles = StyleSheet.create({
 
 const LabeledItem = ({ data }: { data: LabeledMessageItem }) => {
     const { colors } = useColorScheme()
-    const [isExpanded, setIsExpanded] = useState(true)
+    const [isExpanded, setIsExpanded] = useState(false)
+
     return (
         <View style={styles.container}>
-            <TouchableOpacity onPress={() => setIsExpanded(false)} style={styles.header} activeOpacity={0.7}>
-                <Text style={styles.headerText}>Direct Messages</Text>
+            <TouchableOpacity onPress={() => setIsExpanded(!isExpanded)} style={styles.header} activeOpacity={0.7}>
+                <Text className='text-foreground' style={styles.headerText}>{data.label}</Text>
                 {isExpanded ? <ChevronDownIcon fill={colors.icon} /> : <ChevronRightIcon fill={colors.icon} />}
             </TouchableOpacity>
             {isExpanded && <>
-                {data.channels.map((channel) => <DMListRow key={dm.name} dm={dm} />)}
+                {data.channels.map((channel) => <ChannelRow key={channel.channel_id} row={channel} />)}
             </>}
         </View>
     )

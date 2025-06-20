@@ -3,11 +3,11 @@ import { useFrappeGetCall } from "frappe-react-sdk";
 import { useAtom } from "jotai";
 import { useEffect } from "react";
 
-const doneMessagesAtom = atom(null);
+const doneMessagesAtom = atom<any[] | null>(null);
 
 export function useDoneMessages() {
     const [cachedData, setCachedData] = useAtom(doneMessagesAtom);
-    const shouldCallApi = !cachedData;
+    const shouldCallApi = !cachedData?.length;
 
     const { data, error, isLoading, mutate } = useFrappeGetCall(
         "raven.api.raven_channel.get_done_channels",
@@ -16,7 +16,7 @@ export function useDoneMessages() {
     );
 
     useEffect(() => {
-        if (data && shouldCallApi) {
+        if (data?.message) {
             setCachedData(data.message);
         }
     }, [data, shouldCallApi, setCachedData]);

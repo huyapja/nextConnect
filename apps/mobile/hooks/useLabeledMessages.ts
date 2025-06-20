@@ -4,11 +4,11 @@ import { useAtom } from "jotai";
 import { useEffect } from "react";
 import { LabeledMessageItem } from "types/LabeledMessageType";
 
-const doneMessagesAtom = atom<LabeledMessageItem[] | undefined>();
+const labeledMessagesAtom = atom<LabeledMessageItem[] | null>(null);
 
 export function useLabeledMessages() {
-    const [cachedData, setCachedData] = useAtom(doneMessagesAtom);
-    const shouldCallApi = !cachedData;
+    const [cachedData, setCachedData] = useAtom(labeledMessagesAtom);
+    const shouldCallApi = !cachedData?.length;
 
     const { data, error, isLoading, mutate } = useFrappeGetCall(
         "raven.api.user_label.get_my_labels",
@@ -17,7 +17,7 @@ export function useLabeledMessages() {
     );
 
     useEffect(() => {
-        if (data && shouldCallApi) {
+        if (data?.message) {
             setCachedData(data.message);
         }
     }, [data, shouldCallApi, setCachedData]);
