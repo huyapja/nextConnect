@@ -188,7 +188,7 @@ const ChatbotAIContainer: React.FC<Props> = ({
                       style={{ minWidth: 0 }}
                     />
                   ) : (
-                    <span className='truncate flex-1 min-w-0' title={s.title}>
+                    <span className='truncate flex-1 min-w-0 font-medium text-[13px]' title={s.title}>
                       {pendingRename?.id === s.id ? (
                         <span className='italic text-gray-400 dark:text-white/50'>{pendingRename.title}</span>
                       ) : (
@@ -231,9 +231,11 @@ const ChatbotAIContainer: React.FC<Props> = ({
       {/* Delete Confirmation Dialog */}
       <Dialog.Root open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <Dialog.Content className='bg-white dark:bg-[#2f2f2f] border border-gray-200 dark:border-white/10 max-w-md'>
-          <Dialog.Title className='text-gray-900 dark:text-white text-lg font-semibold mb-4'>Delete chat?</Dialog.Title>
+          <Dialog.Title className='text-gray-900 dark:text-white text-lg font-semibold mb-4'>
+            Xóa đoạn chat?
+          </Dialog.Title>
           <Dialog.Description className='text-gray-600 dark:text-white/70 text-sm mb-6 leading-relaxed'>
-            This will delete the conversation permanently. You cannot undo this action.
+            Thao tác này sẽ xóa vĩnh viễn cuộc trò chuyện. Bạn sẽ không thể hoàn tác hành động này.
           </Dialog.Description>
 
           <Flex gap='3' justify='end'>
@@ -242,14 +244,14 @@ const ChatbotAIContainer: React.FC<Props> = ({
                 variant='ghost'
                 className='px-4 py-2 text-gray-600 dark:text-white/70 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 border border-gray-300 dark:border-white/20 rounded-lg transition-colors'
               >
-                Cancel
+                Hủy
               </Button>
             </Dialog.Close>
             <Button
               onClick={() => sessionToDelete && handleDelete(sessionToDelete)}
               className='px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors border-0'
             >
-              Delete
+              Xóa
             </Button>
           </Flex>
         </Dialog.Content>

@@ -1,9 +1,12 @@
-import { useEffect } from 'react'
-import { useFrappeGetCall } from 'frappe-react-sdk'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { labelListAtom, refreshLabelListAtom } from './conversations/atoms/labelAtom'
-import LabelItem from './LabelItem'
 import BeatLoader from '@/components/layout/Loaders/BeatLoader'
+import { Flex, Text } from '@radix-ui/themes'
+import { useFrappeGetCall } from 'frappe-react-sdk'
+import { useAtomValue } from 'jotai'
+import { useEffect } from 'react'
+import { LuAtSign } from 'react-icons/lu'
+import { refreshLabelListAtom } from './conversations/atoms/labelAtom'
+import LabelItem from './LabelItem'
+
 interface Label {
   label_id: string
   label: string
@@ -15,8 +18,6 @@ interface Label {
 }
 
 const LabelByUserList = () => {
-  const labelsInAtom = useAtomValue(labelListAtom)
-  const setLabels = useSetAtom(labelListAtom)
   const refreshKey = useAtomValue(refreshLabelListAtom)
 
   const { data, error, isLoading, mutate } = useFrappeGetCall<{ message: Label[] }>(
@@ -28,32 +29,31 @@ const LabelByUserList = () => {
     mutate()
   }, [refreshKey])
 
-  // Nếu atom rỗng và chưa có data, gọi API
-  useEffect(() => {
-    if (labelsInAtom.length === 0 && !data) {
-      mutate()
-    }
-  }, [labelsInAtom.length, data])
-
-  // Sau khi fetch xong thì gán vào atom
-  useEffect(() => {
-    if (data?.message) {
-      setLabels(data.message)
-    }
-  }, [data, setLabels])
-
-  const labels: Label[] = labelsInAtom.length > 0 ? labelsInAtom : data?.message || []
+  const labels: Label[] = data?.message || []
 
   if (isLoading && labels.length === 0) return <BeatLoader text='Đang tải label...' />
   if (error && labels.length === 0) return <div className='text-red-500'>Lỗi: {error.message}</div>
 
   return (
     <div className='space-y-2'>
-      {labels.length === 0 ? (
-        <div className='text-gray-500'>Chưa có nhãn nào</div>
+      {labels?.length === 0 ? (
+        <Flex direction='column' align='center' justify='center' className='h-[320px] px-6 text-center'>
+          <LuAtSign size={48} className='text-gray-8 mb-4' />
+          <Text size='5' weight='medium' className='mb-2'>
+            Chưa có nhãn nào
+          </Text>
+          <Text size='2' color='gray'>
+            Bạn có thể tạo nhãn tại đây
+          </Text>
+        </Flex>
       ) : (
-        labels.map((labelItem) => (
-          <LabelItem channels={labelItem.channels} key={labelItem.label_id} label={labelItem.label} name={labelItem.label_id} />
+        labels?.map((labelItem) => (
+          <LabelItem
+            channels={labelItem.channels}
+            key={labelItem.label_id}
+            label={labelItem.label}
+            name={labelItem.label_id}
+          />
         ))
       )}
     </div>

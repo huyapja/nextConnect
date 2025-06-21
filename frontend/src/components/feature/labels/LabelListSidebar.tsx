@@ -6,7 +6,8 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useSidebarMode } from '@/utils/layout/sidebar'
 import { labelListAtom, refreshLabelListAtom } from './conversations/atoms/labelAtom'
 import { useFrappeGetCall } from 'frappe-react-sdk'
-import { useEnrichedChannels } from '@/utils/channel/ChannelAtom'
+import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
+import { truncateText } from '@/utils/textUtils/truncateText'
 
 type Props = {
   visible: boolean
@@ -21,7 +22,7 @@ export default function LabelList({ visible, onClickLabel }: Props) {
 
   const { data, isLoading, error, mutate } = useFrappeGetCall('raven.api.user_label.get_my_labels')
 
-  const enrichedChannels = useEnrichedChannels()
+  const enrichedChannels = useEnrichedSortedChannels()
 
   const labelUnreadMap = useMemo(() => {
     const map = new Map<string, number>()
@@ -85,7 +86,7 @@ export default function LabelList({ visible, onClickLabel }: Props) {
           >
             <MdLabelOutline className='w-4 h-4 text-gray-11 shrink-0' />
             <div className='flex justify-between items-center w-full'>
-              <span className='truncate'>{item.label}</span>
+              <span className='truncate'>{truncateText(item.label, 15)}</span>
               {unread > 0 && (
                 <span className='ml-auto bg-red-500 text-white text-[10px] rounded-full w-[18px] h-[18px] flex items-center justify-center'>
                   {unread > 10 ? '9+' : unread}

@@ -12,6 +12,9 @@ import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
 import { toast } from 'sonner'
 import { useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
 import { useChannelActions } from '@/hooks/useChannelActions'
+import { useSWRConfig } from 'frappe-react-sdk'
+import { useIsMobile, useIsTablet } from '@/hooks/useMediaQuery'
+import { truncateText } from '@/utils/textUtils/truncateText'
 
 type Props = {
   channelID: string
@@ -34,6 +37,8 @@ const LabelItemList = ({
   const { currentUser } = useContext(UserContext)
   const { workspaceID, channelID: channelIDParams } = useParams()
   const isDM = isDirectMessage === true
+
+  const { mutate } = useSWRConfig()
 
   const peer_user_id = isDM ? replaceCurrentUserFromDMChannelName(channelName, currentUser) : ''
   const user = useGetUser(peer_user_id)
@@ -62,11 +67,16 @@ const LabelItemList = ({
       onRemoveLocally?.(channelID)
       toast.success(`Đã xóa thành công`)
       setShowModal(false)
+      mutate('channel_list')
     } catch (err) {
       console.error('Xoá thất bại:', err)
       toast.error('Xoá channel khỏi nhãn thất bại')
     }
   }
+
+  const isTablet = useIsTablet()
+  const isMobile = useIsMobile()
+  const maxLength = isTablet || isMobile ? 20 : 30
 
   return (
     <ContextMenu.Root>
@@ -90,12 +100,12 @@ const LabelItemList = ({
                 </div>
               )}
               <Text as='span' className={clsx('line-clamp-1 text-ellipsis', 'text-base md:text-sm xs:text-xs')}>
-                {displayName}
+                {truncateText(displayName, maxLength)}
               </Text>
             </Flex>
             {unreadCount > 0 && (
               <div className='bg-red-500 text-white text-[10px] rounded-full w-[18px] h-[18px] flex items-center justify-center'>
-                {unreadCount > 99 ? '99+' : unreadCount}
+                {unreadCount > 9 ? '9+' : unreadCount}
               </div>
             )}
           </Flex>

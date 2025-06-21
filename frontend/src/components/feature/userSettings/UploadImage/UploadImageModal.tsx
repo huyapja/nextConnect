@@ -1,12 +1,11 @@
 import { Loader } from '@/components/common/Loader'
-import { useUserData } from '@/hooks/useUserData'
-import { Button, Dialog, Flex } from '@radix-ui/themes'
-import { CustomFile } from '../../file-upload/FileDrop'
 import { ErrorBanner } from '@/components/layout/AlertBanner/ErrorBanner'
-import { useState } from 'react'
-import { FrappeError, useFrappeFileUpload } from 'frappe-react-sdk'
-import { FileUploadBox } from './FileUploadBox'
 import { __ } from '@/utils/translations'
+import { Button, Dialog, Flex } from '@radix-ui/themes'
+import { FrappeError, useFrappeFileUpload } from 'frappe-react-sdk'
+import { useState } from 'react'
+import { CustomFile } from '../../file-upload/FileDrop'
+import { FileUploadBox } from './FileUploadBox'
 
 interface UploadImageModalProps {
   uploadImage: (file: string) => void
@@ -19,7 +18,7 @@ interface UploadImageModalProps {
 
 export const UploadImageModal = ({
   uploadImage,
-  label = 'Upload Image',
+  label = 'Thay đổi ảnh đại diện',
   doctype,
   docname,
   fieldname,
@@ -70,12 +69,12 @@ export const UploadImageModal = ({
       <Flex gap='3' mt='6' justify='end' align='center'>
         <Dialog.Close disabled={loading}>
           <Button variant='soft' color='gray'>
-            {__('Cancel')}
+            {__('Hủy')}
           </Button>
         </Dialog.Close>
         <Button type='button' onClick={uploadFiles} disabled={loading}>
           {loading && <Loader />}
-          {loading ? __('Uploading') : __('Upload')}
+          {loading ? __('Đang tải lên...') : __('Tải lên')}
         </Button>
       </Flex>
     </>

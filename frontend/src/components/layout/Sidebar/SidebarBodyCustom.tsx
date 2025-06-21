@@ -5,28 +5,29 @@ import { DirectMessageList } from '../../feature/direct-messages/DirectMessageLi
 import CircleUserList from './CircleUserList'
 import { useIsTablet } from '@/hooks/useMediaQuery'
 import IsTabletSidebarNav from './IsTabletSidebarNav'
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { prepareSortedChannels, setSortedChannelsAtom } from '@/utils/channel/ChannelAtom'
-
+// import BeatLoader from '../Loaders/BeatLoader'
+import { channelIsDoneAtom } from '@/utils/channel/channelIsDoneAtom'
 export const SidebarBody = () => {
   const { channels, dm_channels } = useContext(ChannelListContext) as ChannelListContextType
+
   const setSortedChannels = useSetAtom(setSortedChannelsAtom)
+
+  const currentChannelIsDone = useAtomValue(channelIsDoneAtom)
 
   useEffect(() => {
     if (channels.length === 0 && dm_channels.length === 0) return
 
-    setSortedChannels((prev) => {
-      const prevMap = new Map(prev.map((c) => [c.name, c.is_done]))
-
-      return prepareSortedChannels(channels, dm_channels).map((channel) => ({
-        ...channel,
-        is_done: prevMap.get(channel.name) ?? channel.is_done ?? 0,
-        user_labels: prevMap.get(channel.name)?.user_labels ?? channel.user_labels ?? []
-      }))
-    })
-  }, [channels, dm_channels, setSortedChannels])
+    const sorted = prepareSortedChannels(channels, dm_channels, currentChannelIsDone)
+    setSortedChannels(sorted)
+  }, [channels, dm_channels, setSortedChannels, currentChannelIsDone])
 
   const isTablet = useIsTablet()
+
+  // const isLoaded = !isLoading && !isValidating
+
+  // if (!isLoaded) return <BeatLoader text='Đang tải danh sách tin nhắn...' />
 
   return (
     <ScrollArea type='hover' scrollbars='vertical' className='h-[calc(100vh-4rem)] sidebar-scroll'>
