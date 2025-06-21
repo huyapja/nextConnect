@@ -20,22 +20,22 @@ const TypingIndicator = memo(({ channel, maxDisplay = 3, showAnimation = true }:
     // Filter out current user and get display names
     const validTypingUsers = typingUsers
       .filter((user) => user !== currentUser)
-      .map((user) => {
+      ?.map((user) => {
         const userRecord = userRecords[user]
         return userRecord?.first_name ?? userRecord?.full_name ?? user
       })
       .filter(Boolean) // Remove any null/undefined values
 
-    if (validTypingUsers.length === 0) return ''
+    if (validTypingUsers?.length === 0) return ''
 
     // Handle different cases of typing users
-    if (validTypingUsers.length === 1) {
+    if (validTypingUsers?.length === 1) {
       return `${validTypingUsers[0]} đang nhập...`
-    } else if (validTypingUsers.length <= maxDisplay) {
+    } else if (validTypingUsers?.length <= maxDisplay) {
       return `${validTypingUsers.join(' và ')} đang nhập...`
     } else {
       const displayUsers = validTypingUsers.slice(0, maxDisplay)
-      const remainingCount = validTypingUsers.length - maxDisplay
+      const remainingCount = validTypingUsers?.length - maxDisplay
       return `${displayUsers.join(', ')} và ${remainingCount} người khác đang nhập...`
     }
   }, [typingUsers, userRecords, currentUser, maxDisplay])
@@ -53,7 +53,7 @@ const TypingIndicator = memo(({ channel, maxDisplay = 3, showAnimation = true }:
     >
       {showAnimation && (
         <div className='flex items-center space-x-1 -mb-0.5' aria-hidden='true'>
-          {[0, 150, 300].map((delay, index) => (
+          {[0, 150, 300]?.map((delay, index) => (
             <div
               key={index}
               className='w-1.5 h-1.5 bg-gray-12 rounded-full animate-pulse-bounce'

@@ -1,7 +1,6 @@
 import { getErrorMessage } from '@/components/layout/AlertBanner/ErrorBanner'
 import { useFrappeAuth, useSWRConfig } from 'frappe-react-sdk'
-import { FC, PropsWithChildren } from 'react'
-import { createContext } from 'react'
+import { createContext, FC, PropsWithChildren } from 'react'
 import { toast } from 'sonner'
 
 interface UserContextProps {
@@ -26,6 +25,14 @@ export const UserProvider: FC<PropsWithChildren> = ({ children }) => {
     localStorage.removeItem('ravenLastChannel')
     localStorage.removeItem('ravenLastWorkspace')
     localStorage.removeItem('app-cache')
+
+    // Disable push notifications
+    try {
+      // @ts-expect-error
+      await window.frappePushNotification.disableNotification()
+    } catch (error) {
+      console.error('Failed to disable push notifications', error)
+    }
     return logout()
       .then(() => {
         //Clear cache on logout

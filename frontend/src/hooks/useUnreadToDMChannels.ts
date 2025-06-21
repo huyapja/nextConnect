@@ -20,11 +20,11 @@ export function mapUnreadToDMChannels(
 ): DMChannelWithUnreadCount[] {
   const unreadMap: Record<string, number> = {}
 
-  unread.forEach((item) => {
+  unread?.forEach((item) => {
     unreadMap[item.name] = item.unread_count || 0
   })
 
-  return dm_channels.map((channel) => ({
+  return dm_channels?.map((channel) => ({
     ...channel,
     unread_count: unreadMap[channel.name] || 0
   }))

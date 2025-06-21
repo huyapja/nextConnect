@@ -1,5 +1,6 @@
 import { Loader } from '@/components/common/Loader'
 import DocumentNotificationForm from '@/components/feature/document-notifications/DocumentNotificationForm'
+import CommonSettingsMenu from '@/components/feature/settings/common/CommonSettingsMenu'
 import { ErrorBanner } from '@/components/layout/AlertBanner/ErrorBanner'
 import { FullPageLoader } from '@/components/layout/Loaders/FullPageLoader'
 import PageContainer from '@/components/layout/Settings/PageContainer'
@@ -9,13 +10,15 @@ import { HStack } from '@/components/layout/Stack'
 import { RavenDocumentNotification } from '@/types/RavenIntegrations/RavenDocumentNotification'
 import { isEmpty } from '@/utils/validations'
 import { Button } from '@radix-ui/themes'
-import { SWRResponse, useFrappeGetDoc, useFrappeUpdateDoc } from 'frappe-react-sdk'
+import { useFrappeGetDoc, useFrappeUpdateDoc, SWRResponse } from 'frappe-react-sdk'
 import { useEffect } from 'react'
 import { FormProvider, useForm } from 'react-hook-form'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
-const ViewDocumentNotification = () => {
+type Props = {}
+
+const ViewDocumentNotification = (props: Props) => {
   const { ID } = useParams<{ ID: string }>()
 
   const { data, isLoading, error, mutate } = useFrappeGetDoc<RavenDocumentNotification>(
@@ -81,6 +84,11 @@ const ViewDocumentNotificationContent = ({
             headerBadges={isDirty ? [{ label: 'Not Saved', color: 'red' }] : undefined}
             actions={
               <HStack>
+                <CommonSettingsMenu
+                  doctype='Raven Document Notification'
+                  docname={data.name}
+                  label={'Document Notification'}
+                />
                 <Button type='submit' disabled={loading}>
                   {loading && <Loader className='text-white' />}
                   {loading ? 'Saving' : 'Save'}

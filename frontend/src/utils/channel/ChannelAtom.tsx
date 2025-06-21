@@ -1,6 +1,8 @@
 // atoms/sortedChannelsAtom.ts
-import { atom, useAtomValue } from 'jotai'
-import { useUnreadMessages } from '../layout/sidebar'
+import { atom, useAtomValue, useSetAtom } from 'jotai'
+import { useMemo } from 'react'
+import { useUnreadCount } from '../layout/sidebar'
+import { channelIsDoneAtom } from './channelIsDoneAtom'
 
 export type ChannelWithGroupType = {
   name: string
@@ -14,27 +16,49 @@ export type ChannelWithGroupType = {
 // Danh sách đầy đủ các channel (cả group và DM)
 export const sortedChannelsAtom = atom<ChannelWithGroupType[]>([])
 
-// Danh sách các channel đã mark done (tên)
-export const doneListAtom = atom<string[]>([])
+export const sortedChannelsLoadingAtom = atom<boolean>(false)
 
 // Action để cập nhật sortedChannelsAtom một cách an toàn
 export const setSortedChannelsAtom = atom(
   null,
   (get, set, next: ChannelWithGroupType[] | ((prev: ChannelWithGroupType[]) => ChannelWithGroupType[])) => {
     const prev = get(sortedChannelsAtom)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     const resolved = typeof next === 'function' ? (next as Function)(prev) : next
     set(sortedChannelsAtom, resolved)
   }
 )
 
-// Hàm chuẩn bị dữ liệu ban đầu (channel + dm)
+export const setSortedChannelsLoadingAtom = atom(null, (get, set, next: boolean) => {
+  set(sortedChannelsLoadingAtom, next)
+})
+
 export const prepareSortedChannels = (
   channels: any[],
-  dm_channels: any[]
+  dm_channels: any[],
+  currentChannelIsDone: Record<string, number> = {}
 ): ChannelWithGroupType[] => {
   return [
-    ...channels.map((channel) => ({ ...channel, group_type: 'channel' as const })),
-    ...dm_channels.map((dm) => ({ ...dm, group_type: 'dm' as const }))
+    ...channels?.map((channel) => ({
+      ...channel,
+      group_type: 'channel' as const,
+      is_done: Object.prototype.hasOwnProperty.call(currentChannelIsDone, channel.name)
+        ? currentChannelIsDone[channel.name]
+        : typeof channel.is_done === 'number'
+          ? channel.is_done
+          : 0,
+      user_labels: channel.user_labels ?? []
+    })),
+    ...dm_channels?.map((dm) => ({
+      ...dm,
+      group_type: 'dm' as const,
+      is_done: Object.prototype.hasOwnProperty.call(currentChannelIsDone, dm.name)
+        ? currentChannelIsDone[dm.name]
+        : typeof dm.is_done === 'number'
+          ? dm.is_done
+          : 0,
+      user_labels: dm.user_labels ?? []
+    }))
   ].sort((a, b) => {
     const timeA = new Date(a.last_message_timestamp || 0).getTime()
     const timeB = new Date(b.last_message_timestamp || 0).getTime()
@@ -42,22 +66,89 @@ export const prepareSortedChannels = (
   })
 }
 
-// Hook để lấy danh sách channel đã loại bỏ những cái đã "done"
-export const useEnrichedChannels = (): ChannelWithGroupType[] => {
+// Hook để lấy danh sách channel chưa done
+export const useEnrichedSortedChannels = (isDoneFilter?: 0 | 1) => {
   const channels = useAtomValue(sortedChannelsAtom)
-  const doneList = useAtomValue(doneListAtom)
-  const { message: unreadList } = useUnreadMessages() || {}
+  const channelIsDone = useAtomValue(channelIsDoneAtom)
+  const unreadList = useUnreadCount().message || []
 
-  const filteredChannels = channels.filter((channel) => !doneList.includes(channel.name))
+  const enriched = useMemo(() => {
+    return channels
+      ?.map((channel) => {
+        const resolvedIsDone = Object.prototype.hasOwnProperty.call(channelIsDone, channel.name)
+          ? channelIsDone[channel.name]
+          : channel.is_done
 
-  return filteredChannels.map((channel) => {
-    const unread = unreadList?.find((u) => u.name === channel.name)
+        const unread = unreadList.find((u) => u.name === channel.name)
 
-    return {
-      ...channel,
-      unread_count: unread?.unread_count ?? 0,
-      last_message_content: unread?.last_message_content ?? channel.last_message_content,
-      last_message_sender_name: unread?.last_message_sender_name ?? channel.last_message_sender_name
-    }
-  })
+        return {
+          ...channel,
+          is_done: resolvedIsDone,
+          unread_count: unread?.unread_count ?? channel.unread_count ?? 0,
+          last_message_content: unread?.last_message_content ?? channel.last_message_content,
+          last_message_sender_name: unread?.last_message_sender_name ?? channel.last_message_sender_name,
+          user_labels: channel.user_labels ?? []
+        }
+      })
+      .filter((channel) => {
+        if (isDoneFilter === 0) return channel.is_done === 0
+        if (isDoneFilter === 1) return channel.is_done === 1
+        return true
+      })
+  }, [channels, channelIsDone, unreadList, isDoneFilter])
+
+  return enriched
+}
+
+export const useEnrichedLabelChannels = (): ChannelWithGroupType[] => {
+  const channels = useAtomValue(sortedChannelsAtom)
+  const unreadList = useUnreadCount().message || []
+
+  const enriched = useMemo(() => {
+    return channels?.map((channel) => {
+      const unread = unreadList.find((u) => u.name === channel.name)
+
+      return {
+        ...channel,
+        unread_count: unread?.unread_count ?? channel.unread_count ?? 0,
+        last_message_content: unread?.last_message_content ?? channel.last_message_content,
+        last_message_sender_name: unread?.last_message_sender_name ?? channel.last_message_sender_name,
+        user_labels: channel.user_labels ?? []
+      }
+    })
+  }, [channels, unreadList])
+
+  return enriched
+}
+
+// Hook update label
+export const useUpdateChannelLabels = () => {
+  const setSortedChannels = useSetAtom(sortedChannelsAtom)
+
+  const updateChannelLabels = (channelID: string, updateFn: (prevLabels: string[]) => string[]) => {
+    setSortedChannels((prev) =>
+      prev?.map((channel) =>
+        channel.name === channelID
+          ? {
+              ...channel,
+              user_labels: updateFn(Array.isArray(channel.user_labels) ? channel.user_labels : [])
+            }
+          : channel
+      )
+    )
+  }
+
+  const addLabelToChannel = (channelID: string, newLabelID: string) => {
+    updateChannelLabels(channelID, (prev) => [...new Set([...prev, newLabelID])])
+  }
+
+  const removeLabelFromChannel = (channelID: string, labelID: string) => {
+    updateChannelLabels(channelID, (prev) => prev.filter((id) => id !== labelID))
+  }
+
+  return {
+    updateChannelLabels,
+    addLabelToChannel,
+    removeLabelFromChannel
+  }
 }

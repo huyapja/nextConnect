@@ -11,16 +11,16 @@ export interface Props {
   isOpen: boolean
   onClose: () => void
   doctype: string
+  label?: string
   docname: string
-  path: string
+  path?: string
 }
 
-export const DeleteAlert = ({ isOpen, onClose, doctype, docname, path }: Props) => {
+export const DeleteAlert = ({ isOpen, onClose, doctype, label, docname, path }: Props) => {
   return (
     <AlertDialog.Root open={isOpen} onOpenChange={onClose}>
-      <AlertDialog.Content style={{ maxWidth: 450 }}>
-        {/* Hii */}
-        <AlertContent onClose={onClose} doctype={doctype} docname={docname} path={path} />
+      <AlertDialog.Content style={{ maxWidth: 620 }}>
+        <AlertContent onClose={onClose} doctype={doctype} docname={docname} path={path} label={label} />
       </AlertDialog.Content>
     </AlertDialog.Root>
   )
@@ -31,10 +31,11 @@ type DeleteDocModalProps = {
   onUpdate?: () => void
   doctype: string
   docname: string
+  label?: string
   path?: string
 }
 
-export const AlertContent = ({ onClose, onUpdate, doctype, docname, path }: DeleteDocModalProps) => {
+export const AlertContent = ({ onClose, onUpdate, doctype, docname, path, label }: DeleteDocModalProps) => {
   const { deleteDoc, error, loading: deletingDoc, reset } = useFrappeDeleteDoc()
 
   const handleClose = () => {
@@ -48,9 +49,14 @@ export const AlertContent = ({ onClose, onUpdate, doctype, docname, path }: Dele
     if (docname) {
       deleteDoc(doctype, docname).then(() => {
         onClose()
-        if (onUpdate) onUpdate()
-        if (path) navigate(path)
-        toast(`Event ${docname} deleted.`)
+        if (onUpdate) {
+          onUpdate()
+        } else if (path) {
+          navigate(path)
+        } else {
+          navigate('../')
+        }
+        toast(`${label ?? doctype} ${docname} deleted.`)
       })
     }
   }
@@ -63,32 +69,37 @@ export const AlertContent = ({ onClose, onUpdate, doctype, docname, path }: Dele
 
       <Flex direction='column' gap='4'>
         <ErrorBanner error={error} />
-        <Callout.Root color='red' size='1'>
+        <Callout.Root color='red' size='2'>
           <Callout.Icon>
             <FiAlertTriangle size='18' />
           </Callout.Icon>
           <Callout.Text>This action is permanent and cannot be undone.</Callout.Text>
         </Callout.Root>
-        <Text size='2' as='label'>
+        <Text as='label' weight='medium'>
           <Flex gap='2' align={'center'}>
             <Checkbox onClick={() => setAllowDelete(!allowDelete)} color='red' />
-            Yes, I understand, permanently delete this {doctype}.
+            Yes, I understand, permanently delete this {label ? label.toLowerCase() : doctype}.
           </Flex>
         </Text>
       </Flex>
 
       <Flex gap='3' mt='4' justify='end'>
         <AlertDialog.Cancel>
-          <Button variant='soft' color='gray' onClick={handleClose}>
-            Cancel
+          <Button className='not-cal' variant='soft' color='gray' type='button' onClick={handleClose}>
+            Hủy
           </Button>
         </AlertDialog.Cancel>
-        <AlertDialog.Action>
-          <Button variant='solid' color='red' onClick={onSubmit} disabled={!allowDelete || deletingDoc}>
-            {deletingDoc && <Loader className='text-white' />}
-            {deletingDoc ? 'Deleting' : 'Delete'}
-          </Button>
-        </AlertDialog.Action>
+        <Button
+          className='not-cal'
+          variant='solid'
+          color='red'
+          type='button'
+          onClick={onSubmit}
+          disabled={!allowDelete || deletingDoc}
+        >
+          {deletingDoc && <Loader className='text-white' />}
+          {deletingDoc ? 'Deleting' : 'Delete'}
+        </Button>
       </Flex>
     </>
   )

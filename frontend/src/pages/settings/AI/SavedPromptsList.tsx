@@ -42,31 +42,31 @@ const SavedPromptList = () => {
     <PageContainer>
       <SettingsContentContainer>
         <SettingsPageHeader
-          title='Saved Commands'
-          description='Save commonly used commands and prompts for your AI bots and access them via "/" in chat.'
+          title='Lệnh Đã Lưu'
+          description='Lưu các lệnh và prompt thường dùng cho bot AI của bạn và truy cập nhanh bằng dấu "/" trong cuộc trò chuyện.'
           actions={
             <Button asChild disabled={!isRavenAdmin}>
-              <Link to='create'>Create</Link>
+              <Link to='create'>Tạo mới</Link>
             </Button>
           }
         />
         {isLoading && !error && <TableLoader columns={2} />}
         <ErrorBanner error={error} />
         <AINotEnabledCallout />
-        {data && data.length > 0 && <SavedPromptTable data={data} />}
+        {data && data?.length > 0 && <SavedPromptTable data={data} />}
         {(data?.length === 0 || !isRavenAdmin) && (
           <EmptyState>
             <EmptyStateIcon>
               <BiSolidMagicWand />
             </EmptyStateIcon>
-            <EmptyStateTitle>Who's going to type all that?</EmptyStateTitle>
+            <EmptyStateTitle>Ai sẽ gõ hết từng đó chứ?</EmptyStateTitle>
             <EmptyStateDescription>
-              Often we ask our AI assistants for the same thing.
+              Chúng ta thường xuyên yêu cầu trợ lý AI những điều giống nhau.
               <br />
-              Save commonly used commands here and insert them in your message by either clicking the{' '}
-              <BiSolidMagicWand /> button or using <Kbd>{getKeyboardMetaKeyString()} + ⇧ + K</Kbd>.
+              Hãy lưu các lệnh thường dùng tại đây và chèn nhanh vào tin nhắn bằng cách nhấn nút <BiSolidMagicWand />{' '}
+              hoặc dùng phím tắt <Kbd>{getKeyboardMetaKeyString()} + ⇧ + K</Kbd>.
             </EmptyStateDescription>
-            {isRavenAdmin && <EmptyStateLinkAction to='create'>Create your first command</EmptyStateLinkAction>}
+            {isRavenAdmin && <EmptyStateLinkAction to='create'>Tạo lệnh đầu tiên</EmptyStateLinkAction>}
           </EmptyState>
         )}
       </SettingsContentContainer>

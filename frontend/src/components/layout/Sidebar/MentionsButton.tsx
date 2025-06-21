@@ -1,20 +1,20 @@
-import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
-import { __ } from '@/utils/translations'
-import { Box, IconButton, Popover, Text, Flex } from '@radix-ui/themes'
-import { FrappeConfig, FrappeContext, useFrappeEventListener, useFrappeGetCall } from 'frappe-react-sdk'
-import { LuAtSign } from 'react-icons/lu'
-import parse from 'html-react-parser'
-import { getTimePassed } from '@/utils/dateConversions'
-import { HStack } from '../Stack'
-import { RavenChannel } from '@/types/RavenChannelManagement/RavenChannel'
-import { ChannelIcon } from '@/utils/layout/channelIcon'
-import { useGetUser } from '@/hooks/useGetUser'
 import { UserAvatar } from '@/components/common/UserAvatar'
-import { BiMessageAltDetail } from 'react-icons/bi'
-import { useMemo, useCallback, useEffect, useRef, useContext } from 'react'
-import { Link, useParams } from 'react-router-dom'
 import BeatLoader from '@/components/layout/Loaders/BeatLoader'
+import { useGetUser } from '@/hooks/useGetUser'
+import { RavenChannel } from '@/types/RavenChannelManagement/RavenChannel'
+import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
+import { getTimePassed } from '@/utils/dateConversions'
+import { ChannelIcon } from '@/utils/layout/channelIcon'
+import { __ } from '@/utils/translations'
+import { Box, Flex, IconButton, Popover, Text } from '@radix-ui/themes'
+import { FrappeConfig, FrappeContext, useFrappeEventListener, useFrappeGetCall } from 'frappe-react-sdk'
+import parse from 'html-react-parser'
+import { useCallback, useContext, useEffect, useMemo, useRef } from 'react'
+import { BiMessageAltDetail } from 'react-icons/bi'
+import { LuAtSign } from 'react-icons/lu'
+import { Link, useParams } from 'react-router-dom'
 import useSWRInfinite from 'swr/infinite'
+import { HStack } from '../Stack'
 
 const MentionsButton = () => {
   const { data: mentionsCount, mutate } = useFrappeGetCall<{ message: number }>(
@@ -97,7 +97,7 @@ const MentionsList = () => {
 
   const { data, size, isLoading, setSize } = useSWRInfinite<{ message: MentionObject[] }>(
     (pageIndex: number, previousPageData: { message: MentionObject[] } | null) => {
-      if (previousPageData && !previousPageData.message.length) return null
+      if (previousPageData && !previousPageData.message?.length) return null
       const start = pageIndex * PAGE_SIZE
       return [
         'raven.api.mentions.get_mentions',
@@ -117,7 +117,7 @@ const MentionsList = () => {
 
   const isEmpty = data?.[0]?.message?.length === 0
   const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === 'undefined')
-  const isReachingEnd = isEmpty || (data && data[data.length - 1]?.message?.length < PAGE_SIZE)
+  const isReachingEnd = isEmpty || (data && data[data?.length - 1]?.message?.length < PAGE_SIZE)
   const mentions = data?.flatMap((page: { message: MentionObject[] }) => page.message) ?? []
 
   const observerTarget = useRef<HTMLDivElement>(null)
@@ -163,7 +163,7 @@ const MentionsList = () => {
 
   return (
     <ul role='list' className='list-none h-[380px] overflow-y-auto'>
-      {mentions.map((mention) => (
+      {mentions?.map((mention) => (
         <li key={mention.name} role='listitem' className='border-b border-gray-4 last:border-0'>
           <MentionItem mention={mention} />
         </li>
@@ -253,7 +253,9 @@ const ChannelContext = ({ mention }: { mention: MentionObject }) => {
 const MessageContent = ({ content }: { content: string }) => {
   return (
     <Text as='p' className='text-sm line-clamp-2 text-ellipsis sm:w-[320px] w-[200px]'>
-      <div className='[&_.mention]:text-accent-11'>{typeof content === 'string' ? parse(content) : content}</div>
+      <div className='[&_.mention]:text-accent-11 [&_p]:my-0'>
+        {typeof content === 'string' ? parse(content) : content}
+      </div>
     </Text>
   )
 }

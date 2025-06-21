@@ -1,10 +1,12 @@
 import { Loader } from '@/components/common/Loader'
 import InstructionTemplateForm from '@/components/feature/settings/ai/InstructionTemplateForm'
+import CommonSettingsMenu from '@/components/feature/settings/common/CommonSettingsMenu'
 import { ErrorBanner } from '@/components/layout/AlertBanner/ErrorBanner'
 import { FullPageLoader } from '@/components/layout/Loaders/FullPageLoader'
 import PageContainer from '@/components/layout/Settings/PageContainer'
 import SettingsContentContainer from '@/components/layout/Settings/SettingsContentContainer'
 import SettingsPageHeader from '@/components/layout/Settings/SettingsPageHeader'
+import { HStack } from '@/components/layout/Stack'
 import { RavenBotInstructionTemplate } from '@/types/RavenAI/RavenBotInstructionTemplate'
 import { isEmpty } from '@/utils/validations'
 import { Button } from '@radix-ui/themes'
@@ -73,10 +75,17 @@ const ViewBotContent = ({ data, mutate }: { data: RavenBotInstructionTemplate; m
             title={data.name}
             headerBadges={isDirty ? [{ label: 'Not Saved', color: 'red' }] : undefined}
             actions={
-              <Button type='submit' disabled={loading}>
-                {loading && <Loader className='text-white' />}
-                {loading ? 'Saving' : 'Save'}
-              </Button>
+              <HStack>
+                <CommonSettingsMenu
+                  doctype='Raven Bot Instruction Template'
+                  docname={data.name}
+                  label={'Instruction Template'}
+                />
+                <Button type='submit' disabled={loading}>
+                  {loading && <Loader className='text-white' />}
+                  {loading ? 'Đang lưu' : 'Lưu'}
+                </Button>
+              </HStack>
             }
             breadcrumbs={[
               { label: 'Instruction Templates', href: '../' },

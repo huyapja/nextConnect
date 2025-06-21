@@ -1,14 +1,13 @@
-import { useState } from 'react'
-import { AlertDialog, Box, Button, Dialog, Flex, IconButton, Tooltip } from '@radix-ui/themes'
-import { DIALOG_CONTENT_CLASS } from '@/utils/layout/dialog'
-import { FiCamera } from 'react-icons/fi'
-import { BiSolidTrash } from 'react-icons/bi'
 import { UserAvatar, getInitials } from '@/components/common/UserAvatar'
-import { __ } from '@/utils/translations'
-import { useController, useFormContext } from 'react-hook-form'
-import { RavenWorkspace } from '@/types/Raven/RavenWorkspace'
-import { UploadImageModal } from '../userSettings/UploadImage/UploadImageModal'
 import { HStack } from '@/components/layout/Stack'
+import { RavenWorkspace } from '@/types/Raven/RavenWorkspace'
+import { DIALOG_CONTENT_CLASS } from '@/utils/layout/dialog'
+import { AlertDialog, Box, Button, Dialog, Flex, IconButton, Tooltip } from '@radix-ui/themes'
+import { useState } from 'react'
+import { useController, useFormContext } from 'react-hook-form'
+import { BiSolidTrash } from 'react-icons/bi'
+import { FiCamera } from 'react-icons/fi'
+import { UploadImageModal } from '../userSettings/UploadImage/UploadImageModal'
 
 export const WorkspaceLogoField = () => {
   const { control, watch } = useFormContext<RavenWorkspace>()
@@ -68,11 +67,11 @@ export const UploadImage = ({
 }) => {
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Tooltip content='Upload Image' side='right'>
+      <Tooltip content='Tải logo lên' side='right'>
         <Dialog.Trigger>
           <IconButton
             type='button'
-            aria-label='upload image'
+            aria-label='tải logo lên'
             size={'1'}
             className={'absolute -right-2 -bottom-1 rounded-md shadow-md'}
           >
@@ -96,11 +95,11 @@ export const UploadImage = ({
 export const DeleteImage = ({ onDelete }: { onDelete: () => void }) => {
   return (
     <AlertDialog.Root>
-      <Tooltip content='Remove Image' side='right'>
+      <Tooltip content='Xóa logo' side='right'>
         <AlertDialog.Trigger>
           <IconButton
             type='button'
-            aria-label='remove image'
+            aria-label='xóa logo'
             size={'1'}
             className={'absolute -right-2 bottom-6 rounded-md bg-white dark:bg-slate-4 shadow-md'}
           >
@@ -109,17 +108,17 @@ export const DeleteImage = ({ onDelete }: { onDelete: () => void }) => {
         </AlertDialog.Trigger>
       </Tooltip>
       <AlertDialog.Content className={DIALOG_CONTENT_CLASS} maxWidth='450px'>
-        <AlertDialog.Title>Remove logo</AlertDialog.Title>
-        <AlertDialog.Description size='2'>Are you sure you want to remove the logo?</AlertDialog.Description>
+        <AlertDialog.Title>Xóa logo</AlertDialog.Title>
+        <AlertDialog.Description size='2'>Bạn có chắc chắn muốn xóa logo này không?</AlertDialog.Description>
         <HStack gap='2' justify='end' mt='4'>
           <AlertDialog.Cancel>
             <Button variant='soft' color='gray'>
-              Cancel
+              Hủy
             </Button>
           </AlertDialog.Cancel>
           <AlertDialog.Action>
             <Button variant='solid' color='red' onClick={onDelete}>
-              Delete
+              Xóa
             </Button>
           </AlertDialog.Action>
         </HStack>
@@ -127,3 +126,4 @@ export const DeleteImage = ({ onDelete }: { onDelete: () => void }) => {
     </AlertDialog.Root>
   )
 }
+

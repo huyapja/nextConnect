@@ -1,10 +1,12 @@
 import { Loader } from '@/components/common/Loader'
 import FunctionForm from '@/components/feature/settings/ai/functions/FunctionForm'
+import CommonSettingsMenu from '@/components/feature/settings/common/CommonSettingsMenu'
 import { ErrorBanner } from '@/components/layout/AlertBanner/ErrorBanner'
 import { FullPageLoader } from '@/components/layout/Loaders/FullPageLoader'
 import PageContainer from '@/components/layout/Settings/PageContainer'
 import SettingsContentContainer from '@/components/layout/Settings/SettingsContentContainer'
 import SettingsPageHeader from '@/components/layout/Settings/SettingsPageHeader'
+import { HStack } from '@/components/layout/Stack'
 import { RavenAIFunction } from '@/types/RavenAI/RavenAIFunction'
 import { isEmpty } from '@/utils/validations'
 import { Button } from '@radix-ui/themes'
@@ -69,10 +71,13 @@ const ViewFunctionContent = ({ data, mutate }: { data: RavenAIFunction; mutate: 
             title={data.name}
             headerBadges={isDirty ? [{ label: 'Not Saved', color: 'red' }] : undefined}
             actions={
-              <Button type='submit' disabled={loading}>
-                {loading && <Loader className='text-white' />}
-                {loading ? 'Saving' : 'Save'}
-              </Button>
+              <HStack>
+                <CommonSettingsMenu doctype='Raven AI Function' docname={data.name} label={'Function'} />
+                <Button type='submit' disabled={loading}>
+                  {loading && <Loader className='text-white' />}
+                  {loading ? 'Đang lưu' : 'Lưu'}
+                </Button>
+              </HStack>
             }
             breadcrumbs={[
               { label: 'Functions', href: '../' },

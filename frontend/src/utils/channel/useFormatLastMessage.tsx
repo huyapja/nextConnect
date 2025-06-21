@@ -1,77 +1,67 @@
-const MAX_PREVIEW_LENGTH = 20
+import { useMemo } from 'react'
+import useMediaQuery, { useIsMobile, useIsTablet, useIsLaptop, useIsDesktop } from '@/hooks/useMediaQuery'
+import { Channel, formatLastMessageParts } from '../textUtils/formatLastMessage'
 
-const truncateText = (text: string, maxLength: number = MAX_PREVIEW_LENGTH): string =>
-  text.length > maxLength ? text.slice(0, maxLength) + '...' : text
+export function useFormattedLastMessageParts(channel: Channel, currentUser: string, senderName?: string) {
+  const isMobile = useIsMobile()
+  const isTablet = useIsTablet()
+  const isLaptop = useIsLaptop()
+  const isDesktop = useIsDesktop()
 
-const isImageFile = (filename: string = ''): boolean =>
-  /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(filename)
+  const isSmallLaptop = useMediaQuery('(max-width: 1300px)')
 
-const isVideoFile = (filename: string = ''): boolean =>
-  /\.(mp4|mov|avi|wmv|flv|webm|mkv)$/i.test(filename)
-
-const isAudioFile = (filename: string = ''): boolean =>
-  /\.(mp3|wav|ogg|m4a|aac)$/i.test(filename)
-
-const stripHtmlTags = (html: string): string => html.replace(/<\/?[^>]+(>|$)/g, '')
-
-interface Channel {
-  is_direct_message: boolean
-  last_message_details: any
-}
-
-export function formatLastMessage(
-  channel: Channel,
-  currentUser: string,
-  senderName?: string
-): string {
-  if (!channel?.last_message_details) return ''
-
-  let raw: any
-  try {
-    raw =
-      typeof channel.last_message_details === 'string'
-        ? JSON.parse(channel.last_message_details)
-        : channel.last_message_details
-  } catch {
-    return ''
-  }
-
-  const isCurrentUser = raw.owner === currentUser
-  const senderLabel = isCurrentUser ? 'Bạn' : senderName ?? raw.owner ?? 'Người dùng'
-
-  let contentLabel = ''
-
-  if (typeof raw.content === 'string') {
-    const filename = raw.content
-
-    switch (raw.message_type) {
-      case 'Image':
-        contentLabel = 'gửi ảnh'
-        break
-      case 'Audio':
-        contentLabel = 'gửi âm thanh'
-        break
-      case 'File':
-        contentLabel = isImageFile(filename)
-          ? 'gửi ảnh'
-          : isVideoFile(filename)
-            ? 'gửi video'
-            : isAudioFile(filename)
-              ? 'gửi âm thanh'
-              : 'gửi file'
-        break
-      case 'Text':
-        const text = stripHtmlTags(filename)
-        contentLabel = truncateText(text)
-        break
+  // Tổng độ dài tối đa cho cả sender + content
+  const baseMaxLength = useMemo(() => {
+    if (channel.is_direct_message) {
+      // ✅ DM → cho phép dài hơn
+      if (isMobile) return 12
+      if (isTablet) return 16
+      if (isLaptop) return 22
+      if (isDesktop) return 30
+      return 26
+    } else {
+      // ✅ Group → tổng sẽ thấp hơn (phải chừa cho sender)
+      if (isMobile) return 18
+      if (isTablet) return 22
+      if (isSmallLaptop) return 25
+      if (isLaptop) return 28
+      if (isDesktop) return 32
+      return 25
     }
-  }
+  }, [isMobile, isTablet, isLaptop, isSmallLaptop, isDesktop, channel.is_direct_message])
 
-  if (!contentLabel) return ''
+  // Tính độ dài senderLabel
+  const senderLabel = useMemo(() => {
+    if (!senderName) return ''
+    return `${senderName}`
+  }, [senderName])
 
-  if (raw.message_type === 'Text' && !isCurrentUser) {
-    return contentLabel // chỉ hiển thị nội dung nếu là text và không phải mình
-  }
+  const senderLength = senderLabel.length
 
-  return `${senderLabel}${isCurrentUser ? ':' : ''} ${contentLabel}`
+  // Tự động giảm contentLength dựa trên senderLength (nếu là group)
+  const maxContentLength = useMemo(() => {
+    const minContentLength = 8
+
+    if (channel.is_direct_message) {
+      // ✅ DM → content không bị trừ
+      return baseMaxLength
+    }
+
+    // ✅ Group → content bị trừ sender
+    let contentLength = Math.max(baseMaxLength - senderLength, minContentLength)
+
+    // Clamp nếu tính ra quá lớn
+    if (contentLength > 40) {
+      contentLength = 20
+    }
+
+    return contentLength
+  }, [baseMaxLength, senderLength, channel.is_direct_message])
+
+  const { senderLabel: senderFinal, contentLabel } = useMemo(
+    () => formatLastMessageParts(channel, currentUser, senderName, maxContentLength),
+    [channel.last_message_details, currentUser, senderName, maxContentLength]
+  )
+
+  return { senderLabel: senderFinal, contentLabel }
 }

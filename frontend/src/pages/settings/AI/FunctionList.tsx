@@ -41,29 +41,29 @@ const FunctionList = () => {
     <PageContainer>
       <SettingsContentContainer>
         <SettingsPageHeader
-          title='Functions'
-          description='Declare functions to be used by your AI bots.'
+          title='Hàm'
+          description='Khai báo các hàm để bot AI của bạn có thể sử dụng.'
           actions={
             <Button asChild disabled={!isRavenAdmin}>
-              <Link to='create'>Create</Link>
+              <Link to='create'>Tạo mới</Link>
             </Button>
           }
         />
         {isLoading && !error && <TableLoader columns={4} />}
         <ErrorBanner error={error} />
         <AINotEnabledCallout />
-        {data && data.length > 0 && <FunctionTable functions={data} />}
+        {data && data?.length > 0 && <FunctionTable functions={data} />}
         {(data?.length === 0 || !isRavenAdmin) && (
           <EmptyState>
             <EmptyStateIcon>
               <LuSquareFunction />
             </EmptyStateIcon>
-            <EmptyStateTitle>Bots + Functions = AI Magic</EmptyStateTitle>
+            <EmptyStateTitle>Bot + Hàm = Phép Màu AI</EmptyStateTitle>
             <EmptyStateDescription>
-              Use the no-code builder to create functions that allow AI bots to perform actions within the system when
-              requested, like creating documents, or fetching reports to analyze.
+              Sử dụng trình dựng không cần mã (no-code builder) để tạo các hàm cho phép bot AI thực hiện hành động trong
+              hệ thống khi được yêu cầu, như tạo tài liệu hoặc lấy báo cáo để phân tích.
             </EmptyStateDescription>
-            {isRavenAdmin && <EmptyStateLinkAction to='create'>Create your first function</EmptyStateLinkAction>}
+            {isRavenAdmin && <EmptyStateLinkAction to='create'>Tạo hàm đầu tiên</EmptyStateLinkAction>}
           </EmptyState>
         )}
       </SettingsContentContainer>
