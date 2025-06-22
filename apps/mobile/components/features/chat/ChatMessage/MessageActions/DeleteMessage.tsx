@@ -74,6 +74,7 @@ const useRetractMessage = (message: Message, onDelete: Function) => {
                 duration: 500,
             })
         } catch (error) {
+            console.log("error", error)
             toast.error("Thu hồi tin nhắn thất bại.")
         }
     }
