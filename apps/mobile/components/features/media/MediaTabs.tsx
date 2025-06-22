@@ -8,7 +8,7 @@ import { Divider } from '@components/layout/Divider'
 const MediaTabs = ({ searchQuery }: { searchQuery: string }) => {
 
     const [selectedIndex, setSelectedIndex] = useState(0)
-    const values = ['Images', 'Files']
+    const values = ['Ảnh', 'Tệp tin']
 
     const handleIndexChange = (index: number) => {
         setSelectedIndex(index)

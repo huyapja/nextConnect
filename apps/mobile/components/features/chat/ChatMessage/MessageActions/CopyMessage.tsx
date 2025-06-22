@@ -19,7 +19,7 @@ const CopyMessage = ({ message, onClose }: CopyMessageProps) => {
         <ActionButton
             onPress={() => copy(onClose)}
             icon={<CopyIcon width={18} height={18} fill={colors.icon} />}
-            text='Copy'
+            text='Sao chép'
         />
     )
 }

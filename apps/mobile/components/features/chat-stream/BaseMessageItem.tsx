@@ -62,7 +62,7 @@ export const BaseMessageItem = ({ message }: { message: Message }) => {
                     <DocTypeLinkRenderer doctype={message.link_doctype} docname={message.link_document} />
                 </View>}
 
-                {message.is_edited === 1 && <Text className='text-xs text-muted-foreground'>(edited)</Text>}
+                {message.is_edited === 1 && <Text className='text-xs text-muted-foreground'>(Đã chỉnh sửa)</Text>}
                 {message.hide_link_preview === 0 && message.text && <MessageLinkRenderer message={message} />}
             </View>
         </View>

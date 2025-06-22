@@ -33,7 +33,7 @@ const MessageItem = memo(({ message }: Props) => {
 
     const { colors, isDarkColorScheme } = useColorScheme()
 
-    const { linked_message, replied_message_details } = message
+    const { linked_message, replied_message_details, is_retracted } = message
 
     const username = message.bot || message.owner
 
@@ -86,7 +86,7 @@ const MessageItem = memo(({ message }: Props) => {
             >
                 {!message.is_continuation && message.is_thread ?
                     <View
-                        className={`absolute 
+                        className={`absolute
                         w-8
                         h-full
                         pb-9
@@ -139,7 +139,13 @@ const MessageItem = memo(({ message }: Props) => {
                                 message={message}
                             />}
 
-                            {message.text ? <MessageTextRenderer text={message.text} /> : null}
+                            {(message.text && !is_retracted) ? <MessageTextRenderer text={message.text} /> : null}
+                            {is_retracted && (
+                                <Text
+                                    className='italic text-sm border p-2 rounded'
+                                    style={{ borderColor: colors.card }}
+                                >Tin nhắn này đã bị thu hồi</Text>
+                            )}
                             {message.message_type === 'Image' && <ImageMessageRenderer message={message} doubleTapGesture={doubleTapGesture} />}
                             {message.message_type === 'File' && <FileMessageRenderer message={message} doubleTapGesture={doubleTapGesture} />}
                             {message.message_type === 'Poll' && <PollMessageBlock message={message} />}
@@ -148,7 +154,7 @@ const MessageItem = memo(({ message }: Props) => {
                                 <DocTypeLinkRenderer doctype={message.link_doctype} docname={message.link_document} />
                             </View>}
 
-                            {message.is_edited === 1 && <Text className='text-xs text-muted-foreground'>(edited)</Text>}
+                            {message.is_edited === 1 && <Text className='text-xs text-muted-foreground'>(Đã chỉnh sửa)</Text>}
                             {message.hide_link_preview === 0 && message.text && <MessageLinkRenderer message={message} />}
                             <MessageReactions message={message} longPressGesture={longPressGesture} />
                             {message.is_thread === 1 && <View className='flex self-start mt-1'><ViewThreadButton message={message} /></View>}

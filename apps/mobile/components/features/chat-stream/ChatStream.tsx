@@ -23,9 +23,9 @@ type Props = {
 const ChatStream = ({ channelID, isThread = false, scrollRef, onMomentumScrollEnd, onScrollBeginDrag, pinnedMessagesString }: Props) => {
 
 
-    /** Fetching this here to avoid blank screen when the user opens the chat. 
+    /** Fetching this here to avoid blank screen when the user opens the chat.
      * Each message item fetches this atom value
-     * 
+     *
      * If this is not fetched here, the chat stream sometimes remains blank
      */
     const doubleTapMessageEmoji = useAtomValue(doubleTapMessageEmojiAtom)
@@ -88,8 +88,8 @@ const DOCTYPE_LINK_RENDERER_HEIGHT = 160
 const THREAD_BLOCK_HEIGHT = 30
 const LINK_PREVIEW_HEIGHT = 240
 
-/** A function to estimate the size of the item 
- * 
+/** A function to estimate the size of the item
+ *
  * Adjust these whenever you change the styles of the components that impact the height
 */
 const getEstimatedItemSize = (index: number, item: MessageDateBlock) => {

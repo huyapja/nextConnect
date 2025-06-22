@@ -34,7 +34,7 @@ const DeleteMessage = ({ message, onClose }: DeleteMessageProps) => {
         <ActionButton
             onPress={onMessageDelete}
             icon={<TrashIcon width={18} height={18} fill={isDarkColorScheme ? '#f87171' : '#dc2626'} />}
-            text='Delete message'
+            text='Xoá tin nhắn'
             isDestructive={true}
             disabled={loading}
         />
@@ -69,8 +69,6 @@ const useMessageDelete = (message: Message, onDelete: () => void) => {
             }
         }
 
-
-
         // Delete the message optimistically
         return mutate({ path: `get_messages_for_channel_${channelID}` }, async (data?: GetMessagesResponse) => {
             // Make the request
@@ -78,7 +76,7 @@ const useMessageDelete = (message: Message, onDelete: () => void) => {
             // This is because we can close the bottom sheet since we have optimistic updates anyway
             onDelete()
             return deleteDoc('Raven Message', messageID).then(() => {
-                toast.success('Message deleted', {
+                toast.success('Đã thu hồi tin nhắn', {
                     duration: 500,
                 })
             }).then(() => {
@@ -89,7 +87,7 @@ const useMessageDelete = (message: Message, onDelete: () => void) => {
             rollbackOnError: true,
             revalidate: false
         }).catch(() => {
-            toast.error("Failed to delete message.")
+            toast.error("Thu hồi tin nhắn thất bại.")
         })
     }
     return { deleteMessage, loading }

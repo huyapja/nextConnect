@@ -40,7 +40,7 @@ const EditMessageSheet = ({ message, onClose }: EditMessageSheetProps) => {
     return (
         <View className="flex flex-col gap-3 px-4 pt-2">
 
-            <Text className='text-lg font-cal-sans ml-0.5'>Edit Message</Text>
+            <Text className='text-lg font-cal-sans ml-0.5'>Sửa tin nhắn</Text>
 
             {error ? <ErrorBanner error={error} /> : null}
 
@@ -67,7 +67,7 @@ const EditMessageSheet = ({ message, onClose }: EditMessageSheetProps) => {
                 size='lg'
                 onPress={handleSave}
                 disabled={updatingDoc}>
-                <Text>{updatingDoc ? 'Updating...' : 'Update'}</Text>
+                <Text>{updatingDoc ? 'Đang cập nhật...' : 'Cập nhật'}</Text>
             </Button>
         </View>
     )

@@ -122,7 +122,7 @@ export function ForwardMessage({ message }: ForwardMessageProps) {
 
     useEffect(() => {
         navigation.setOptions({
-            headerTitle: "Forward Message",
+            headerTitle: "Chuyển tiếp tin nhắn",
             headerStyle: {
                 backgroundColor: colors.background
             },
@@ -163,4 +163,4 @@ export function ForwardMessage({ message }: ForwardMessageProps) {
             </View>
         </KeyboardAvoidingView>
     )
-} 
+}

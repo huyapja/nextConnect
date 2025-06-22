@@ -23,7 +23,6 @@ const LabeledMessages = () => {
                 options={{
                     headerStyle: { backgroundColor: colors.background },
                     headerLeft: () => <HeaderBackButton />,
-                    headerRight: () => <Text>Thêm nhãn</Text>,
                     title: "Nhãn",
                     headerTitle: () => {
                         return (

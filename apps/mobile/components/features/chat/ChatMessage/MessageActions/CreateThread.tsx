@@ -30,7 +30,7 @@ const CreateThread = ({ message, onClose }: CreateThreadProps) => {
         <ActionButton
             onPress={onPress}
             icon={<MessageIcon width={18} height={18} fill={colors.icon} />}
-            text='Create thread'
+            text='Tạo chủ đề'
         />
     )
 }

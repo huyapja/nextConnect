@@ -149,12 +149,16 @@ const ChatLayout = ({ channelID, isThread = false, pinnedMessagesString }: Props
                 <Animated.View style={fakeView} />
             </SafeAreaView>
 
-            <MessageActionsBottomSheet
-                messageActionsSheetRef={messageActionsSheetRef}
-                message={selectedMessage}
-                isThread={isThread}
-                handleClose={handleSheetClose}
-            />
+            {
+                !selectedMessage?.is_retracted && (
+                    <MessageActionsBottomSheet
+                        messageActionsSheetRef={messageActionsSheetRef}
+                        message={selectedMessage}
+                        isThread={isThread}
+                        handleClose={handleSheetClose}
+                    />
+                )
+            }
         </>
     )
 }

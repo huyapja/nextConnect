@@ -112,7 +112,7 @@ const FirstMessageBlockForDM = ({ channelData }: { channelData: DMChannelListIte
                     ) : (
                         <View className="flex flex-row gap-2 items-center">
                             {peer || fullName ? (
-                                <Text className='text-[15px]'>This is a direct message channel between you and <Text className='text-[15px] font-semibold'>{fullName ?? peer}</Text>.</Text>
+                                <Text className='text-[15px]'>Đây là cuộc trò chuyện giữa bạn và <Text className='text-[15px] font-semibold'>{fullName ?? peer}</Text>.</Text>
                             ) : (
                                 <Text className='text-[15px]'>We could not find the user for this DM channel ({replaceCurrentUserFromDMChannelName(channelData.channel_name, currentUserInfo?.name ?? "")}).</Text>
                             )}

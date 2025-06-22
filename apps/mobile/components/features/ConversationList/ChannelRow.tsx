@@ -13,6 +13,7 @@ import { useMemo } from "react"
 import { Pressable, View } from "react-native"
 import { ChannelWithUnreadCount } from "./ConversationList"
 import { getRandomRgba } from 'utils/functions'
+import MessageTextRenderer from './MessageTextRenderer'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -25,19 +26,21 @@ const ChannelRow = ({ dm }: { dm: ChannelWithUnreadCount }) => {
 
     const { colors } = useColorScheme()
 
-    const { lastMessageContent, isSentByUser } = useMemo(() => {
+    const { lastMessageContent, isSentByUser, message_type } = useMemo(() => {
         let isSentByUser = false
         let lastMessageContent = ''
+        let message_type = ''
         if (dm.last_message_details) {
             try {
                 const parsedDetails = JSON.parse(dm.last_message_details)
                 isSentByUser = parsedDetails.owner === myProfile?.name
                 lastMessageContent = parsedDetails.content?.trim() || ''
+                message_type = JSON.parse(dm.last_message_details)?.message_type
             } catch (e) {
                 console.error('Error parsing last_message_details:', e)
             }
         }
-        return { lastMessageContent, isSentByUser }
+        return { lastMessageContent, isSentByUser, message_type }
     }, [dm.last_message_details, myProfile?.name])
 
     const isUnread = dm.unread_count > 0
@@ -79,9 +82,19 @@ const ChannelRow = ({ dm }: { dm: ChannelWithUnreadCount }) => {
                             <View
                                 style={{ maxHeight: 30, maxWidth: dm.unread_count > 0 ? '90%' : '100%', }}
                                 className='flex flex-row items-center gap-1'>
-                                {isSentByUser ? <Text className='text-sm text-muted-foreground' style={{ fontWeight: isUnread ? '500' : '400' }}>You:</Text> : null}
-                                <Text className='text-sm text-muted-foreground line-clamp-1'
-                                    style={{ fontWeight: isUnread ? '500' : '400' }}>{lastMessageContent}</Text>
+                                {isSentByUser ? <Text className='text-sm text-muted-foreground' style={{ fontWeight: isUnread ? '500' : '400' }}>Bạn:</Text> : null}
+                                {
+                                    (lastMessageContent && message_type === 'Text') ? (
+                                        <MessageTextRenderer text={lastMessageContent}/>
+                                    ) : (
+                                        <Text
+                                            className='text-sm text-muted-foreground line-clamp-1'
+                                            style={{ fontWeight: isUnread ? '500' : '400' }}
+                                        >
+                                            {lastMessageContent}
+                                        </Text>
+                                    )
+                                }
                             </View>
                             {dm.unread_count && dm.unread_count > 0 ? <UnreadCountBadge count={dm.unread_count} prominent /> : null}
                         </View>

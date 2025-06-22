@@ -26,7 +26,7 @@ const ReplyToMessage = ({ message, onClose }: ReplyToMessageProps) => {
     return (
         <ActionButtonLarge
             icon={<ReplyIcon width={18} height={18} fill={colors.icon} />}
-            text="Reply"
+            text="Trả lời"
             onPress={onReplyToMessage}
         />
     )

@@ -34,17 +34,10 @@ const EditMessageAction = ({ message, onClose }: EditMessageActionProps) => {
 
     return (
         <>
-            {/* <Pressable
-                onPress={handlePress}
-                className='flex flex-row items-center gap-3 p-2 rounded-lg ios:active:bg-linkColor'
-                android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}>
-                <EditIcon width={18} height={18} stroke={colors.icon} fillOpacity={0} />
-                <Text className='text-base text-foreground'>Edit</Text>
-            </Pressable> */}
             <ActionButton
                 onPress={handlePress}
                 icon={<EditIcon width={18} height={18} stroke={colors.icon} fillOpacity={0} />}
-                text='Edit'
+                text='Chỉnh sửa'
             />
 
             <Sheet enableDynamicSizing={false} ref={editSheetRef} snapPoints={['90']} enableDismissOnClose onDismiss={handleDismiss}>

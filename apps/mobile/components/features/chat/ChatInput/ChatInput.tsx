@@ -96,7 +96,7 @@ const ChatInput = ({ channelID, onSendMessage }: ChatInputProps) => {
         {siteID && <ReplyMessagePreview channelID={channelID} siteID={siteID} />}
         {siteID && <FileScroller channelID={channelID} siteID={siteID} />}
 
-        <View className={`flex-row items-end px-4 gap-2 
+        <View className={`flex-row items-end px-4 gap-2
             min-h-16 justify-between`}>
             <AdditionalInputs channelID={channelID} onMessageContentSend={onMessageContentSend} />
             <View className="flex-1  border border-border rounded-lg">
@@ -105,7 +105,7 @@ const ChatInput = ({ channelID, onSendMessage }: ChatInputProps) => {
                     value={content}
                     multiline
                     placeholderTextColor={colors.grey}
-                    placeholder="Type a message..."
+                    placeholder="Nội dung tin nhắn..."
                     onChange={onContentChange}
                     partTypes={[
                         {

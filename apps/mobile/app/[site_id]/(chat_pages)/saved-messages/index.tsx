@@ -73,13 +73,13 @@ const SavedMessagesEmptyState = () => {
         <View className="flex flex-col p-4 gap-2 bg-background">
             <View className="flex flex-row items-center gap-2">
                 <BookMarkIcon fill={colors.icon} height={20} width={20} />
-                <Text className="text-foreground text-base font-medium">Your saved messages will appear here</Text>
+                <Text className="text-foreground text-base font-medium">Tin nhắn đã lưu của bạn sẽ xuất hiện ở đây</Text>
             </View>
             <Text className="text-sm text-foreground/60">
-                Saved messages are a convenient way to keep track of important information or messages you want to refer back to later.
+                Tin nhắn đã lưu là một cách tiện lợi để theo dõi thông tin hoặc tin nhắn quan trọng mà bạn muốn xem lại sau này.
             </Text>
             <Text className="text-sm text-foreground/60">
-                You can save messages by simply clicking on the bookmark icon in message actions.
+                Bạn có thể lưu tin nhắn bằng cách nhấp vào biểu tượng dấu trang trong các tùy chọn tin nhắn.
             </Text>
         </View>
     )

@@ -39,7 +39,7 @@ const PinnedMessageList = () => {
 const PinnedMessagesEmptyState = () => {
     return (
         <View className="flex-1 justify-center items-center p-4">
-            <Text className="text-muted-foreground">No pinned messages</Text>
+            <Text className="text-muted-foreground">Chưa có tin nhắn đã ghim</Text>
         </View>
     )
 }

@@ -10,11 +10,11 @@ const DMListEmptyState = ({ searchQuery }: { searchQuery?: string }) => {
             <View className="flex flex-row items-center gap-2">
                 <ChatOutlineIcon fill={colors.icon} height={20} width={20} />
                 <Text className="text-foreground text-base font-medium">
-                    {searchQuery ? `No DMs found with "${searchQuery}"` : 'No DMs found'}
+                    {searchQuery ? `Không tìm thấy tin nhắn với "${searchQuery}"` : 'Không có tin nhắn'}
                 </Text>
             </View>
             <Text className="text-sm text-foreground/60">
-                {searchQuery ? 'Try searching for a different user name, or invite this userto Raven' : `Start a new conversation with someone to see it here`}
+                {searchQuery ? 'Hãy thử tìm kiếm một tên người dùng khác, hoặc mời người dùng này vào Raven' : `Bắt đầu một cuộc trò chuyện mới để xem tại đây`}
             </Text>
         </View>
     )
