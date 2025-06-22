@@ -125,7 +125,7 @@ const MessageAvatar = ({ user, isActive }: { user: any; isActive: boolean }) => 
 const MAX_LENGTH = 80
 
 const truncate = (text: string, maxLength = MAX_LENGTH) =>
-  text.length > maxLength ? text.slice(0, maxLength).trim() + '...' : text
+  text?.length > maxLength ? text.slice(0, maxLength).trim() + '...' : text
 
 const TextContent = ({ content }: { content: string }) => {
   const display = truncate(content)
@@ -316,7 +316,7 @@ const GroupedMessages = ({
         )}
       >
         <div className='space-y-0.5'>
-          {messages.map((msg) => (
+          {messages?.map((msg) => (
             <DirectMessageSaved
               key={msg.name}
               message={msg}
@@ -376,7 +376,7 @@ export const MessageSaved = () => {
 
   return (
     <div className='space-y-4'>
-      {Object.entries(groupedMessages).map(([channelId, msgs]) => (
+      {Object.entries(groupedMessages)?.map(([channelId, msgs]) => (
         <GroupedMessages
           key={channelId}
           channelId={channelId}

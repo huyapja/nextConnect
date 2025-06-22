@@ -1,7 +1,7 @@
-import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
-import { Avatar } from '@radix-ui/themes'
 import { UserAvatar } from '@/components/common/UserAvatar'
 import useFetchChannelMembers from '@/hooks/fetchers/useFetchChannelMembers'
+import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
+import { Avatar } from '@radix-ui/themes'
 
 interface ViewChannelDetailsButtonProps {
   channelData: ChannelListItem
@@ -10,13 +10,13 @@ interface ViewChannelDetailsButtonProps {
 export const ViewChannelMemberAvatars = ({ channelData }: ViewChannelDetailsButtonProps) => {
   const { channelMembers } = useFetchChannelMembers(channelData.name)
 
-  const totalMembers = Object.keys(channelMembers).length
+  const totalMembers = Object.keys(channelMembers)?.length
 
   const extraNumber = Math.min(totalMembers - 3, 9)
 
   return (
     <div className={'flex items-center -space-x-1 rtl:space-x-reverse animate-fadein cursor-pointer'}>
-      {Object.entries(channelMembers).map(([name, member], index) => {
+      {Object.entries(channelMembers)?.map(([name, member], index) => {
         if (index < 3)
           return (
             <UserAvatar

@@ -2,7 +2,6 @@ import { useChannelActions } from '@/hooks/useChannelActions'
 import { useGetUser } from '@/hooks/useGetUser'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { ChannelWithGroupType, sortedChannelsAtom } from '@/utils/channel/ChannelAtom'
-import { useUnreadMessages } from '@/utils/layout/sidebar'
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -10,9 +9,8 @@ import * as ContextMenu from '@radix-ui/react-context-menu'
 import { Tooltip } from '@radix-ui/themes'
 import clsx from 'clsx'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { FaUsers } from 'react-icons/fa6'
-import { IoTriangle } from 'react-icons/io5'
 import { useNavigate, useParams } from 'react-router-dom'
 
 interface Props {
@@ -61,7 +59,7 @@ const CircleUserItem = ({ channel, isActive, onActivate }: Props) => {
 
   const shortName = useMemo(() => {
     const firstWord = displayName?.split(' ')[0] || ''
-    return firstWord.length > 6 ? firstWord.slice(0, 6) + '...' : firstWord
+    return firstWord?.length > 6 ? firstWord.slice(0, 6) + '...' : firstWord
   }, [displayName, isMobile])
 
   return (
@@ -114,7 +112,7 @@ const CircleUserList = () => {
   const isMobile = useIsMobile()
   const { isPinned, togglePin, markAsUnread, isManuallyMarked } = useChannelActions()
 
-  const items = useMemo(() => allChannels.map((c) => c.name), [allChannels])
+  const items = useMemo(() => allChannels?.map((c) => c.name), [allChannels])
   const sensors = useSensors(useSensor(PointerSensor))
 
   const handleDragEnd = (event: any) => {
@@ -126,7 +124,7 @@ const CircleUserList = () => {
     const newItems = arrayMove(items, oldIndex, newIndex)
 
     const reordered = newItems
-      .map((name) => allChannels.find((c) => c.name === name))
+      ?.map((name) => allChannels.find((c) => c.name === name))
       .filter(Boolean) as ChannelWithGroupType[]
 
     setChannels(reordered)
@@ -142,7 +140,7 @@ const CircleUserList = () => {
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={items} strategy={rectSortingStrategy}>
           <div className='flex flex-wrap gap-3 p-2'>
-            {items.map((channelName) => {
+            {items?.map((channelName) => {
               const channel = allChannels.find((c) => c.name === channelName)
               if (!channel) return null
               return (

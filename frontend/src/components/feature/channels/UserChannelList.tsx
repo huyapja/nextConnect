@@ -12,10 +12,9 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import ChannelItem from './ChannelItem'
 
-
 const UserChannelList = () => {
   const { dm_channels } = useChannelList()
-  const { users } = useContext(UserListContext)
+  const { enabledUsers: users } = useContext(UserListContext)
 
   const usersWithoutChannels = users?.filter(
     (user) => !dm_channels.find((channel) => channel.peer_user_id === user.name)
@@ -24,7 +23,7 @@ const UserChannelList = () => {
   return (
     <div>
       <div>
-        {dm_channels.map((channel) => (
+        {dm_channels?.map((channel) => (
           <ChannelItem
             key={channel.name}
             channelID={channel.name}
@@ -34,9 +33,7 @@ const UserChannelList = () => {
         ))}
         <br />
         <h5 className='text-sm mt-0 font-medium'>Những người chưa từng nhắn</h5>
-        {usersWithoutChannels.map((user) => (
-          <UserWithoutDMItem key={user.name} userID={user.name} />
-        ))}
+        {usersWithoutChannels?.map((user) => <UserWithoutDMItem key={user.name} userID={user.name} />)}
       </div>
     </div>
   )

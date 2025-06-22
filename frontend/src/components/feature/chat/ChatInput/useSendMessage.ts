@@ -37,12 +37,12 @@
 //     loading
 //   }
 // }
-import { useFrappePostCall } from 'frappe-react-sdk'
-import { Message } from '../../../../../../types/Messaging/Message'
 import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
-import { useContext } from 'react'
 import { UserContext } from '@/utils/auth/UserProvider'
 import { useUpdateLastMessageDetails } from '@/utils/channel/ChannelListProvider'
+import { useFrappePostCall } from 'frappe-react-sdk'
+import { useContext } from 'react'
+import { Message } from '../../../../../../types/Messaging/Message'
 
 export const useSendMessage = (
   channelID: string,
@@ -55,9 +55,6 @@ export const useSendMessage = (
   const { currentUser } = useContext(UserContext)
 
   const updateSidebarMessage = (msg: RavenMessage, fallbackText?: string) => {
-    const isImage =
-      msg.message_type === 'Image' || (msg?.attachment?.file_url || '').match(/\.(jpe?g|png|gif|webp|bmp|svg)$/i)
-
     updateLastMessageForChannel(channelID, {
       message_id: msg.name,
       content: fallbackText || msg.content || '',
@@ -85,8 +82,8 @@ export const useSendMessage = (
         })
         .then(() => uploadFiles())
         .then((res: RavenMessage[]) => {
-          if (res.length > 0) {
-            const last = res[res.length - 1]
+          if (res?.length > 0) {
+            const last = res[res?.length - 1]
             const text = last.message_type === 'Image' ? 'Đã gửi ảnh' : 'Đã gửi file'
             updateSidebarMessage(last, text)
           }
@@ -94,8 +91,8 @@ export const useSendMessage = (
         })
     } else {
       return uploadFiles(selectedMessage).then((res: RavenMessage[]) => {
-        if (res.length > 0) {
-          const last = res[res.length - 1]
+        if (res?.length > 0) {
+          const last = res[res?.length - 1]
           const text = last.message_type === 'Image' ? 'Đã gửi ảnh' : 'Đã gửi file'
           updateSidebarMessage(last, text)
         }

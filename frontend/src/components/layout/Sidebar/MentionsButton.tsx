@@ -97,7 +97,7 @@ const MentionsList = () => {
 
   const { data, size, isLoading, setSize } = useSWRInfinite<{ message: MentionObject[] }>(
     (pageIndex: number, previousPageData: { message: MentionObject[] } | null) => {
-      if (previousPageData && !previousPageData.message.length) return null
+      if (previousPageData && !previousPageData.message?.length) return null
       const start = pageIndex * PAGE_SIZE
       return [
         'raven.api.mentions.get_mentions',
@@ -117,7 +117,7 @@ const MentionsList = () => {
 
   const isEmpty = data?.[0]?.message?.length === 0
   const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === 'undefined')
-  const isReachingEnd = isEmpty || (data && data[data.length - 1]?.message?.length < PAGE_SIZE)
+  const isReachingEnd = isEmpty || (data && data[data?.length - 1]?.message?.length < PAGE_SIZE)
   const mentions = data?.flatMap((page: { message: MentionObject[] }) => page.message) ?? []
 
   const observerTarget = useRef<HTMLDivElement>(null)
@@ -163,7 +163,7 @@ const MentionsList = () => {
 
   return (
     <ul role='list' className='list-none h-[380px] overflow-y-auto'>
-      {mentions.map((mention) => (
+      {mentions?.map((mention) => (
         <li key={mention.name} role='listitem' className='border-b border-gray-4 last:border-0'>
           <MentionItem mention={mention} />
         </li>

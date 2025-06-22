@@ -28,10 +28,10 @@ const AddWorkspaceMembersModalContent = ({ workspaceID, onClose }: { workspaceID
   const { handleSubmit, control } = methods
 
   const onSubmit = (data: AddWorkspaceMemberForm) => {
-    if (data.add_members && data.add_members.length > 0) {
+    if (data.add_members && data.add_members?.length > 0) {
       call({
         workspace: workspaceID,
-        members: data.add_members.map((m) => m.name)
+        members: data.add_members?.map((m) => m.name)
       })
         .then(() => {
           toast.success('Members added')
@@ -57,7 +57,7 @@ const AddWorkspaceMembersModalContent = ({ workspaceID, onClose }: { workspaceID
                   name='add_members'
                   rules={{
                     validate: (value) => {
-                      if (value && value.length > 0) {
+                      if (value && value?.length > 0) {
                         return true
                       }
                       return 'Please select at least one member'
@@ -111,7 +111,7 @@ const AddMembersDropdown = ({
 
   //Options for dropdown
   const nonWorkspaceMembers = useMemo(() => {
-    const members = data?.message.map((m) => m.user)
+    const members = data?.message?.map((m) => m.user)
     return users.enabledUsers?.filter((m: UserFields) => !members?.includes(m.name)) ?? []
   }, [users.enabledUsers, data])
 

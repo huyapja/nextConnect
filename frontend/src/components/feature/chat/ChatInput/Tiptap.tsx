@@ -1,46 +1,46 @@
-import { BubbleMenu, Editor, EditorContent, EditorContext, Extension, ReactRenderer, useEditor } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline'
-import React, { Suspense, forwardRef, lazy, useContext, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
-import { TextFormattingMenu } from './TextFormattingMenu'
-import Highlight from '@tiptap/extension-highlight'
-import Link from '@tiptap/extension-link'
-import Placeholder from '@tiptap/extension-placeholder'
-import './tiptap.styles.css'
-import Mention from '@tiptap/extension-mention'
-import { UserFields, UserListContext } from '@/utils/users/UserListProvider'
-import MentionList from './MentionList'
-import tippy from 'tippy.js'
-import { PluginKey } from '@tiptap/pm/state'
+import { ChannelMembers } from '@/hooks/fetchers/useFetchChannelMembers'
+import { useIsDesktop, useIsMobile } from '@/hooks/useMediaQuery'
+import { useStickyState } from '@/hooks/useStickyState'
+import useUnreadMessageCount, { useUpdateUnreadCountToZero } from '@/hooks/useUnreadMessageCount'
 import { ChannelListContext, ChannelListContextType } from '@/utils/channel/ChannelListProvider'
-import ChannelMentionList from './ChannelMentionList'
-import { ToolPanel } from './ToolPanel'
-import { RightToolbarButtons, SendButton } from './RightToolbarButtons'
-import { common, createLowlight } from 'lowlight'
+import eventBus from '@/utils/event-emitter'
+import { EnterKeyBehaviourAtom } from '@/utils/preferences'
+import { UserFields, UserListContext } from '@/utils/users/UserListProvider'
+import { Box, Flex, IconButton } from '@radix-ui/themes'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import Highlight from '@tiptap/extension-highlight'
+import Image from '@tiptap/extension-image'
+import Link from '@tiptap/extension-link'
+import Mention from '@tiptap/extension-mention'
+import Placeholder from '@tiptap/extension-placeholder'
+import Underline from '@tiptap/extension-underline'
+import { PluginKey } from '@tiptap/pm/state'
+import { BubbleMenu, EditorContent, EditorContext, Extension, ReactRenderer, useEditor } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import clsx from 'clsx'
+import { useFrappePostCall } from 'frappe-react-sdk'
 import css from 'highlight.js/lib/languages/css'
 import js from 'highlight.js/lib/languages/javascript'
-import ts from 'highlight.js/lib/languages/typescript'
-import html from 'highlight.js/lib/languages/xml'
 import json from 'highlight.js/lib/languages/json'
 import python from 'highlight.js/lib/languages/python'
-import { Plugin } from 'prosemirror-state'
-import { Box, Flex, IconButton } from '@radix-ui/themes'
-import { useStickyState } from '@/hooks/useStickyState'
-import { Message } from '../../../../../../types/Messaging/Message'
-import Image from '@tiptap/extension-image'
-import { EmojiSuggestion } from './EmojiSuggestion'
-import { useIsDesktop, useIsMobile } from '@/hooks/useMediaQuery'
-import { BiPlus } from 'react-icons/bi'
-import clsx from 'clsx'
-import { ChannelMembers } from '@/hooks/fetchers/useFetchChannelMembers'
-import TimestampRenderer from '../ChatMessage/Renderers/TiptapRenderer/TimestampRenderer'
-import { useParams } from 'react-router-dom'
+import ts from 'highlight.js/lib/languages/typescript'
+import html from 'highlight.js/lib/languages/xml'
 import { useAtom } from 'jotai'
-import { EnterKeyBehaviourAtom } from '@/utils/preferences'
-import { useFrappePostCall } from 'frappe-react-sdk'
-import { useUnreadContext } from '@/utils/layout/sidebar'
-import { useUpdateUnreadCountToZero } from '@/hooks/useUnreadMessageCount'
+import { common, createLowlight } from 'lowlight'
+import { Plugin } from 'prosemirror-state'
+import React, { Suspense, forwardRef, lazy, useContext, useEffect, useImperativeHandle, useRef } from 'react'
+import { BiPlus } from 'react-icons/bi'
+import { useParams } from 'react-router-dom'
+import tippy from 'tippy.js'
+import { Message } from '../../../../../../types/Messaging/Message'
+import TimestampRenderer from '../ChatMessage/Renderers/TiptapRenderer/TimestampRenderer'
+import ChannelMentionList from './ChannelMentionList'
+import { EmojiSuggestion } from './EmojiSuggestion'
+import MentionList from './MentionList'
+import { RightToolbarButtons, SendButton } from './RightToolbarButtons'
+import { TextFormattingMenu } from './TextFormattingMenu'
+import './tiptap.styles.css'
+import { ToolPanel } from './ToolPanel'
 const MobileInputActions = lazy(() => import('./MobileActions/MobileInputActions'))
 
 const lowlight = createLowlight(common)
@@ -135,11 +135,20 @@ const Tiptap = forwardRef(
 
     const channelMembersRef = useRef<MemberSuggestions[]>([])
     const { call: trackVisit } = useFrappePostCall('raven.api.raven_channel_member.track_visit')
+    const { unread_count } = useUnreadMessageCount()
     const updateUnreadCountToZero = useUpdateUnreadCountToZero()
 
     const handleClick = async () => {
+      const unreadEntry = unread_count?.message.find((c) => c.name === channelID)
+
+      if (!unreadEntry || unreadEntry.unread_count <= 0) return // Không có hoặc = 0 → không cần track
+
       try {
         await trackVisit({ channel_id: channelID })
+        eventBus.emit('user:interacted', {
+          source: 'input',
+          timestamp: Date.now()
+        })
         updateUnreadCountToZero(channelID)
       } catch (err) {
         console.error('trackVisit failed', err)
@@ -150,13 +159,13 @@ const Tiptap = forwardRef(
       if (channelMembers) {
         // Sort the user list so that members are at the top
         channelMembersRef.current = enabledUsers
-          .map((user) => ({
+          ?.map((user) => ({
             ...user,
             is_member: user.name in channelMembers
           }))
           .sort((a, b) => (a.is_member ? -1 : 1))
       } else {
-        channelMembersRef.current = enabledUsers.map((user) => ({
+        channelMembersRef.current = enabledUsers?.map((user) => ({
           ...user,
           is_member: true
         }))
@@ -172,7 +181,7 @@ const Tiptap = forwardRef(
     const [enterKeyBehaviour] = useAtom(EnterKeyBehaviourAtom)
 
     const handleMessageSendAction = (editor: any) => {
-      const hasContent = editor.getText().trim().length > 0
+      const hasContent = editor.getText().trim()?.length > 0
       let html = ''
       let json = {}
       if (hasContent) {
@@ -235,7 +244,7 @@ const Tiptap = forwardRef(
           'Mod-Enter': () => {
             const isCodeBlockActive = this.editor.isActive('codeBlock')
             const isListItemActive = this.editor.isActive('listItem')
-            const hasContent = this.editor.getText().trim().length > 0
+            const hasContent = this.editor.getText().trim()?.length > 0
             /**
              * when inside of a codeblock and setting for sending the message with CMD/CTRL-Enter
              * force calling the `onSubmit` function and clear the editor content
@@ -299,7 +308,7 @@ const Tiptap = forwardRef(
             props: {
               handleDOMEvents: {
                 drop(view, event) {
-                  const hasFiles = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length
+                  const hasFiles = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files?.length
 
                   if (!hasFiles || !fileProps) {
                     return
@@ -307,18 +316,18 @@ const Tiptap = forwardRef(
 
                   const images = Array.from(event.dataTransfer.files).filter((file) => /image/i.test(file.type))
 
-                  if (images.length === 0) {
+                  if (images?.length === 0) {
                     return
                   }
 
                   event.preventDefault()
 
-                  images.forEach((image) => {
+                  images?.forEach((image) => {
                     fileProps.addFile(image)
                   })
                 },
                 paste(view, event) {
-                  const hasFiles = event.clipboardData && event.clipboardData.files && event.clipboardData.files.length
+                  const hasFiles = event.clipboardData && event.clipboardData.files && event.clipboardData.files?.length
 
                   if (!hasFiles || !fileProps) {
                     return
@@ -326,13 +335,13 @@ const Tiptap = forwardRef(
 
                   const images = Array.from(event.clipboardData.files).filter((file) => /image/i.test(file.type))
 
-                  if (images.length === 0) {
+                  if (images?.length === 0) {
                     return
                   }
 
                   event.preventDefault()
 
-                  images.forEach((image) => {
+                  images?.forEach((image) => {
                     fileProps.addFile(image)
                   })
                 }

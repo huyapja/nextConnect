@@ -44,7 +44,7 @@ export const MessageContextMenu = ({
 
   const isOwner = currentUser === message?.owner && !message?.is_bot_message
 
-  const isReactionsAvailable = Object.keys(JSON.parse(message?.message_reactions ?? '{}')).length !== 0
+  const isReactionsAvailable = Object.keys(JSON.parse(message?.message_reactions ?? '{}'))?.length !== 0
 
   return (
     <ContextMenu.Content>
@@ -68,7 +68,7 @@ export const MessageContextMenu = ({
 
           {message && !message.is_thread && showThreadButton && <CreateThreadContextItem messageID={message.name} />}
 
-          <CopyMessageLink message={message} />
+          {/* <CopyMessageLink message={message} /> */}
 
           <ContextMenu.Separator />
           <ContextMenu.Group>

@@ -1,27 +1,27 @@
-import { HiMenu } from 'react-icons/hi'
-import { useUnreadMessageCount } from '@/hooks/useUnreadMessageCount'
-import { filterItems, useMentionUnreadCount, FilterList } from './SidebarContainer'
-import { useSidebarMode } from '@/utils/layout/sidebar'
-import { useEffect, useState } from 'react'
 import { useIsTablet } from '@/hooks/useMediaQuery'
+import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
+import { useSidebarMode } from '@/utils/layout/sidebar'
 import clsx from 'clsx'
+import { useEffect, useMemo, useState } from 'react'
+import { HiMenu } from 'react-icons/hi'
+import { filterItems, FilterList, useMentionUnreadCount } from './SidebarContainer'
 
 export default function FilterTabs() {
-  const { title, setTitle, setLabelID } = useSidebarMode()
-  const { totalUnreadCount } = useUnreadMessageCount()
+  const { title, setTitle, setLabelID, setMode } = useSidebarMode()
+  const enrichedChannels = useEnrichedSortedChannels(0) // chỉ lấy channel chưa xong
   const { mentionUnreadCount, resetMentions } = useMentionUnreadCount()
 
   const isTablet = useIsTablet()
 
-  const { setMode } = useSidebarMode()
-
   const limitedTabs = filterItems.slice(0, 3)
 
   // Trích ra các label trong limitedTabs
-  const limitedLabels = limitedTabs.map((tab) => tab.label)
+  const limitedLabels = limitedTabs?.map((tab) => tab.label)
+  const tabsToRender = limitedLabels.includes(title as string) ? limitedTabs : [{ label: title, icon: null }]
 
-  // Nếu title không nằm trong limitedTabs, render riêng
-  const tabsToRender = limitedLabels.includes(title) ? limitedTabs : [{ label: title, icon: null }]
+  const totalUnreadCount = useMemo(() => {
+    return enrichedChannels.reduce((sum, c) => sum + (c.unread_count ?? 0), 0)
+  }, [enrichedChannels])
 
   const getBadgeCount = (label: string) => {
     if (['Trò chuyện', 'Chưa đọc'].includes(label)) return totalUnreadCount
@@ -59,7 +59,6 @@ export default function FilterTabs() {
           className='w-7 h-7 shrink-0 rounded-full dark:bg-gray-700 flex items-center justify-center relative'
         >
           <HiMenu className='w-4 h-4 dark:text-white' />
-
           {(totalUnreadCount > 0 || mentionUnreadCount > 0) && (
             <span className='absolute top-0 right-0 w-[8px] h-[8px] bg-red-500 rounded-full' />
           )}
@@ -68,22 +67,20 @@ export default function FilterTabs() {
         <div
           className={clsx(
             'flex flex-1 justify-between items-center rounded-full px-1 py-1 gap-[2px] overflow-hidden',
-            tabsToRender.length > 1 && 'bg-gray-200 dark:bg-neutral-800'
+            tabsToRender?.length > 1 && 'bg-gray-200 dark:bg-neutral-800'
           )}
         >
-          {tabsToRender.map((tab) => {
+          {tabsToRender?.map((tab) => {
             const isActive = tab.label === title
-            const badgeCount = getBadgeCount(tab.label)
-
-            const isSingleTab = tabsToRender.length === 1
-
+            const badgeCount = getBadgeCount(tab.label as string)
+            const isSingleTab = tabsToRender?.length === 1
             return (
               <div
-                key={tab.label}
+                key={tab.label as string}
                 className={clsx('relative flex items-center justify-center', isSingleTab ? 'w-1/3' : 'flex-1')}
               >
                 <button
-                  onClick={() => handleClick(tab.label)}
+                  onClick={() => handleClick(tab.label as string)}
                   className={clsx(
                     'relative truncate px-2 py-0.5 rounded-full text-xs font-medium text-center w-full pr-5',
                     isActive
@@ -92,10 +89,9 @@ export default function FilterTabs() {
                     isSingleTab && isActive && 'border border-gray-300 dark:border-gray-600'
                   )}
                 >
-                  <span>{tab.label}</span>
+                  <span>{tab.label as string}</span>
                   {badgeCount > 0 && <span className='text-[10px] px-1 rounded-full leading-none'>{badgeCount}</span>}
 
-                  {/* ❌ Nút X nằm bên trong button */}
                   {isSingleTab && (
                     <span
                       onClick={(e) => {
@@ -117,7 +113,6 @@ export default function FilterTabs() {
 
       {isTablet && shouldRenderFilterList && (
         <>
-          {/* Overlay */}
           <div
             onClick={() => setShowFilterList(false)}
             className={clsx(
@@ -126,7 +121,6 @@ export default function FilterTabs() {
             )}
           />
 
-          {/* Sidebar */}
           <div
             className={clsx(
               'fixed top-0 left-0 h-full w-60 bg-white dark:bg-neutral-800 shadow-lg z-30',

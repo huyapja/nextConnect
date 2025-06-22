@@ -8,7 +8,7 @@ import { FileDrop } from '../../file-upload/FileDrop'
 import useFileUpload from '../ChatInput/FileInput/useFileUpload'
 import ModalChatStream from './ModalChatStream'
 
-// const randomPlaceholder = COOL_PLACEHOLDERS[Math.floor(Math.random() * (COOL_PLACEHOLDERS.length))]
+// const randomPlaceholder = COOL_PLACEHOLDERS[Math.floor(Math.random() * (COOL_PLACEHOLDERS?.length))]
 interface ChatBoxBodyProps {
   channelData: ChannelListItem | DMChannelListItem
 }
@@ -18,7 +18,6 @@ export const ModalChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
   const virtuosoRef = useRef<VirtuosoHandle>(null)
 
   const chatStreamRef = useRef<{ onUpArrow: () => void } | null>(null)
-
 
   const tiptapRef = useRef<{ focusEditor: () => void } | null>(null)
 
@@ -35,13 +34,8 @@ export const ModalChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
   }, [isMobile])
 
   // Quản lý toàn bộ quá trình upload file đính kèm
-  const {
-    fileInputRef,
-    files,
-    setFiles,
-  } = useFileUpload(channelData.name)
+  const { fileInputRef, files, setFiles } = useFileUpload(channelData.name)
 
- 
   const { threadID } = useParams()
 
   return (

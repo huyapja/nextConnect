@@ -1,8 +1,8 @@
 // ==== labels/conversation/CreateConversationContent.tsx ====
 
-import { useMemo, useState, lazy, Suspense } from 'react'
+import { Button, Dialog, Flex } from '@radix-ui/themes'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { Dialog, Flex, Button } from '@radix-ui/themes'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { IoMdClose } from 'react-icons/io'
 import { toast } from 'sonner'
 
@@ -10,11 +10,11 @@ import { sortedChannelsAtom, useUpdateChannelLabels } from '@/utils/channel/Chan
 import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
 import { refreshLabelListAtom } from './atoms/labelAtom'
 
-import ChannelModalConversationItem from './ChannelModalConversationItem'
-import SelectedChannelItem from './SelectedChannelItem'
-import { UnifiedChannel } from '../../direct-messages/useUnifiedChannelList'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import clsx from 'clsx'
+import { UnifiedChannel } from '../../direct-messages/useUnifiedChannelList'
+import ChannelModalConversationItem from './ChannelModalConversationItem'
+import SelectedChannelItem from './SelectedChannelItem'
 
 type Props = {
   setIsOpen: (v: boolean) => void
@@ -73,7 +73,7 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
       })
 
       // ✅ Cập nhật local sortedChannelsAtom
-      channel_ids.forEach((channelID) => {
+      channel_ids?.forEach((channelID) => {
         addLabelToChannel(channelID, name)
       })
 
@@ -122,13 +122,13 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
               type='text'
               placeholder='Tìm kiếm'
               className='w-80 p-2 border rounded text-sm mb-2
-        border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary 
+        border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary
         dark:bg-gray-900 dark:text-white dark:border-gray-700 dark:placeholder-gray-500'
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
             <div className='flex-1 overflow-y-auto space-y-1'>
-              {filteredChannels.map((channel) => (
+              {filteredChannels?.map((channel) => (
                 <ChannelModalConversationItem
                   key={channel.name}
                   channel={channel}
@@ -145,10 +145,10 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
           <div className='md:w-1/2 p-2 text-sm order-1 md:order-none'>
             <div className='mb-2 font-medium'>Đã chọn: {selected.size} cuộc trò chuyện</div>
             <div className={`${isMobile ? 'flex flex-wrap mt-5 gap-4' : 'space-y-1'}`}>
-              {selectedChannels.map((channel) => (
+              {selectedChannels?.map((channel) => (
                 <SelectedChannelItem key={channel.name} channel={channel} handleToggle={handleToggle} />
               ))}
-              {selectedChannels.length === 0 && (
+              {selectedChannels?.length === 0 && (
                 <div className='text-gray-500 italic'>Chưa chọn cuộc trò chuyện nào</div>
               )}
             </div>
