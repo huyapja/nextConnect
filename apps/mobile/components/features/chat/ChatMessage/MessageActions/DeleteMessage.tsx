@@ -1,5 +1,5 @@
 import { Message } from '@raven/types/common/Message'
-import { useFrappeDeleteDoc, useSWRConfig } from 'frappe-react-sdk'
+import { useFrappeDeleteDoc, useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
 import { useCallback } from 'react'
 import { Alert } from 'react-native'
 import { toast } from 'sonner-native'
@@ -15,16 +15,17 @@ interface DeleteMessageProps {
 
 const DeleteMessage = ({ message, onClose }: DeleteMessageProps) => {
 
-    const { deleteMessage, loading } = useMessageDelete(message, onClose)
+    // const { deleteMessage, loading } = useMessageDelete(message, onClose)
+    const { onRetract, loading } = useRetractMessage(message, onClose)
 
     const onDelete = () => {
-        deleteMessage()
+        onRetract()
     }
 
     const onMessageDelete = useCallback(() => {
-        Alert.alert('Delete message?', 'Are you sure you want to delete this message? It will be deleted for all users.', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Delete', style: 'destructive', onPress: onDelete },
+        Alert.alert('Thu hồi tin nhắn?', 'Bạn chắc chắn muốn thu hồi tin nhắn này với tất cả mọi người không?.', [
+            { text: 'Huỷ', style: 'cancel' },
+            { text: 'Thu hồi', style: 'destructive', onPress: onDelete },
         ])
     }, [])
 
@@ -34,7 +35,7 @@ const DeleteMessage = ({ message, onClose }: DeleteMessageProps) => {
         <ActionButton
             onPress={onMessageDelete}
             icon={<TrashIcon width={18} height={18} fill={isDarkColorScheme ? '#f87171' : '#dc2626'} />}
-            text='Xoá tin nhắn'
+            text='Thu hồi'
             isDestructive={true}
             disabled={loading}
         />
@@ -42,6 +43,43 @@ const DeleteMessage = ({ message, onClose }: DeleteMessageProps) => {
 }
 
 export default DeleteMessage
+
+const useRetractMessage = (message: Message, onDelete: Function) => {
+    const messageID = message.name;
+    const { call, error, loading: isCalling } = useFrappePostCall('raven.api.raven_message.retract_message');
+
+    const removeMessageFromCache = (data?: GetMessagesResponse): GetMessagesResponse => {
+        const existingMessages = data?.message.messages ?? []
+        const newMessages = existingMessages.map(msg => {
+            if (msg.name === messageID) {
+                msg.is_retracted = true;
+            }
+            return msg;
+        });
+        return {
+            message: {
+                has_old_messages: data?.message.has_old_messages ?? true,
+                has_new_messages: data?.message.has_new_messages ?? false,
+                messages: newMessages
+            }
+        }
+    }
+
+    const onRetract = async () => {
+        try {
+            onDelete();
+            removeMessageFromCache();
+            await call({ message_id: message.name });
+            toast.success('Đã thu hồi tin nhắn', {
+                duration: 500,
+            })
+        } catch (error) {
+            toast.error("Thu hồi tin nhắn thất bại.")
+        }
+    }
+
+    return { onRetract, loading: isCalling }
+}
 
 const useMessageDelete = (message: Message, onDelete: () => void) => {
 
