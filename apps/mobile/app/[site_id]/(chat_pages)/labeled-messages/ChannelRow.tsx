@@ -7,8 +7,10 @@ import { replaceCurrentUserFromDMChannelName } from "@raven/lib/utils/operations
 import { Link } from 'expo-router'
 import { useMemo } from 'react'
 import { Pressable, StyleSheet, Text } from 'react-native'
-import { ChanelLabeledMessage } from 'types/LabeledMessageType'
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { ChanelLabeledMessage, LabeledMessageItem } from 'types/LabeledMessageType'
 import { getRandomRgba } from 'utils/functions'
+import RightAction from './RightAction'
 
 const styles = StyleSheet.create({
     container: {
@@ -31,7 +33,7 @@ const styles = StyleSheet.create({
     },
 })
 
-const ChannelRow = ({ row }: { row: ChanelLabeledMessage }) => {
+const ChannelRow = ({ row, label }: { row: ChanelLabeledMessage, label: LabeledMessageItem }) => {
     const isDM = row.is_direct_message;
     const { myProfile: currentUserInfo } = useCurrentRavenUser();
 
@@ -45,35 +47,42 @@ const ChannelRow = ({ row }: { row: ChanelLabeledMessage }) => {
     const isActive = useIsUserActive(userId);
 
     return (
-        <Link href={`../chat/${row.channel_id}`} asChild>
-            <Pressable
-                className='flex-row items-center px-3 py-1.5 rounded-lg ios:active:bg-linkColor'
-                android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
-            >
-                {
-                    user ? (
-                        <>
-                            <UserAvatar
-                                src={user?.user_image ?? ""}
-                                alt={user?.full_name ?? ""}
-                                isActive={isActive}
-                                availabilityStatus={user?.availability_status}
-                                avatarProps={{ className: "w-8 h-8" }}
-                                textProps={{ className: "text-sm font-medium" }}
-                                isBot={user?.type === 'Bot'} />
-                            <Text className='text-foreground' style={styles.dmChannelText}>{user?.full_name}</Text>
-                        </>
-                    ) : !isDM ? (
-                        <>
-                            <Text style={{ backgroundColor: getRandomRgba(), padding: 4, borderRadius: 4 }}>
-                                <GroupIcon color={"#fff"} width={24} height={24}/>
-                            </Text>
-                            <Text className='text-foreground' style={styles.dmChannelText}>{row.channel_name}</Text>
-                        </>
-                    ) : null
-                }
-            </Pressable>
-        </Link>
+        <ReanimatedSwipeable
+            friction={2}
+            enableTrackpadTwoFingerGesture
+            rightThreshold={40}
+            renderRightActions={(prog, drag) => RightAction(prog, drag, label, row)}
+        >
+            <Link href={`../chat/${row.channel_id}`} asChild>
+                <Pressable
+                    className='flex-row items-center px-3 py-1.5 rounded-lg ios:active:bg-linkColor'
+                    android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+                >
+                    {
+                        user ? (
+                            <>
+                                <UserAvatar
+                                    src={user?.user_image ?? ""}
+                                    alt={user?.full_name ?? ""}
+                                    isActive={isActive}
+                                    availabilityStatus={user?.availability_status}
+                                    avatarProps={{ className: "w-8 h-8" }}
+                                    textProps={{ className: "text-sm font-medium" }}
+                                    isBot={user?.type === 'Bot'} />
+                                <Text className='text-foreground' style={styles.dmChannelText}>{user?.full_name}</Text>
+                            </>
+                        ) : !isDM ? (
+                            <>
+                                <Text style={{ backgroundColor: getRandomRgba(), padding: 4, borderRadius: 4 }}>
+                                    <GroupIcon color={"#fff"} width={24} height={24}/>
+                                </Text>
+                                <Text className='text-foreground' style={styles.dmChannelText}>{row.channel_name}</Text>
+                            </>
+                        ) : null
+                    }
+                </Pressable>
+            </Link>
+        </ReanimatedSwipeable>
     )
 }
 

@@ -6,6 +6,8 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LabeledMessageItem } from 'types/LabeledMessageType';
 import ChannelRow from './ChannelRow';
 import { router } from 'expo-router';
+import { useSetAtom } from 'jotai';
+import { selectedLabelAtom } from '@lib/LabelActions';
 
 const styles = StyleSheet.create({
     container: {
@@ -31,7 +33,9 @@ const styles = StyleSheet.create({
 const LabeledItem = ({ data, onLongPress }: { data: LabeledMessageItem, onLongPress: (label: LabeledMessageItem) => void }) => {
     const { colors } = useColorScheme()
     const [isExpanded, setIsExpanded] = useState(false)
+    const setSelectedLabel = useSetAtom(selectedLabelAtom);
     const onAddConversation = () => {
+        setSelectedLabel(data);
         router.push('./add-conversation', {
             relativeToDirectory: true
         })
@@ -50,7 +54,7 @@ const LabeledItem = ({ data, onLongPress }: { data: LabeledMessageItem, onLongPr
             </TouchableOpacity>
             {isExpanded && (
                 <>
-                    {data.channels.map((channel) => <ChannelRow key={channel.channel_id} row={channel} />)}
+                    {data.channels.map((channel) => <ChannelRow key={channel.channel_id} label={data} row={channel} />)}
                     {
                         data.channels?.length === 0 && (
                             <>

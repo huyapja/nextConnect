@@ -19,10 +19,7 @@ const LabeledMessages = () => {
     const setSelectedLabel = useSetAtom(selectedLabelAtom);
 
     useEffect(() => {
-        if (label) {
-            Keyboard.dismiss()
-            labelActionsSheetRef.current?.present()
-        } else {
+        if (!label) {
             labelActionsSheetRef.current?.dismiss()
         }
     }, [label])
@@ -44,6 +41,8 @@ const LabeledMessages = () => {
 
     const handleLongPress = (label: LabeledMessageItem | null) => {
         if (label) {
+            Keyboard.dismiss()
+            labelActionsSheetRef.current?.present()
             setSelectedLabel(label);
             labelActionsSheetRef.current?.present()
         }
