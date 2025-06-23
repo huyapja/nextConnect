@@ -2,7 +2,7 @@
   "expo": {
     "name": "Raven",
     "slug": "Raven",
-    "scheme": "raven.thecommit.company",
+    "scheme": "com.hainam.raven",
     "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "appleTeamId": "W6346TTZQX",
-      "bundleIdentifier": "raven.thecommit.company",
+      "bundleIdentifier": "com.hainam.raven",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -26,9 +26,6 @@
           "remote-notification",
           "fetch"
         ]
-      },
-      "entitlements": {
-        "aps-environment": "production"
       }
     },
     "android": {
@@ -37,7 +34,7 @@
         "backgroundColor": "#000000"
       },
       "softwareKeyboardLayoutMode": "pan",
-      "package": "raven.thecommit.company",
+      "package": "com.hainam.raven",
       "googleServicesFile": "./google-services.json"
     },
     "web": {
@@ -77,9 +74,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "3a173ddd-f22a-4f81-8279-40dcee6c29d5"
+        "projectId": "42cf1cdb-6bd9-46d9-a6e8-b9841097122c"
       }
     },
-    "owner": "the-commit-company"
+    "owner": "hieumc_dev"
   }
 }

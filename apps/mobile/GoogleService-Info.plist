@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyBeMvrmiY5bXIjAUlR03sQKH5NGNkS7d6Y</string>
+	<string>AIzaSyC8hP5ugv9A9yhKDusF_fPaTskKGuVDSw4</string>
 	<key>GCM_SENDER_ID</key>
-	<string>257310726313</string>
+	<string>412650572452</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>raven.thecommit.company</string>
+	<string>com.hainam.raven</string>
 	<key>PROJECT_ID</key>
-	<string>raven-c2659</string>
+	<string>hainam-chat</string>
 	<key>STORAGE_BUCKET</key>
-	<string>raven-c2659.firebasestorage.app</string>
+	<string>hainam-chat.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:257310726313:ios:a192c58ca3307514a631b8</string>
+	<string>1:412650572452:ios:0fd4913c47bcdde6117431</string>
 </dict>
 </plist>
