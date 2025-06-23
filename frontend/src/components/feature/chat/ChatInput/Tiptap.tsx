@@ -1,8 +1,9 @@
 import { ChannelMembers } from '@/hooks/fetchers/useFetchChannelMembers'
 import { useIsDesktop, useIsMobile } from '@/hooks/useMediaQuery'
 import { useStickyState } from '@/hooks/useStickyState'
-import { useUpdateUnreadCountToZero } from '@/hooks/useUnreadMessageCount'
+import useUnreadMessageCount, { useUpdateUnreadCountToZero } from '@/hooks/useUnreadMessageCount'
 import { ChannelListContext, ChannelListContextType } from '@/utils/channel/ChannelListProvider'
+import eventBus from '@/utils/event-emitter'
 import { EnterKeyBehaviourAtom } from '@/utils/preferences'
 import { UserFields, UserListContext } from '@/utils/users/UserListProvider'
 import { Box, Flex, IconButton } from '@radix-ui/themes'
@@ -17,6 +18,7 @@ import { PluginKey } from '@tiptap/pm/state'
 import { BubbleMenu, EditorContent, EditorContext, Extension, ReactRenderer, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import clsx from 'clsx'
+import { useFrappePostCall } from 'frappe-react-sdk'
 import css from 'highlight.js/lib/languages/css'
 import js from 'highlight.js/lib/languages/javascript'
 import json from 'highlight.js/lib/languages/json'
@@ -132,11 +134,21 @@ const Tiptap = forwardRef(
     const { enabledUsers } = useContext(UserListContext)
 
     const channelMembersRef = useRef<MemberSuggestions[]>([])
-
+    const { call: trackVisit } = useFrappePostCall('raven.api.raven_channel_member.track_visit')
+    const { unread_count } = useUnreadMessageCount()
     const updateUnreadCountToZero = useUpdateUnreadCountToZero()
 
     const handleClick = async () => {
+      const unreadEntry = unread_count?.message.find((c) => c.name === channelID)
+
+      if (!unreadEntry || unreadEntry.unread_count <= 0) return // Không có hoặc = 0 → không cần track
+
       try {
+        await trackVisit({ channel_id: channelID })
+        eventBus.emit('user:interacted', {
+          source: 'input',
+          timestamp: Date.now()
+        })
         updateUnreadCountToZero(channelID)
       } catch (err) {
         console.error('trackVisit failed', err)
@@ -147,13 +159,13 @@ const Tiptap = forwardRef(
       if (channelMembers) {
         // Sort the user list so that members are at the top
         channelMembersRef.current = enabledUsers
-          .map((user) => ({
+          ?.map((user) => ({
             ...user,
             is_member: user.name in channelMembers
           }))
           .sort((a, b) => (a.is_member ? -1 : 1))
       } else {
-        channelMembersRef.current = enabledUsers.map((user) => ({
+        channelMembersRef.current = enabledUsers?.map((user) => ({
           ...user,
           is_member: true
         }))
@@ -169,7 +181,7 @@ const Tiptap = forwardRef(
     const [enterKeyBehaviour] = useAtom(EnterKeyBehaviourAtom)
 
     const handleMessageSendAction = (editor: any) => {
-      const hasContent = editor.getText().trim().length > 0
+      const hasContent = editor.getText().trim()?.length > 0
       let html = ''
       let json = {}
       if (hasContent) {
@@ -232,7 +244,7 @@ const Tiptap = forwardRef(
           'Mod-Enter': () => {
             const isCodeBlockActive = this.editor.isActive('codeBlock')
             const isListItemActive = this.editor.isActive('listItem')
-            const hasContent = this.editor.getText().trim().length > 0
+            const hasContent = this.editor.getText().trim()?.length > 0
             /**
              * when inside of a codeblock and setting for sending the message with CMD/CTRL-Enter
              * force calling the `onSubmit` function and clear the editor content
@@ -296,7 +308,7 @@ const Tiptap = forwardRef(
             props: {
               handleDOMEvents: {
                 drop(view, event) {
-                  const hasFiles = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length
+                  const hasFiles = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files?.length
 
                   if (!hasFiles || !fileProps) {
                     return
@@ -304,18 +316,18 @@ const Tiptap = forwardRef(
 
                   const images = Array.from(event.dataTransfer.files).filter((file) => /image/i.test(file.type))
 
-                  if (images.length === 0) {
+                  if (images?.length === 0) {
                     return
                   }
 
                   event.preventDefault()
 
-                  images.forEach((image) => {
+                  images?.forEach((image) => {
                     fileProps.addFile(image)
                   })
                 },
                 paste(view, event) {
-                  const hasFiles = event.clipboardData && event.clipboardData.files && event.clipboardData.files.length
+                  const hasFiles = event.clipboardData && event.clipboardData.files && event.clipboardData.files?.length
 
                   if (!hasFiles || !fileProps) {
                     return
@@ -323,13 +335,13 @@ const Tiptap = forwardRef(
 
                   const images = Array.from(event.clipboardData.files).filter((file) => /image/i.test(file.type))
 
-                  if (images.length === 0) {
+                  if (images?.length === 0) {
                     return
                   }
 
                   event.preventDefault()
 
-                  images.forEach((image) => {
+                  images?.forEach((image) => {
                     fileProps.addFile(image)
                   })
                 }

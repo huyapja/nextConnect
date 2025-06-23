@@ -47,7 +47,7 @@ const BotFileSources = () => {
               <Dialog.Title>Select Files</Dialog.Title>
               <Dialog.Description size='2'>Select files from the list below.</Dialog.Description>
               <div className='mt-4'>
-                <SelectExistingFiles append={addNew} existingFiles={fields.map((d) => d.file)} />
+                <SelectExistingFiles append={addNew} existingFiles={fields?.map((d) => d.file)} />
               </div>
             </Dialog.Content>
           </Dialog.Root>
@@ -129,7 +129,7 @@ const SelectExistingFiles = ({ append, existingFiles }: { append: (id: string) =
   }
 
   const onSubmit = () => {
-    selectedFiles.forEach((d) => append(d))
+    selectedFiles?.forEach((d) => append(d))
     setSelectedFiles([])
   }
 
@@ -192,7 +192,7 @@ const SelectExistingFiles = ({ append, existingFiles }: { append: (id: string) =
             Close
           </Button>
         </Dialog.Close>
-        <Dialog.Close onClick={onSubmit} disabled={selectedFiles.length === 0}>
+        <Dialog.Close onClick={onSubmit} disabled={selectedFiles?.length === 0}>
           <Button type='button' className='not-cal'>
             Add
           </Button>

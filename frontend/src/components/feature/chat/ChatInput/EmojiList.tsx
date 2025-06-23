@@ -16,11 +16,11 @@ export default forwardRef((props: ReactRendererOptions['props'], ref) => {
   }
 
   const upHandler = () => {
-    setSelectedIndex((selectedIndex + props?.items.length - 1) % props?.items.length)
+    setSelectedIndex((selectedIndex + props?.items?.length - 1) % props?.items?.length)
   }
 
   const downHandler = () => {
-    setSelectedIndex((selectedIndex + 1) % props?.items.length)
+    setSelectedIndex((selectedIndex + 1) % props?.items?.length)
   }
 
   const enterHandler = () => {
@@ -57,15 +57,15 @@ export default forwardRef((props: ReactRendererOptions['props'], ref) => {
         gap='0'
         className='shadow-lg dark:bg-panel-solid bg-white overflow-y-scroll max-h-96 rounded-md'
       >
-        {props?.items.length
-          ? props.items.map((item: EmojiType, index: number) => (
+        {props?.items?.length
+          ? props.items?.map((item: EmojiType, index: number) => (
               <MentionItem
                 item={item}
                 index={index}
                 selectItem={selectItem}
                 selectedIndex={selectedIndex}
                 key={item.shortcodes ?? item.id}
-                itemsLength={props.items.length}
+                itemsLength={props.items?.length}
               />
             ))
           : null}

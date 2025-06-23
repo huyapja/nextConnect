@@ -1,15 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
-import { FiPlus } from 'react-icons/fi'
-import { Dialog } from '@radix-ui/themes'
-import { useIsDesktop } from '@/hooks/useMediaQuery'
-import { Box, Button, Flex, IconButton, TextField } from '@radix-ui/themes'
-import { Drawer, DrawerContent, DrawerTrigger } from '@/components/layout/Drawer'
-import { toast } from 'sonner'
-import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { Label } from '@/components/common/Form'
+import { Drawer, DrawerContent, DrawerTrigger } from '@/components/layout/Drawer'
+import { useIsDesktop } from '@/hooks/useMediaQuery'
+import { Box, Button, Dialog, Flex, IconButton, TextField } from '@radix-ui/themes'
 import { useFrappePostCall } from 'frappe-react-sdk'
-import { IoMdClose } from 'react-icons/io'
 import { useSetAtom } from 'jotai'
+import { useEffect, useRef, useState } from 'react'
+import { Controller, FormProvider, useForm } from 'react-hook-form'
+import { FiPlus } from 'react-icons/fi'
+import { IoMdClose } from 'react-icons/io'
+import { toast } from 'sonner'
 import { refreshLabelListAtom } from './conversations/atoms/labelAtom'
 
 interface CreateLabelForm {
@@ -17,7 +16,7 @@ interface CreateLabelForm {
 }
 
 const DIALOG_CONTENT_CLASS =
-  'z-[300] bg-white dark:bg-gray-900 rounded-xl p-6 shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto'
+  'z-[300] bg-white dark:bg-gray-900 rounded-xl p-6 shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto'
 
 export const CreateLabelButton = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -85,7 +84,7 @@ export const CreateLabelButton = () => {
           title='Tạo nhãn'
           className='transition-all ease-ease text-gray-10 bg-transparent hover:bg-gray-3 hover:text-gray-12'
         >
-          <FiPlus size='16' />
+          <FiPlus size='14' />
         </IconButton>
       </DrawerTrigger>
       <DrawerContent>
@@ -160,31 +159,41 @@ export const CreateLabelContent = ({ setIsOpen }: { isOpen: boolean; setIsOpen: 
             control={control}
             rules={{
               required: 'Vui lòng nhập tên nhãn',
-              maxLength: { value: 50, message: 'Tên nhãn không quá 50 ký tự' }
+              maxLength: { value: 60, message: 'Tên nhãn không quá 60 ký tự' }
             }}
             render={({ field, fieldState: { error } }) => (
-              <TextField.Root
-                id='label'
-                placeholder='Vui lòng nhập tên nhãn'
-                required
-                color={error ? 'red' : undefined}
-                {...field}
-              />
+              <>
+                <TextField.Root
+                  id='label'
+                  placeholder='Vui lòng nhập tên nhãn'
+                  required
+                  color={error ? 'red' : undefined}
+                  maxLength={60} // ✅ Giới hạn nhập tối đa 60 ký tự
+                  {...field}
+                />
+                <Flex justify='between' mt='1'>
+                  {errors.label ? (
+                    <div className='text-red-500 text-sm'>{errors.label.message}</div>
+                  ) : (
+                    <div className='text-transparent text-sm'>Ẩn</div>
+                  )}
+                  <div className='text-sm text-gray-500'>{labelValue?.length}/60</div>
+                </Flex>
+              </>
             )}
           />
-          {errors.label && <div className='text-red-500 text-sm pt-1'>{errors.label.message}</div>}
         </Box>
 
-        <Flex justify='between' align='center'>
+        <Flex justify='end' align='center'>
           <Flex gap='3' align='center'>
-            <Button className='cursor-pointer' type='submit' size='2' disabled={loading}>
-              Tạo
-            </Button>
             <Dialog.Close>
-              <Button className='cursor-pointer' variant='ghost' type='button' size='2'>
+              <Button className='cursor-pointer' variant='soft' type='button' size='2'>
                 Hủy bỏ
               </Button>
             </Dialog.Close>
+            <Button className='cursor-pointer' type='submit' size='2' disabled={loading}>
+              Tạo
+            </Button>
           </Flex>
         </Flex>
       </form>

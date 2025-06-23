@@ -1,12 +1,14 @@
 import json
 from datetime import timedelta
-
 import frappe
 from frappe import _
 from frappe.query_builder import JoinType, Order
 from frappe.query_builder.functions import Coalesce, Count, Max, Coalesce
 from raven.api.raven_channel import create_direct_message_channel, get_peer_user_id
 from raven.utils import get_channel_member, is_channel_member, track_channel_visit
+import datetime
+from frappe.utils import now_datetime, get_datetime
+from pypika import Case
 
 @frappe.whitelist(methods=["POST"])
 def send_message(
@@ -268,7 +270,10 @@ def get_saved_messages():
 			raven_message.name,
 			raven_message.owner,
 			raven_message.creation,
-			raven_message.text,
+			Case()
+			.when(raven_message.is_retracted == 1, None)
+			.else_(raven_message.text)
+			.as_('text'),
 			raven_message.channel_id,
 			raven_message.file,
 			raven_message.message_type,
@@ -279,11 +284,13 @@ def get_saved_messages():
 			raven_message.thumbnail_height,
 			raven_message.is_bot_message,
 			raven_message.bot,
-			raven_message.content,
+			Case()
+			.when(raven_message.is_retracted == 1, None)
+			.else_(raven_message.content)
+			.as_('content'),
 			raven_message.is_retracted
 		)
 		.where(raven_message._liked_by.like(f"%{frappe.session.user}%"))
-		.where(raven_message.is_retracted == 0)
 		.where(
 			(raven_channel.type.isin(["Open", "Public"]))
 			| (raven_channel_member.user_id == frappe.session.user)
@@ -877,21 +884,55 @@ def add_forwarded_message_to_channel(channel_id, forwarded_message):
 
 @frappe.whitelist()
 def retract_message(message_id: str):
-    user = frappe.session.user
+
     message = frappe.get_doc("Raven Message", message_id)
 
     if message.is_retracted:
         frappe.throw(_("Tin nhắn đã được thu hồi trước đó."))
 
+    message_time = get_datetime(message.creation)
+    current_time = now_datetime()
+    time_difference = current_time - message_time
+
+    if time_difference.total_seconds() > 3 * 3600:
+        frappe.throw(_("Bạn chỉ có thể thu hồi tin nhắn trong vòng 3 giờ sau khi gửi."))
+
+    last_message_id = frappe.db.get_value(
+        "Raven Message",
+        filters={
+            "channel_id": message.channel_id,
+            "is_retracted": 0
+        },
+        fieldname="name",
+        order_by="creation desc"
+    )
+    is_last_message = last_message_id == message.name
+
     message.db_set("is_retracted", 1)
     frappe.db.commit()
+
+    if is_last_message:
+        fallback_message = {
+            "message_id": message.name,
+            "content": "Tin nhắn đã được thu hồi",
+            "owner": message.owner,
+            "message_type": "Text",
+            "is_bot_message": 0,
+            "bot": None,
+        }
+
+        frappe.db.set_value("Raven Channel", message.channel_id, {
+            "last_message_details": frappe.as_json(fallback_message),
+            "last_message_timestamp": message.creation
+        })
 
     frappe.publish_realtime(
         event="raven_message_retracted",
         message={
             "message_id": message.name,
             "channel_id": message.channel_id,
-            "is_thread": message.is_thread
+            "is_thread": message.is_thread,
+            "is_last_message": is_last_message,
         },
         doctype="Raven Channel",
         docname=message.channel_id,
@@ -899,3 +940,4 @@ def retract_message(message_id: str):
     )
 
     return {"message": "Đã thu hồi tin nhắn"}
+

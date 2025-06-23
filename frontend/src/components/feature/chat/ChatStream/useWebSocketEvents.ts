@@ -1,4 +1,5 @@
 import { UserContext } from '@/utils/auth/UserProvider'
+import { useUpdateLastMessageDetails } from '@/utils/channel/ChannelListProvider'
 import { useFrappeDocumentEventListener, useFrappeEventListener } from 'frappe-react-sdk'
 import { useContext } from 'react'
 
@@ -13,6 +14,7 @@ export const useWebSocketEvents = (
   isAtBottom?: boolean
 ) => {
   const { currentUser } = useContext(UserContext)
+  const { updateLastMessageForChannel } = useUpdateLastMessageDetails()
 
   useFrappeDocumentEventListener('Raven Channel', channelID ?? '', () => {
     console.debug(`Raven Channel event received for channel: ${channelID}`)
@@ -69,7 +71,7 @@ export const useWebSocketEvents = (
     mutate(
       (d: any) => {
         if (event.message_id && d) {
-          const newMessages = d.message.messages.map((message: any) => {
+          const newMessages = d.message.messages?.map((message: any) => {
             if (message.name === event.message_id) {
               return { ...message, ...event.message_details }
             }
@@ -115,7 +117,7 @@ export const useWebSocketEvents = (
     mutate(
       (d: any) => {
         if (event.message_id && d) {
-          const newMessages = d.message.messages.map((message: any) => {
+          const newMessages = d.message.messages?.map((message: any) => {
             if (message.name === event.message_id) {
               return { ...message, message_reactions: event.reactions }
             }
@@ -141,7 +143,7 @@ export const useWebSocketEvents = (
     mutate(
       (d: any) => {
         if (event.message_id && d) {
-          const newMessages = d.message.messages.map((message: any) => {
+          const newMessages = d.message.messages?.map((message: any) => {
             if (message.name === event.message_id) {
               return { ...message, _liked_by: event.liked_by }
             }
@@ -167,8 +169,19 @@ export const useWebSocketEvents = (
     mutate(
       (d: any) => {
         if (event.message_id && d) {
-          const updatedMessages = d.message.messages.map((message: any) => {
+          const updatedMessages = d.message.messages?.map((message: any) => {
             if (message.name === event.message_id) {
+              if (event.is_last_message) {
+                updateLastMessageForChannel(message.channel_id, {
+                  message_id: message.name,
+                  content: 'Tin nhắn đã được thu hồi',
+                  owner: currentUser,
+                  message_type: message.message_type,
+                  is_bot_message: message.is_bot_message,
+                  bot: message.bot || null,
+                  timestamp: new Date().toISOString()
+                })
+              }
               return { ...message, is_retracted: 1 }
             }
             return message

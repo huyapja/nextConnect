@@ -2,7 +2,7 @@ import { getErrorMessage } from '@/components/layout/AlertBanner/ErrorBanner'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { RavenChannel } from '@/types/RavenChannelManagement/RavenChannel'
 import { FrappeError, useFrappeEventListener, useFrappeGetCall, useSWRConfig } from 'frappe-react-sdk'
-import { PropsWithChildren, createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { PropsWithChildren, createContext, useContext, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { KeyedMutator } from 'swr'
 
@@ -13,6 +13,11 @@ export type UnreadChannelCountItem = {
   unread_count: number
   is_direct_message: 0 | 1
   last_message_timestamp: string
+}
+
+export type UserLabel = {
+  label_id: string
+  label: string
 }
 
 export type UnreadCountData = UnreadChannelCountItem[]
@@ -36,7 +41,7 @@ export type ChannelListItem = Pick<
 > & {
   member_id: string
   is_done: number // <== thêm dòng này
-  user_labels?: string[]
+  user_labels: UserLabel[]
 }
 
 export interface DMChannelListItem extends ChannelListItem {
@@ -57,6 +62,7 @@ export interface ChannelListContextType extends ChannelList {
   mutate: KeyedMutator<{ message: ChannelList }>
   error?: FrappeError
   isLoading: boolean
+  isValidating: boolean
 }
 export const ChannelListContext = createContext<ChannelListContextType | null>(null)
 
@@ -82,7 +88,7 @@ export const useFetchChannelList = (): ChannelListContextType => {
   const isMobile = useIsMobile()
 
   const { mutate: globalMutate } = useSWRConfig()
-  const { data, mutate, ...rest } = useFrappeGetCall<{ message: ChannelList }>(
+  const { data, mutate, isLoading, isValidating, ...rest } = useFrappeGetCall<{ message: ChannelList }>(
     'raven.api.raven_channel.get_all_channels',
     {
       hide_archived: false
@@ -97,14 +103,13 @@ export const useFetchChannelList = (): ChannelListContextType => {
       }
     }
   )
-
   const [newUpdatesAvailable, setNewUpdatesAvailable] = useState(0)
 
   useEffect(() => {
     let timeout: NodeJS.Timeout | undefined
     if (newUpdatesAvailable) {
       timeout = setTimeout(() => {
-        mutate()
+        // mutate()
         // Also update the unread channel count
         globalMutate('unread_channel_count')
         setNewUpdatesAvailable(0)
@@ -118,33 +123,15 @@ export const useFetchChannelList = (): ChannelListContextType => {
    * Instead, throttle this - wait for all events to subside
    */
   useFrappeEventListener('channel_list_updated', () => {
-    if (!rest.isValidating) {
+    if (!isValidating) {
       setNewUpdatesAvailable((n) => n + 1)
     }
   })
-
-  const { sortedChannels, sortedDMChannels } = useMemo(() => {
-    let sortedChannels = data?.message.channels ?? []
-    let sortedDMChannels = data?.message.dm_channels ?? []
-
-    sortedChannels = sortedChannels.sort((a, b) => {
-      const bTimestamp = b.last_message_timestamp ? new Date(b.last_message_timestamp).getTime() : 0
-      const aTimestamp = a.last_message_timestamp ? new Date(a.last_message_timestamp).getTime() : 0
-      return new Date(bTimestamp).getTime() - new Date(aTimestamp).getTime()
-    })
-
-    sortedDMChannels = sortedDMChannels.sort((a, b) => {
-      const bTimestamp = b.last_message_timestamp ? new Date(b.last_message_timestamp).getTime() : 0
-      const aTimestamp = a.last_message_timestamp ? new Date(a.last_message_timestamp).getTime() : 0
-      return new Date(bTimestamp).getTime() - new Date(aTimestamp).getTime()
-    })
-
-    return { sortedChannels, sortedDMChannels }
-  }, [data])
-
   return {
-    channels: sortedChannels,
-    dm_channels: sortedDMChannels,
+    channels: data?.message?.channels as ChannelListItem[],
+    dm_channels: data?.message?.dm_channels as DMChannelListItem[],
+    isLoading,
+    isValidating,
     mutate,
     ...rest
   }
@@ -225,39 +212,37 @@ export const useUpdateLastMessageInChannelList = () => {
 export const useUpdateLastMessageDetails = () => {
   const { mutate } = useChannelList()
 
-  const updateLastMessageForChannel = (channelID: string, message: any) => {
+  const updateLastMessageForChannel = (channelID: string, message: any, lastMessageTimestamp?: string) => {
+    const timestamp = lastMessageTimestamp ?? new Date().toISOString()
+
     mutate(
       (prev) => {
         if (!prev) return prev
 
-        const newChannels = prev.message.channels.map((channel) => {
-          if (channel.name === channelID) {
-            return {
-              ...channel,
-              last_message_details: message,
-              last_message_timestamp: new Date().toISOString(),
-              unread_count: 0
-            }
-          }
-          return channel
-        })
-
-        const newDMChannels = prev.message.dm_channels.map((channel) => {
-          if (channel.name === channelID) {
-            return {
-              ...channel,
-              last_message_details: message,
-              last_message_timestamp: new Date().toISOString(),
-              unread_count: 0
-            }
-          }
-          return channel
-        })
-
         return {
           message: {
-            channels: newChannels,
-            dm_channels: newDMChannels
+            channels: prev.message.channels.map((channel) => {
+              if (channel.name === channelID) {
+                return {
+                  ...channel,
+                  last_message_details: message,
+                  last_message_timestamp: timestamp,
+                  unread_count: 0
+                }
+              }
+              return channel
+            }),
+            dm_channels: prev.message.dm_channels.map((dm_channel) => {
+              if (dm_channel.name === channelID) {
+                return {
+                  ...dm_channel,
+                  last_message_details: message,
+                  last_message_timestamp: timestamp,
+                  unread_count: 0
+                }
+              }
+              return dm_channel
+            })
           }
         }
       },

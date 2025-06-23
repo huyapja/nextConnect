@@ -1,12 +1,13 @@
 import { UserContext } from '@/utils/auth/UserProvider'
+import eventBus from '@/utils/event-emitter'
 import { useFrappeEventListener, useFrappePostCall } from 'frappe-react-sdk'
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 
 const arraysAreEqual = (arr1: any[], arr2: any[]) => {
-  if (arr1.length !== arr2.length) return false
+  if (arr1?.length !== arr2?.length) return false
   const sorted1 = [...arr1].sort((a, b) => a.user.localeCompare(b.user))
   const sorted2 = [...arr2].sort((a, b) => a.user.localeCompare(b.user))
-  for (let i = 0; i < sorted1.length; i++) {
+  for (let i = 0; i < sorted1?.length; i++) {
     if (sorted1[i].user !== sorted2[i].user || sorted1[i].seen_at !== sorted2[i].seen_at) {
       return false
     }
@@ -32,6 +33,7 @@ export const useChannelSeenUsers = ({ channelId }: { channelId: string }) => {
   const seenUsersRef = useRef<any[]>([])
   const pendingSeenUpdate = useRef(false)
   const hasUnreadWhileHidden = useRef(false)
+  const hasInteractedRef = useRef(false)
 
   const fetchSeenUsers = useCallback(async () => {
     if (!channelId || pendingSeenUpdate.current) return
@@ -60,6 +62,7 @@ export const useChannelSeenUsers = ({ channelId }: { channelId: string }) => {
         console.error('Track seen failed:', err)
       } finally {
         pendingSeenUpdate.current = false
+        hasInteractedRef.current = false
       }
     }, 1500),
     [channelId, trackSeenCall]
@@ -69,7 +72,10 @@ export const useChannelSeenUsers = ({ channelId }: { channelId: string }) => {
 
   const updateSeenUserFromSocket = useCallback(
     (data: any) => {
-      if (data.channel_id !== channelId || data.user === currentUser) return
+      if (data.channel_id !== channelId) return
+
+      // Nếu là chính mình và đang ở tab hiện tại, bỏ qua
+      if (data.user === currentUser && isTabActive()) return
       setSeenUsers((prev) => {
         const idx = prev.findIndex((u) => u.user === data.user)
         if (idx !== -1) {
@@ -113,7 +119,7 @@ export const useChannelSeenUsers = ({ channelId }: { channelId: string }) => {
   // SOCKET: khi có tin nhắn mới
   useFrappeEventListener('new_message', (data: any) => {
     if (data.channel_id === channelId && data.user !== currentUser) {
-      if (isTabActive()) {
+      if (isTabActive() && hasInteractedRef.current) {
         trackSeen()
       } else {
         hasUnreadWhileHidden.current = true
@@ -121,10 +127,23 @@ export const useChannelSeenUsers = ({ channelId }: { channelId: string }) => {
     }
   })
 
+  useEffect(() => {
+    const onUserInteracted = () => {
+      hasInteractedRef.current = true
+      trackSeen()
+    }
+
+    eventBus.on('user:interacted', onUserInteracted)
+
+    return () => {
+      eventBus.off('user:interacted', onUserInteracted)
+    }
+  }, [trackSeen])
+
   // HANDLE visibility change
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (isTabActive() && hasUnreadWhileHidden.current) {
+      if (isTabActive() && hasUnreadWhileHidden.current && hasInteractedRef.current) {
         hasUnreadWhileHidden.current = false
         trackSeen()
         fetchSeenUsers()

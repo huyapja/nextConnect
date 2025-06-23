@@ -1,20 +1,20 @@
-import { Avatar } from '@radix-ui/themes'
 import { UserAvatar } from '@/components/common/UserAvatar'
 import { useGetUser } from '@/hooks/useGetUser'
+import { Avatar } from '@radix-ui/themes'
 
 interface ViewThreadParticipantsProps {
   participants: { user_id: string }[]
 }
 
 export const ViewThreadParticipants = ({ participants }: ViewThreadParticipantsProps) => {
-  if (participants.length === 0) return null
+  if (participants?.length === 0) return null
 
-  const totalParticipants = Object.keys(participants).length
+  const totalParticipants = Object.keys(participants)?.length
   const extraNumber = Math.min(totalParticipants - 3, 9)
 
   return (
     <div className={'flex items-center -space-x-1 rtl:space-x-reverse animate-fadein'}>
-      {participants.map((member, index) => {
+      {participants?.map((member, index) => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const user = useGetUser(member.user_id)
         if (index < 3)

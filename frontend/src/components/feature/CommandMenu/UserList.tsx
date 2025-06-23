@@ -1,18 +1,18 @@
+import { Loader } from '@/components/common/Loader'
 import { UserAvatar } from '@/components/common/UserAvatar'
+import { getErrorMessage } from '@/components/layout/AlertBanner/ErrorBanner'
 import { useGetUser } from '@/hooks/useGetUser'
 import { useChannelList } from '@/utils/channel/ChannelListProvider'
 import { UserListContext } from '@/utils/users/UserListProvider'
-import { Command } from 'cmdk'
-import { useContext } from 'react'
-import DMChannelItem from './DMChannelItem'
-import { useNavigate, useParams } from 'react-router-dom'
-import { useSetAtom } from 'jotai'
-import { commandMenuOpenAtom } from './CommandMenu'
-import { useFrappePostCall } from 'frappe-react-sdk'
 import { Badge, Flex } from '@radix-ui/themes'
-import { Loader } from '@/components/common/Loader'
+import { Command } from 'cmdk'
+import { useFrappePostCall } from 'frappe-react-sdk'
+import { useSetAtom } from 'jotai'
+import { useContext } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { getErrorMessage } from '@/components/layout/AlertBanner/ErrorBanner'
+import { commandMenuOpenAtom } from './CommandMenu'
+import DMChannelItem from './DMChannelItem'
 
 const UserList = () => {
   const { dm_channels } = useChannelList()
@@ -22,10 +22,14 @@ const UserList = () => {
   const usersWithoutChannels = users?.filter(
     (user) => !dm_channels.find((channel) => channel.peer_user_id === user.name)
   )
+  const filteredDmChannels = dm_channels?.filter((channel) => {
+    const peerUser = users?.find((user) => user.name === channel.peer_user_id)
+    return peerUser?.enabled === 1
+  })
 
   return (
     <Command.Group heading='Members'>
-      {dm_channels.map((channel) => (
+      {filteredDmChannels?.map((channel) => (
         <DMChannelItem
           key={channel.name}
           channelID={channel.name}
@@ -33,9 +37,7 @@ const UserList = () => {
           peer_user_id={channel.peer_user_id}
         />
       ))}
-      {usersWithoutChannels.map((user) => (
-        <UserWithoutDMItem key={user.name} userID={user.name} />
-      ))}
+      {usersWithoutChannels?.map((user) => <UserWithoutDMItem key={user.name} userID={user.name} />)}
     </Command.Group>
   )
 }

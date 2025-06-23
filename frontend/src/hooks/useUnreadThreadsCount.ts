@@ -39,7 +39,7 @@ export const useUnreadThreadsCountEventListener = () => {
             })
             .then((res) => {
               // Update the unread thread count for the thread
-              if (res.message.length > 0) {
+              if (res.message?.length > 0) {
                 const existingCounts = [...(data?.message ?? [])]
 
                 // If the threadID for which we fetched new unread counts is not present in the existing counts, then add it
@@ -48,7 +48,7 @@ export const useUnreadThreadsCountEventListener = () => {
 
                 if (isPresent) {
                   return {
-                    message: existingCounts.map((thread) => {
+                    message: existingCounts?.map((thread) => {
                       if (thread.name !== threadID) {
                         return thread
                       }

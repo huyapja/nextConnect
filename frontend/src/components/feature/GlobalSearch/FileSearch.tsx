@@ -1,20 +1,20 @@
-import { BiSearch } from 'react-icons/bi'
+import { Loader } from '@/components/common/Loader'
+import { UserAvatar } from '@/components/common/UserAvatar'
+import { useGetUserRecords } from '@/hooks/useGetUserRecords'
+import { ChannelListContext, ChannelListContextType } from '@/utils/channel/ChannelListProvider'
+import { DateMonthYear } from '@/utils/dateConversions'
+import { ChannelIcon } from '@/utils/layout/channelIcon'
+import { UserFields } from '@/utils/users/UserListProvider'
+import { Box, Checkbox, Flex, Grid, Link, ScrollArea, Select, Text, TextField } from '@radix-ui/themes'
 import { useFrappeGetCall } from 'frappe-react-sdk'
-import { useState, useContext } from 'react'
-import { useDebounce } from '../../../hooks/useDebounce'
+import { useContext, useState } from 'react'
+import { BiSearch } from 'react-icons/bi'
 import { GetFileSearchResult } from '../../../../../types/Search/Search'
+import { useDebounce } from '../../../hooks/useDebounce'
 import { FileExtensionIcon } from '../../../utils/layout/FileExtIcon'
 import { getFileExtension, getFileName } from '../../../utils/operations'
 import { ErrorBanner } from '../../layout/AlertBanner/ErrorBanner'
 import { EmptyStateForSearch } from '../../layout/EmptyState/EmptyState'
-import { UserFields } from '@/utils/users/UserListProvider'
-import { ChannelListContext, ChannelListContextType } from '@/utils/channel/ChannelListProvider'
-import { useGetUserRecords } from '@/hooks/useGetUserRecords'
-import { ChannelIcon } from '@/utils/layout/channelIcon'
-import { DateMonthYear } from '@/utils/dateConversions'
-import { Box, Checkbox, Flex, Grid, Select, TextField, Text, ScrollArea, Link } from '@radix-ui/themes'
-import { Loader } from '@/components/common/Loader'
-import { UserAvatar } from '@/components/common/UserAvatar'
 import { dateOption } from './GlobalSearch'
 
 interface Props {
@@ -159,7 +159,7 @@ export const FileSearch = ({
               <Select.Item value='any'>From anyone</Select.Item>
               <Select.Group>
                 <Select.Label>Message from</Select.Label>
-                {Object.values(users).map((option) => (
+                {Object.values(users)?.map((option) => (
                   <Select.Item key={option.name} textValue={option.full_name} value={option.name}>
                     <Flex gap='2' align='center'>
                       <UserAvatar src={option.user_image} alt={option.full_name} />
@@ -177,7 +177,7 @@ export const FileSearch = ({
               <Select.Item value='any'>Tất cả</Select.Item>
               <Select.Group>
                 <Select.Label>Channels</Select.Label>
-                {channels.map((option) => (
+                {channels?.map((option) => (
                   <Select.Item key={option.name} value={option.name}>
                     <Flex gap='2' align='center' className='overflow-hidden'>
                       <ChannelIcon type={option.type} />
@@ -196,7 +196,7 @@ export const FileSearch = ({
               <Select.Separator />
               <Select.Group>
                 <Select.Label>Direct Messages</Select.Label>
-                {dm_channels.map((option) => (
+                {dm_channels?.map((option) => (
                   <Select.Item
                     key={option.name}
                     value={option.name}
@@ -221,7 +221,7 @@ export const FileSearch = ({
               <Select.Group>
                 <Select.Label>Date</Select.Label>
                 <Select.Item value='any'>Any time</Select.Item>
-                {dateOption.map((option) => (
+                {dateOption?.map((option) => (
                   <Select.Item key={option.value} value={option.value}>
                     {option.label}
                   </Select.Item>
@@ -246,9 +246,9 @@ export const FileSearch = ({
       <ScrollArea type='always' scrollbars='vertical' className='sm:h-[420px] h-[58vh]' mt='4'>
         <ErrorBanner error={error} />
         {data?.message?.length === 0 && <EmptyStateForSearch />}
-        {data?.message && data.message.length > 0 ? (
+        {data?.message && data.message?.length > 0 ? (
           <Flex direction='column' gap='4'>
-            {data.message.map((f: FileSearchResult) => {
+            {data.message?.map((f: FileSearchResult) => {
               return (
                 <Flex gap='3' key={f.name} align='center'>
                   <Flex align='center' justify='center' className='w-[10%] sm:w-[5%]'>
