@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useFrappeGetCall, useFrappeEventListener, useFrappeGetDoc } from 'frappe-react-sdk'
+import { 
+  FiPhone, FiPhoneCall, FiPhoneOff, 
+  FiVideo, FiMic, FiMicOff, FiHeadphones 
+} from 'react-icons/fi'
+import { useTheme } from '@/ThemeProvider'
 
 let phoneRingAudio: HTMLAudioElement | null = null
 let ringbackAudio: HTMLAudioElement | null = null
@@ -31,6 +36,7 @@ declare global {
 
 export default function StringeeCallComponent({ toUserId }: { toUserId: string }) {
   
+  const { appearance } = useTheme()
   const [client, setClient] = useState<any>(null)
   const [call, setCall] = useState<any>(null)
   const [incoming, setIncoming] = useState<any>(null)
@@ -69,6 +75,35 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
 
   // Audio context for better audio handling
   const audioContextRef = useRef<AudioContext | null>(null)
+
+  // Get colors based on theme
+  const getIconColor = (color: 'green' | 'blue' | 'red' | 'white' | 'gray') => {
+    const isDark = appearance === 'dark' || (appearance === 'inherit' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    
+    switch (color) {
+      case 'green':
+        return isDark ? '#2ed573' : '#10b981'
+      case 'blue': 
+        return isDark ? '#3b82f6' : '#2563eb'
+      case 'red':
+        return '#ff4757'
+      case 'white':
+        return isDark ? '#ffffff' : '#000000'
+      case 'gray':
+        return isDark ? '#9ca3af' : '#6b7280'
+      default:
+        return isDark ? '#ffffff' : '#000000'
+    }
+  }
+
+  const getBackgroundColor = (type: 'button' | 'modal') => {
+    const isDark = appearance === 'dark' || (appearance === 'inherit' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    
+    if (type === 'button') {
+      return isDark ? '#606060' : '#e5e7eb'
+    }
+    return isDark ? '#1a1a1a' : '#ffffff'
+  }
 
   // Get display name for user
   const getDisplayName = () => {
@@ -1401,27 +1436,27 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
             height: '36px',
             borderRadius: '50%',
             border: 'none',
-            background: '#606060',
-            color: 'white',
+            background: getBackgroundColor('button'),
+            color: getIconColor('green'),
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '16px',
-            boxShadow: '0 2px 8px rgba(96, 96, 96, 0.3)',
+            boxShadow: `0 2px 8px ${getIconColor('gray')}33`,
             transition: 'all 0.2s ease'
           }}
           title="Audio Call"
           onMouseOver={(e) => {
             e.currentTarget.style.transform = 'scale(1.1)'
-            e.currentTarget.style.backgroundColor = '#707070'
+            e.currentTarget.style.opacity = '0.8'
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.transform = 'scale(1)'
-            e.currentTarget.style.backgroundColor = '#606060'
+            e.currentTarget.style.opacity = '1'
           }}
         >
-          📞
+          <FiPhoneCall size={18} />
         </button>
         <button 
           onClick={() => makeCall(true)} 
@@ -1430,27 +1465,27 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
             height: '36px',
             borderRadius: '50%',
             border: 'none',
-            background: '#505050',
-            color: 'white',
+            background: getBackgroundColor('button'),
+            color: getIconColor('blue'),
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '16px',
-            boxShadow: '0 2px 8px rgba(80, 80, 80, 0.3)',
+            boxShadow: `0 2px 8px ${getIconColor('gray')}33`,
             transition: 'all 0.2s ease'
           }}
           title="Video Call"
           onMouseOver={(e) => {
             e.currentTarget.style.transform = 'scale(1.1)'
-            e.currentTarget.style.backgroundColor = '#606060'
+            e.currentTarget.style.opacity = '0.8'
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.transform = 'scale(1)'
-            e.currentTarget.style.backgroundColor = '#505050'
+            e.currentTarget.style.opacity = '1'
           }}
         >
-          📹
+          <FiVideo size={18} />
         </button>
       </div>
 
@@ -1474,22 +1509,27 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-          <div style={{
+          <div           style={{
             width: '420px',
             height: '650px',
-            backgroundColor: '#1a1a1a',
+            backgroundColor: getBackgroundColor('modal'),
             borderRadius: '20px',
             overflow: 'hidden',
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
+            boxShadow: appearance === 'light' 
+              ? '0 20px 60px rgba(0, 0, 0, 0.15)' 
+              : '0 20px 60px rgba(0, 0, 0, 0.5)',
+            border: appearance === 'light' ? '1px solid #e5e7eb' : 'none'
           }}>
             {/* Video Area */}
             <div style={{ 
               flex: 1, 
               position: 'relative',
-              background: 'linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)'
+              background: appearance === 'light' 
+                ? 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)'
+                : 'linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)'
             }}>
               {/* Remote Video */}
               <video 
@@ -1514,9 +1554,11 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                 height: '140px',
                 borderRadius: '16px',
                 overflow: 'hidden',
-                border: '3px solid #404040',
-                backgroundColor: '#2a2a2a',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+                border: appearance === 'light' ? '3px solid #d1d5db' : '3px solid #404040',
+                backgroundColor: appearance === 'light' ? '#f3f4f6' : '#2a2a2a',
+                boxShadow: appearance === 'light' 
+                  ? '0 4px 20px rgba(0, 0, 0, 0.1)' 
+                  : '0 4px 20px rgba(0, 0, 0, 0.3)'
               }}>
                               <video 
                 ref={localVideoRef} 
@@ -1544,8 +1586,10 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: 'linear-gradient(135deg, rgba(42, 42, 42, 0.95) 0%, rgba(26, 26, 26, 0.95) 100%)',
-                  color: 'white'
+                  background: appearance === 'light'
+                    ? 'linear-gradient(135deg, rgba(248, 249, 250, 0.95) 0%, rgba(233, 236, 239, 0.95) 100%)'
+                    : 'linear-gradient(135deg, rgba(42, 42, 42, 0.95) 0%, rgba(26, 26, 26, 0.95) 100%)',
+                  color: getIconColor('white')
                 }}>
                                      {/* Avatar với animation cho active call */}
                    <div style={{
@@ -1553,19 +1597,21 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                      height: '120px',
                      borderRadius: '50%',
                      backgroundColor: getUserAvatar() ? 'transparent' : (callStatus === 'connected' && !isVideoCall 
-                       ? '#2ed573' 
-                       : '#505050'),
+                       ? getIconColor('green') 
+                       : getBackgroundColor('button')),
                      margin: '0 auto 24px',
                      display: 'flex',
                      alignItems: 'center',
                      justifyContent: 'center',
                      fontSize: getUserAvatar() ? '16px' : '48px',
                      border: callStatus === 'connected' && !isVideoCall 
-                       ? '4px solid #26d164' 
-                       : '4px solid #606060',
+                       ? `4px solid ${getIconColor('green')}` 
+                       : `4px solid ${getIconColor('gray')}`,
                      boxShadow: callStatus === 'connected' && !isVideoCall
-                       ? '0 8px 32px rgba(46, 213, 115, 0.4), 0 0 0 8px rgba(46, 213, 115, 0.1)'
-                       : '0 8px 32px rgba(0, 0, 0, 0.4)',
+                       ? `0 8px 32px ${getIconColor('green')}66, 0 0 0 8px ${getIconColor('green')}1a`
+                       : appearance === 'light' 
+                         ? '0 8px 32px rgba(0, 0, 0, 0.1)'
+                         : '0 8px 32px rgba(0, 0, 0, 0.4)',
                      animation: callStatus === 'connected' && !isVideoCall 
                        ? 'pulse 2s infinite' 
                        : 'none',
@@ -1586,7 +1632,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                          height: '100%',
                          fontSize: '36px',
                          fontWeight: '600',
-                         color: 'white'
+                         color: getIconColor('white')
                        }}>
                          {getAvatarInitials()}
                        </div>
@@ -1598,8 +1644,8 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                      margin: '0 0 12px', 
                      fontSize: '28px', 
                      fontWeight: '600',
-                     color: '#f5f5f5',
-                     textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
+                     color: getIconColor('white'),
+                     textShadow: appearance === 'light' ? 'none' : '0 2px 4px rgba(0, 0, 0, 0.3)'
                    }}>
                      {getDisplayName()}
                    </h2>
@@ -1608,7 +1654,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                    <p style={{ 
                      margin: 0, 
                      fontSize: '18px', 
-                     color: '#b0b0b0',
+                     color: getIconColor('gray'),
                      fontWeight: '400'
                    }}>
                      {callStatus === 'ended' 
@@ -1632,36 +1678,43 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                    {/* Call type indicator với trạng thái chi tiết */}
                    <div style={{
                      marginTop: '16px',
-                     padding: '8px 16px',
+                     padding: '8px 20px',
                      backgroundColor: callStatus === 'connected' && !isVideoCall
-                       ? 'rgba(46, 213, 115, 0.2)' 
+                       ? `${getIconColor('green')}33` 
                        : isVideoCall 
-                         ? 'rgba(59, 130, 246, 0.2)'
-                         : 'rgba(80, 80, 80, 0.3)',
+                         ? `${getIconColor('blue')}33`
+                         : `${getIconColor('gray')}33`,
                      borderRadius: '20px',
                      fontSize: '14px',
                      color: callStatus === 'connected' && !isVideoCall
-                       ? '#2ed573'
+                       ? getIconColor('green')
                        : isVideoCall
-                         ? '#3b82f6'
-                         : '#d0d0d0',
+                         ? getIconColor('blue')
+                         : getIconColor('gray'),
                      border: callStatus === 'connected' && !isVideoCall
-                       ? '1px solid rgba(46, 213, 115, 0.3)'
+                       ? `1px solid ${getIconColor('green')}66`
                        : isVideoCall
-                         ? '1px solid rgba(59, 130, 246, 0.3)'
-                         : 'none'
-                   }}>
-                     {isVideoCall ? '📹 Gọi video' : '📞 Gọi thoại'}
-                     {callStatus === 'connected' && !isVideoCall && ' - Đang hoạt động'}
-                     {callStatus === 'connecting' && (isVideoCall ? ' - Đang kết nối video...' : ' - Đang kết nối audio...')}
-                   </div>
+                         ? `1px solid ${getIconColor('blue')}66`
+                         : 'none',
+                     whiteSpace: 'nowrap',
+                     minWidth: 'max-content'
+                                        }}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                         {isVideoCall ? <FiVideo size={16} /> : <FiPhoneCall size={16} />}
+                         <span>
+                           {isVideoCall ? 'Gọi video' : 'Gọi thoại'}
+                           {callStatus === 'connected' && !isVideoCall && ' - Đang hoạt động'}
+                           {callStatus === 'connecting' && ' - Đang kết nối...'}
+                         </span>
+                       </div>
+                     </div>
                    
                    {/* Thời gian cuộc gọi cho Gọi thoại */}
                    {callStatus === 'connected' && !isVideoCall && (
                      <div style={{
                        marginTop: '12px',
                        fontSize: '16px',
-                       color: '#2ed573',
+                       color: getIconColor('green'),
                        fontWeight: '500',
                        display: 'flex',
                        alignItems: 'center',
@@ -1672,7 +1725,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                          width: '8px',
                          height: '8px',
                          borderRadius: '50%',
-                         backgroundColor: '#2ed573',
+                         backgroundColor: getIconColor('green'),
                          animation: 'pulse 1s infinite'
                        }}></div>
                        Cuộc gọi đang diễn ra
@@ -1680,7 +1733,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                          width: '8px',
                          height: '8px',
                          borderRadius: '50%',
-                         backgroundColor: '#2ed573',
+                         backgroundColor: getIconColor('green'),
                          animation: 'pulse 1s infinite reverse'
                        }}></div>
                      </div>
@@ -1692,8 +1745,8 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
             {/* Controls - Zalo style */}
             <div style={{
               padding: '30px 24px',
-              backgroundColor: '#0d0d0d',
-              borderTop: '1px solid #333',
+              backgroundColor: appearance === 'light' ? '#f8f9fa' : '#0d0d0d',
+              borderTop: appearance === 'light' ? '1px solid #e5e7eb' : '1px solid #333',
               display: 'flex',
               justifyContent: 'center',
               gap: '30px',
@@ -1709,7 +1762,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                       height: '64px',
                       borderRadius: '50%',
                       border: 'none',
-                      backgroundColor: '#ff4757',
+                      backgroundColor: getIconColor('red'),
                       color: 'white',
                       cursor: 'pointer',
                       display: 'flex',
@@ -1721,14 +1774,14 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                     }}
                     onMouseOver={(e) => {
                       e.currentTarget.style.transform = 'scale(1.1)'
-                      e.currentTarget.style.backgroundColor = '#ff3742'
+                      e.currentTarget.style.opacity = '0.9'
                     }}
                     onMouseOut={(e) => {
                       e.currentTarget.style.transform = 'scale(1)'
-                      e.currentTarget.style.backgroundColor = '#ff4757'
+                      e.currentTarget.style.opacity = '1'
                     }}
                   >
-                    ❌
+                    <FiPhoneOff size={24} />
                   </button>
                   <button
                     onClick={answerCall}
@@ -1737,7 +1790,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                       height: '64px',
                       borderRadius: '50%',
                       border: 'none',
-                      backgroundColor: '#2ed573',
+                      backgroundColor: getIconColor('green'),
                       color: 'white',
                       cursor: 'pointer',
                       display: 'flex',
@@ -1749,14 +1802,14 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                     }}
                     onMouseOver={(e) => {
                       e.currentTarget.style.transform = 'scale(1.1)'
-                      e.currentTarget.style.backgroundColor = '#26d164'
+                      e.currentTarget.style.opacity = '0.9'
                     }}
                     onMouseOut={(e) => {
                       e.currentTarget.style.transform = 'scale(1)'
-                      e.currentTarget.style.backgroundColor = '#2ed573'
+                      e.currentTarget.style.opacity = '1'
                     }}
                   >
-                    ✅
+                    <FiPhone size={24} />
                   </button>
                 </>
               ) : (
@@ -1771,8 +1824,8 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                          height: '54px',
                          borderRadius: '50%',
                          border: 'none',
-                         backgroundColor: isMuted ? '#ff6b6b' : '#606060',
-                         color: 'white',
+                         backgroundColor: isMuted ? getIconColor('red') : getBackgroundColor('button'),
+                         color: isMuted ? 'white' : getIconColor('white'),
                          cursor: 'pointer',
                          display: 'flex',
                          alignItems: 'center',
@@ -1780,20 +1833,20 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                          fontSize: '20px',
                          boxShadow: isMuted 
                            ? '0 3px 12px rgba(255, 107, 107, 0.4)' 
-                           : '0 3px 12px rgba(96, 96, 96, 0.3)',
+                           : `0 3px 12px ${getIconColor('gray')}33`,
                          transition: 'all 0.2s ease'
                        }}
                        onMouseOver={(e) => {
                          e.currentTarget.style.transform = 'scale(1.05)'
-                         e.currentTarget.style.backgroundColor = isMuted ? '#ff5252' : '#707070'
+                         e.currentTarget.style.opacity = '0.8'
                        }}
                        onMouseOut={(e) => {
                          e.currentTarget.style.transform = 'scale(1)'
-                         e.currentTarget.style.backgroundColor = isMuted ? '#ff6b6b' : '#606060'
+                         e.currentTarget.style.opacity = '1'
                        }}
                        title={isMuted ? "Bật tiếng" : "Tắt tiếng"}
                      >
-                       {isMuted ? '🔇' : '🎤'}
+                       {isMuted ? <FiMicOff size={20} /> : <FiMic size={20} />}
                      </button>
                    )}
 
@@ -1805,27 +1858,27 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                         height: '54px',
                         borderRadius: '50%',
                         border: 'none',
-                        backgroundColor: '#606060',
-                        color: 'white',
+                        backgroundColor: getBackgroundColor('button'),
+                        color: getIconColor('blue'),
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontSize: '20px',
-                        boxShadow: '0 3px 12px rgba(96, 96, 96, 0.3)',
+                        boxShadow: `0 3px 12px ${getIconColor('gray')}33`,
                         transition: 'all 0.2s ease'
                       }}
                       onMouseOver={(e) => {
                         e.currentTarget.style.transform = 'scale(1.05)'
-                        e.currentTarget.style.backgroundColor = '#707070'
+                        e.currentTarget.style.opacity = '0.8'
                       }}
                       onMouseOut={(e) => {
                         e.currentTarget.style.transform = 'scale(1)'
-                        e.currentTarget.style.backgroundColor = '#606060'
+                        e.currentTarget.style.opacity = '1'
                       }}
                       title="Bật camera"
                     >
-                      📹
+                      <FiVideo size={20} />
                     </button>
                   )}
                   <button
@@ -1835,7 +1888,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                       height: '64px',
                       borderRadius: '50%',
                       border: 'none',
-                      backgroundColor: '#ff4757',
+                      backgroundColor: getIconColor('red'),
                       color: 'white',
                       cursor: 'pointer',
                       display: 'flex',
@@ -1847,14 +1900,14 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                     }}
                     onMouseOver={(e) => {
                       e.currentTarget.style.transform = 'scale(1.1)'
-                      e.currentTarget.style.backgroundColor = '#ff3742'
+                      e.currentTarget.style.opacity = '0.9'
                     }}
                     onMouseOut={(e) => {
                       e.currentTarget.style.transform = 'scale(1)'
-                      e.currentTarget.style.backgroundColor = '#ff4757'
+                      e.currentTarget.style.opacity = '1'
                     }}
                   >
-                    📞
+                    <FiPhoneOff size={24} />
                   </button>
                 </>
               )}
@@ -1878,29 +1931,32 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          backgroundColor: appearance === 'light' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.8)',
           zIndex: 10000,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
         }}>
           <div style={{
-            backgroundColor: '#1a1a1a',
+            backgroundColor: getBackgroundColor('modal'),
             borderRadius: '20px',
             padding: '30px',
             maxWidth: '400px',
             textAlign: 'center',
-            border: '1px solid #333',
-            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.6)'
+            border: appearance === 'light' ? '1px solid #e5e7eb' : '1px solid #333',
+            boxShadow: appearance === 'light' 
+              ? '0 10px 40px rgba(0, 0, 0, 0.15)' 
+              : '0 10px 40px rgba(0, 0, 0, 0.6)'
           }}>
             <div style={{
               fontSize: '48px',
-              marginBottom: '20px'
+              marginBottom: '20px',
+              color: getIconColor('blue')
             }}>
-              📹
+              <FiVideo size={48} />
             </div>
             <h3 style={{
-              color: '#f5f5f5',
+              color: getIconColor('white'),
               fontSize: '22px',
               margin: '0 0 12px',
               fontWeight: '600'
@@ -1908,12 +1964,12 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
               Yêu cầu bật camera
             </h3>
                          <p style={{
-               color: '#b0b0b0',
+               color: getIconColor('gray'),
                fontSize: '16px',
                margin: '0 0 30px',
                lineHeight: '1.4'
              }}>
-               <strong style={{ color: '#d0d0d0' }}>{videoUpgradeRequest.fromUserName || callerUserName || videoUpgradeRequest.fromUser}</strong> muốn chuyển sang chế độ Gọi video. Bạn có đồng ý không?
+               <strong style={{ color: getIconColor('white') }}>{videoUpgradeRequest.fromUserName || callerUserName || videoUpgradeRequest.fromUser}</strong> muốn chuyển sang chế độ Gọi video. Bạn có đồng ý không?
              </p>
             <div style={{
               display: 'flex',
@@ -1926,8 +1982,8 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                   padding: '12px 24px',
                   borderRadius: '25px',
                   border: 'none',
-                  backgroundColor: '#505050',
-                  color: 'white',
+                  backgroundColor: getBackgroundColor('button'),
+                  color: getIconColor('white'),
                   fontSize: '16px',
                   fontWeight: '500',
                   cursor: 'pointer',
@@ -1935,10 +1991,10 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                   transition: 'all 0.2s ease'
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#606060'
+                  e.currentTarget.style.opacity = '0.8'
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = '#505050'
+                  e.currentTarget.style.opacity = '1'
                 }}
               >
                 Từ chối
@@ -1949,7 +2005,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                   padding: '12px 24px',
                   borderRadius: '25px',
                   border: 'none',
-                  backgroundColor: '#2ed573',
+                  backgroundColor: getIconColor('green'),
                   color: 'white',
                   fontSize: '16px',
                   fontWeight: '500',
@@ -1958,10 +2014,10 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                   transition: 'all 0.2s ease'
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#26d164'
+                  e.currentTarget.style.opacity = '0.9'
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = '#2ed573'
+                  e.currentTarget.style.opacity = '1'
                 }}
               >
                 Đồng ý

@@ -107,7 +107,7 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
 
       <Flex className='mr-3' gap='4' align='center'>
         <ChannelHeaderMenu channelData={channelData} />
-        <VideoCall toUserId={peer}/>
+        {peerUserId && <VideoCall toUserId={peerUserId}/>}
       </Flex>
     </PageHeader>
   )
