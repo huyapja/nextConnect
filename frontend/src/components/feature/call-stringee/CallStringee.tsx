@@ -51,6 +51,18 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
   const [videoUpgradeRequest, setVideoUpgradeRequest] = useState<{fromUser: string, fromUserName?: string, sessionId: string} | null>(null)
   const [callerUserName, setCallerUserName] = useState<string>('')
   const [isMuted, setIsMuted] = useState(false)
+  const [networkStats, setNetworkStats] = useState<{
+    ping: number | null
+    bitrate: number | null
+    packetLoss: number | null
+    networkType: string | null
+  }>({
+    ping: null,
+    bitrate: null,
+    packetLoss: null,
+    networkType: null
+  })
+  const [showDetailedStats, setShowDetailedStats] = useState(false)
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const remoteAudioRef = useRef<HTMLAudioElement>(null)
@@ -59,6 +71,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
   const localStreamRef = useRef<MediaStream | null>(null)
   const cleanupFunctionsRef = useRef<(() => void)[]>([])
   const audioPermissionRequestedRef = useRef<boolean>(false)
+  const statsIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Get user info
   const { data: userData } = useFrappeGetDoc('Raven User', toUserId)
@@ -103,6 +116,153 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
       return isDark ? '#606060' : '#e5e7eb'
     }
     return isDark ? '#1a1a1a' : '#ffffff'
+  }
+
+  // Network monitoring functions
+  const measurePing = async (): Promise<number | null> => {
+    try {
+      const start = performance.now()
+      const response = await fetch('/api/method/ping', { 
+        method: 'HEAD',
+        cache: 'no-cache'
+      })
+      const end = performance.now()
+      
+      if (response.ok) {
+        return Math.round(end - start)
+      }
+      
+      // Fallback: ping to current domain
+      const fallbackStart = performance.now()
+      await fetch(window.location.origin + '/ping', { 
+        method: 'HEAD',
+        cache: 'no-cache'
+      }).catch(() => {}) // Ignore errors
+      const fallbackEnd = performance.now()
+      
+      return Math.round(fallbackEnd - fallbackStart)
+    } catch (error) {
+      console.warn('❌ Ping measurement failed:', error)
+      return null
+    }
+  }
+
+  const getNetworkType = (): string => {
+    // @ts-ignore - Navigator.connection is experimental
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection
+    
+    if (connection) {
+      if (connection.effectiveType) {
+        const typeMap: { [key: string]: string } = {
+          'slow-2g': '2G (Chậm)',
+          '2g': '2G',
+          '3g': '3G', 
+          '4g': '4G/LTE'
+        }
+        return typeMap[connection.effectiveType] || connection.effectiveType
+      }
+      
+      if (connection.type) {
+        const typeMap: { [key: string]: string } = {
+          'wifi': 'WiFi',
+          'cellular': 'Di động',
+          'ethernet': 'Ethernet',
+          'bluetooth': 'Bluetooth'
+        }
+        return typeMap[connection.type] || connection.type
+      }
+    }
+    
+    return 'Không xác định'
+  }
+
+  const getWebRTCStats = async (callObj: any): Promise<{bitrate: number | null, packetLoss: number | null}> => {
+    try {
+      if (!callObj || !callObj.localStream) {
+        return { bitrate: null, packetLoss: null }
+      }
+
+      // Try to get peer connection from Stringee call
+      const peerConnection = callObj.peerConnection || callObj._peerConnection
+      
+      if (!peerConnection || !peerConnection.getStats) {
+        return { bitrate: null, packetLoss: null }
+      }
+
+      const stats = await peerConnection.getStats()
+      let bitrate: number | null = null
+      let packetLoss: number | null = null
+
+      stats.forEach((report: any) => {
+        if (report.type === 'outbound-rtp' && report.kind === 'audio') {
+          if (report.bytesSent && report.timestamp) {
+            // Calculate bitrate (rough estimation)
+            bitrate = Math.round((report.bytesSent * 8) / 1000) // kbps
+          }
+        }
+        
+        if (report.type === 'inbound-rtp') {
+          if (report.packetsLost !== undefined && report.packetsReceived !== undefined) {
+            const total = report.packetsLost + report.packetsReceived
+            if (total > 0) {
+              packetLoss = Math.round((report.packetsLost / total) * 100 * 100) / 100 // percentage
+            }
+          }
+        }
+      })
+
+      return { bitrate, packetLoss }
+    } catch (error) {
+      console.warn('❌ WebRTC stats failed:', error)
+      return { bitrate: null, packetLoss: null }
+    }
+  }
+
+  const startNetworkMonitoring = () => {
+    if (statsIntervalRef.current) {
+      clearInterval(statsIntervalRef.current)
+    }
+
+    const updateStats = async () => {
+      try {
+        const ping = await measurePing()
+        const networkType = getNetworkType()
+        const { bitrate, packetLoss } = await getWebRTCStats(call)
+
+        setNetworkStats({
+          ping,
+          bitrate,
+          packetLoss,
+          networkType
+        })
+      } catch (error) {
+        console.warn('❌ Failed to update network stats:', error)
+      }
+    }
+
+    // Update immediately
+    updateStats()
+    
+    // Update every 3 seconds
+    statsIntervalRef.current = setInterval(updateStats, 3000)
+    
+    console.log('📊 Network monitoring started')
+  }
+
+  const stopNetworkMonitoring = () => {
+    if (statsIntervalRef.current) {
+      clearInterval(statsIntervalRef.current)
+      statsIntervalRef.current = null
+    }
+    
+    setNetworkStats({
+      ping: null,
+      bitrate: null,
+      packetLoss: null,
+      networkType: null
+    })
+    
+    console.log('📊 Network monitoring stopped')
   }
 
   // Get display name for user
@@ -754,6 +914,9 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
         setIsCallConnected(true)
         setCallStatus('connected')
         
+        // Start network monitoring when call is connected
+        startNetworkMonitoring()
+        
         console.log('🔇 ALL ringtones force stopped on call connected')
         console.log('🔊 Call connected - Audio/Video state:', {
           hasRemoteVideo,
@@ -1018,6 +1181,12 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
     // Reset permission flags
     audioPermissionRequestedRef.current = false
     
+    // Stop network monitoring
+    stopNetworkMonitoring()
+    
+    // Reset detailed stats view
+    setShowDetailedStats(false)
+    
     // Run custom cleanup functions
     cleanupFunctionsRef.current.forEach(cleanup => {
       try {
@@ -1083,6 +1252,11 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
       setCall(incoming)
       setIncoming(null)
       setCallStatus('connected')
+      
+      // Start network monitoring after answering
+      setTimeout(() => {
+        startNetworkMonitoring()
+      }, 1000)
       
       console.log('📞 Call answered, maintaining call type:', isVideoCall ? 'Video' : 'Audio')
       console.log('📞 Session ID after answer:', currentSessionId)
@@ -1738,6 +1912,141 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                        }}></div>
                      </div>
                    )}
+                   
+                   {/* Quick Network Quality Indicator */}
+                   {callStatus === 'connected' && networkStats.ping !== null && !showDetailedStats && (
+                     <div 
+                       onClick={() => setShowDetailedStats(true)}
+                       style={{
+                         marginTop: '8px',
+                         fontSize: '14px',
+                         color: getIconColor('gray'),
+                         fontWeight: '400',
+                         display: 'flex',
+                         alignItems: 'center',
+                         justifyContent: 'center',
+                         gap: '6px',
+                         cursor: 'pointer',
+                         padding: '4px 8px',
+                         borderRadius: '8px',
+                         background: 'rgba(0, 0, 0, 0.2)',
+                         transition: 'all 0.2s ease'
+                       }}
+                       onMouseOver={(e) => {
+                         e.currentTarget.style.background = 'rgba(0, 0, 0, 0.3)'
+                       }}
+                       onMouseOut={(e) => {
+                         e.currentTarget.style.background = 'rgba(0, 0, 0, 0.2)'
+                       }}
+                       title="Click để xem chi tiết mạng"
+                     >
+                       <span>📡</span>
+                       <span style={{ 
+                         color: networkStats.ping < 100 ? getIconColor('green') : networkStats.ping < 300 ? '#fbbf24' : '#ef4444',
+                         fontWeight: '500'
+                       }}>
+                         {networkStats.ping < 100 ? 'Mạng tốt' : networkStats.ping < 300 ? 'Mạng trung bình' : 'Mạng yếu'}
+                       </span>
+                       <span style={{ fontSize: '12px', opacity: 0.7 }}>
+                         ({networkStats.ping}ms)
+                       </span>
+                     </div>
+                   )}
+                </div>
+              )}
+              
+                            {/* Network Stats Overlay - Show only when connected and detailed view enabled */}
+              {callStatus === 'connected' && showDetailedStats && (
+                <div style={{
+                  position: 'absolute',
+                  top: '20px',
+                  left: '20px',
+                  background: appearance === 'light' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.6)',
+                  borderRadius: '12px',
+                  padding: '8px 12px',
+                  backdropFilter: 'blur(8px)',
+                  fontSize: '12px',
+                  color: appearance === 'light' ? '#374151' : 'white',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  minWidth: '120px',
+                  zIndex: 10,
+                  border: appearance === 'light' ? '1px solid rgba(0, 0, 0, 0.1)' : 'none'
+                }}>
+                  <div style={{ 
+                    fontWeight: '600', 
+                    marginBottom: '4px', 
+                    color: '#4ade80',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    📡 Chi tiết mạng
+                    <button
+                      onClick={() => setShowDetailedStats(false)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: appearance === 'light' ? '#6b7280' : '#9ca3af',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        padding: '0',
+                        marginLeft: '8px'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  
+                  {networkStats.ping !== null && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Độ trễ:</span>
+                      <span style={{ 
+                        color: networkStats.ping < 100 ? '#4ade80' : networkStats.ping < 300 ? '#fbbf24' : '#ef4444',
+                        fontWeight: '600'
+                      }}>
+                        {networkStats.ping}ms
+                      </span>
+                    </div>
+                  )}
+                  
+                  {networkStats.packetLoss !== null && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Mất gói:</span>
+                      <span style={{ 
+                        color: networkStats.packetLoss < 1 ? '#4ade80' : networkStats.packetLoss < 5 ? '#fbbf24' : '#ef4444',
+                        fontWeight: '600'
+                      }}>
+                        {networkStats.packetLoss}%
+                      </span>
+                    </div>
+                  )}
+                  
+                  {networkStats.bitrate !== null && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Bitrate:</span>
+                      <span style={{ color: appearance === 'light' ? '#6b7280' : '#94a3b8' }}>
+                        {networkStats.bitrate}kbps
+                      </span>
+                    </div>
+                  )}
+                  
+                  {networkStats.networkType && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Kết nối:</span>
+                      <span style={{ color: appearance === 'light' ? '#6b7280' : '#94a3b8' }}>
+                        {networkStats.networkType}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Show loading if no data yet */}
+                  {networkStats.ping === null && networkStats.packetLoss === null && (
+                    <div style={{ color: appearance === 'light' ? '#6b7280' : '#94a3b8', textAlign: 'center' }}>
+                      Đang đo...
+                    </div>
+                  )}
                 </div>
               )}
             </div>
