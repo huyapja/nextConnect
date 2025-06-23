@@ -3,6 +3,18 @@ import jwt
 import time
 from frappe import _
 
+def get_call_session_safely(session_id):
+	"""
+	Safely get call session document with proper error handling
+	"""
+	try:
+		return frappe.get_doc("Raven Call Session", {"session_id": session_id})
+	except frappe.DoesNotExistError:
+		frappe.throw(_("Session cuộc gọi không tồn tại"))
+	except Exception as e:
+		frappe.log_error(f"Lỗi khi lấy call session: {str(e)}")
+		frappe.throw(_("Không thể truy cập session cuộc gọi"))
+
 @frappe.whitelist(methods=["GET"])
 def get_stringee_token():
 	"""
@@ -66,7 +78,7 @@ def create_call_session(caller_id, callee_id, call_type="video"):
 			"status": "initiated",
 			"channel_id": channel_id
 		})
-		call_session.insert()
+		call_session.insert(ignore_permissions=True)
 		
 		print(f"📞 [API] Creating call session: {caller_id} -> {callee_id}, type: {call_type}")
 		
@@ -107,7 +119,7 @@ def update_call_status(session_id, status, end_time=None):
 	Cập nhật trạng thái cuộc gọi
 	"""
 	try:
-		call_session = frappe.get_doc("Raven Call Session", {"session_id": session_id})
+		call_session = get_call_session_safely(session_id)
 		call_session.status = status
 		
 		if end_time and status in ["ended", "missed", "rejected"]:
@@ -118,7 +130,7 @@ def update_call_status(session_id, status, end_time=None):
 				end = datetime.fromisoformat(end_time)
 				call_session.duration = int((end - start).total_seconds())
 		
-		call_session.save()
+		call_session.save(ignore_permissions=True)
 		
 		# Thông báo realtime cho cả hai người dùng
 		users = [call_session.caller_id, call_session.callee_id]
@@ -147,14 +159,14 @@ def answer_call(session_id):
 	Trả lời cuộc gọi
 	"""
 	try:
-		call_session = frappe.get_doc("Raven Call Session", {"session_id": session_id})
+		call_session = get_call_session_safely(session_id)
 		
 		# Kiểm tra quyền
 		if frappe.session.user != call_session.callee_id:
 			frappe.throw(_("Bạn không có quyền trả lời cuộc gọi này"))
 		
 		call_session.status = "answered"
-		call_session.save()
+		call_session.save(ignore_permissions=True)
 		
 		# Thông báo cho người gọi
 		frappe.publish_realtime(
@@ -178,14 +190,14 @@ def reject_call(session_id):
 	Từ chối cuộc gọi
 	"""
 	try:
-		call_session = frappe.get_doc("Raven Call Session", {"session_id": session_id})
+		call_session = get_call_session_safely(session_id)
 		
 		# Kiểm tra quyền
 		if frappe.session.user != call_session.callee_id:
 			frappe.throw(_("Bạn không có quyền từ chối cuộc gọi này"))
 		
 		call_session.status = "rejected"
-		call_session.save()
+		call_session.save(ignore_permissions=True)
 		
 		# Thông báo cho người gọi
 		frappe.publish_realtime(
@@ -318,7 +330,7 @@ def respond_video_upgrade(session_id, accepted):
 		# Nếu được chấp nhận, cập nhật call type thành video (nếu có session)
 		if accepted and call_session:
 			call_session.call_type = "video"
-			call_session.save()
+			call_session.save(ignore_permissions=True)
 			print(f"📹 [API] Updated call session type to video")
 		
 		# Gửi thông báo realtime cho người yêu cầu
