@@ -2,7 +2,7 @@
 
 import { Button, Dialog, Flex } from '@radix-ui/themes'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useContext, useMemo, useState } from 'react'
 import { IoMdClose } from 'react-icons/io'
 import { toast } from 'sonner'
 
@@ -15,11 +15,14 @@ import clsx from 'clsx'
 import { UnifiedChannel } from '../../direct-messages/useUnifiedChannelList'
 import ChannelModalConversationItem from './ChannelModalConversationItem'
 import SelectedChannelItem from './SelectedChannelItem'
+import { useSidebarMode } from '@/utils/layout/sidebar'
+import { UserListContext } from '@/utils/users/UserListProvider'
 
 type Props = {
   setIsOpen: (v: boolean) => void
   label: string // label_id, ví dụ: 'ULB0001'
   name: string
+  channels: any[]
 }
 
 const ChannelDetailDialog = lazy(() => import('./ChannelDetailDialog'))
@@ -39,8 +42,6 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
     setCurrentChannel(channel)
   }
 
-  const { mutate } = useSWRConfig()
-
   const handleToggle = (channelID: string) => {
     setSelected((prev) => {
       const newSet = new Set(prev)
@@ -53,14 +54,44 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
 
   const selectedChannels = useMemo(() => channels.filter((c) => selected.has(c.name)), [selected, channels])
 
+  const { enabledUsers: users } = useContext(UserListContext)
+
+  const userMap = useMemo(() => {
+    const map = new Map<string, string>()
+    users?.forEach((user) => {
+      map.set(user.name, user.full_name || '')
+    })
+    return map
+  }, [users])
+
+  const normalizeText = (text: string) =>
+    text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .trim()
+      .toLowerCase()
+
   const filteredChannels = useMemo(() => {
-    const keyword = search.toLowerCase()
-    return channels.filter(
-      (channel) =>
-        channel.is_self_message !== 1 &&
-        (channel.channel_name?.toLowerCase().includes(keyword) || channel.name.toLowerCase().includes(keyword))
-    )
-  }, [channels, search])
+    if (!search) {
+      return channels.filter((channel) => channel.is_self_message !== 1)
+    }
+
+    const keyword = normalizeText(search)
+
+    return channels.filter((channel) => {
+      if (channel.is_self_message === 1) return false
+
+      if (channel.is_direct_message === 1) {
+        const peerName = normalizeText(userMap.get(channel.peer_user_id) || '')
+        return peerName.includes(keyword)
+      }
+
+      const channelName = normalizeText(channel.channel_name || '')
+      return channelName.includes(keyword)
+    })
+  }, [channels, search, userMap])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,13 +105,13 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
 
       // ✅ Cập nhật local sortedChannelsAtom
       channel_ids?.forEach((channelID) => {
-        addLabelToChannel(channelID, name)
+        addLabelToChannel(channelID, { label_id: name, label })
       })
 
       // ✅ Cập nhật key để trigger re-render các nơi khác
       setRefreshKey((prev) => prev + 1)
 
-      mutate('channel_list')
+      // mutate('channel_list')
 
       setIsOpen(false)
       toast.success('Gán nhãn thành công')
@@ -95,9 +126,11 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
     <>
       <form className='space-y-4 overflow-hidden' onSubmit={handleSubmit}>
         <Dialog.Title className='text-lg font-semibold flex w-full items-center justify-between'>
-          <Flex align='center' gap='2'>
-            Thêm cuộc trò chuyện vào <span className='italic'>"{label}"</span>
+          <Flex align='center' gap='2' className='flex-wrap'>
+            <span>Thêm cuộc trò chuyện vào</span>
+            <span className='italic'>{label}</span>
           </Flex>
+
           <Dialog.Close>
             <IoMdClose
               type='button'
@@ -138,11 +171,17 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
                   onOpenModal={handleOpenModal}
                 />
               ))}
+
+              {filteredChannels.length === 0 && (
+                <div className='text-gray-500 italic p-2'>
+                  Không có cuộc trò chuyện nào tên là: "<strong>{search}</strong>"
+                </div>
+              )}
             </div>
           </div>
 
           {/* Right column */}
-          <div className='md:w-1/2 p-2 text-sm order-1 md:order-none'>
+          <div className={clsx('md:w-1/2 p-2 text-sm order-1 md:order-none', !isMobile && 'overflow-x-hidden')}>
             <div className='mb-2 font-medium'>Đã chọn: {selected.size} cuộc trò chuyện</div>
             <div className={`${isMobile ? 'flex flex-wrap mt-5 gap-4' : 'space-y-1'}`}>
               {selectedChannels?.map((channel) => (
@@ -155,13 +194,14 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
           </div>
         </div>
 
-        <Flex justify='between' align='center' pt='2'>
+        <Flex align='center' justify='end' gap='3'>
           <Dialog.Close>
-            <Button className='cursor-pointer' variant='ghost' type='button' size='2'>
-              Hủy bỏ
+            <Button type='button' variant='soft' size='2' className='cursor-pointer' disabled={loading}>
+              Hủy
             </Button>
           </Dialog.Close>
-          <Button className='cursor-pointer' type='submit' size='2' disabled={selected.size === 0 || loading}>
+
+          <Button type='submit' size='2' className='cursor-pointer' disabled={loading}>
             {loading ? 'Đang thêm...' : 'Thêm'}
           </Button>
         </Flex>
