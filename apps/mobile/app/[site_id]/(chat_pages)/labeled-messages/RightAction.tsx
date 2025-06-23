@@ -18,9 +18,6 @@ function RightAction(prog: SharedValue<number>, drag: SharedValue<number>, label
     })
 
     const deleteConversation = async () => {
-        console.log("channel", label.label_id)
-        console.log("label", channel.channel_id)
-        // return;
         try {
             await call({
                 label_id: label.label_id,
