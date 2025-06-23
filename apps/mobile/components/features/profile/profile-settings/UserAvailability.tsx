@@ -18,12 +18,12 @@ const UserAvailability = () => {
         call({
             'availability_status': status
         }).then(() => {
-            toast.success("Availability updated!", {
+            toast.success("Đã cập nhật trạng thái!", {
                 duration: 600
             })
             mutate()
         }).catch((error) => {
-            toast.error('Error updating availability', {
+            toast.error('Cập nhật thất bại', {
                 description: error.message
             })
         })
@@ -32,15 +32,15 @@ const UserAvailability = () => {
     const getStatusText = (status: AvailabilityStatus) => {
         switch (status) {
             case 'Available':
-                return 'Available'
+                return 'Đang hoạt động'
             case 'Away':
-                return 'Away'
+                return 'Vắng mặt'
             case 'Do not disturb':
-                return 'Do Not Disturb'
+                return 'Không làm phiền'
             case 'Invisible':
-                return 'Invisible'
+                return 'Ẩn'
             default:
-                return 'Available'
+                return 'Đang hoạt động'
         }
     }
 
@@ -51,7 +51,7 @@ const UserAvailability = () => {
             <View className='flex flex-row py-2.5 px-4 rounded-xl justify-between bg-background dark:bg-card'>
                 <View className='flex-row items-center gap-2.5'>
                     <CircleIcon height={15} width={15} color={colors.icon} strokeWidth={2.5} />
-                    <Text className='text-base'>Availability</Text>
+                    <Text className='text-base'>Trạng thái hoạt động</Text>
                 </View>
                 <DropdownMenu.Root>
                     <DropdownMenu.Trigger>
@@ -70,7 +70,7 @@ const UserAvailability = () => {
                                     light: 'green',
                                 },
                             }} />
-                            <DropdownMenu.ItemTitle>Available</DropdownMenu.ItemTitle>
+                            <DropdownMenu.ItemTitle>Đang hoạt động</DropdownMenu.ItemTitle>
                         </DropdownMenu.Item>
                         <DropdownMenu.Item key="away" onSelect={() => setAvailabilityStatus('Away')}>
                             <DropdownMenu.ItemIcon ios={{
@@ -82,7 +82,7 @@ const UserAvailability = () => {
                                     light: 'orange',
                                 },
                             }} />
-                            <DropdownMenu.ItemTitle>Away</DropdownMenu.ItemTitle>
+                            <DropdownMenu.ItemTitle>Vắng mặt</DropdownMenu.ItemTitle>
                         </DropdownMenu.Item>
                         <DropdownMenu.Item key="do-not-disturb" onSelect={() => setAvailabilityStatus('Do not disturb')}>
                             <DropdownMenu.ItemIcon ios={{
@@ -94,7 +94,7 @@ const UserAvailability = () => {
                                     light: '#D22B2B',
                                 },
                             }} />
-                            <DropdownMenu.ItemTitle>Do Not Disturb</DropdownMenu.ItemTitle>
+                            <DropdownMenu.ItemTitle>Không làm phiền</DropdownMenu.ItemTitle>
                         </DropdownMenu.Item>
                         <DropdownMenu.Item key="invisible" onSelect={() => setAvailabilityStatus('Invisible')}>
                             <DropdownMenu.ItemIcon ios={{
@@ -106,7 +106,7 @@ const UserAvailability = () => {
                                     light: '#BEBEBE',
                                 },
                             }} />
-                            <DropdownMenu.ItemTitle>Invisible</DropdownMenu.ItemTitle>
+                            <DropdownMenu.ItemTitle>Ẩn</DropdownMenu.ItemTitle>
                         </DropdownMenu.Item>
                         <DropdownMenu.Item key="reset" onSelect={() => setAvailabilityStatus('')}>
                             <DropdownMenu.ItemIcon ios={{
@@ -118,7 +118,7 @@ const UserAvailability = () => {
                                     light: 'gray',
                                 },
                             }} />
-                            <DropdownMenu.ItemTitle>Reset</DropdownMenu.ItemTitle>
+                            <DropdownMenu.ItemTitle>Đặt lại</DropdownMenu.ItemTitle>
                         </DropdownMenu.Item>
                     </DropdownMenu.Content>
                 </DropdownMenu.Root>

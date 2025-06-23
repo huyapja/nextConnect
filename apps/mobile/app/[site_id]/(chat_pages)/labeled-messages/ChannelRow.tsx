@@ -1,13 +1,13 @@
+import GroupIcon from '@assets/icons/Group.svg'
+import UserAvatar from '@components/layout/UserAvatar'
+import { useIsUserActive } from '@hooks/useIsUserActive'
+import useCurrentRavenUser from '@raven/lib/hooks/useCurrentRavenUser'
+import { useGetUser } from '@raven/lib/hooks/useGetUser'
+import { replaceCurrentUserFromDMChannelName } from "@raven/lib/utils/operations"
 import { Link } from 'expo-router'
 import { useMemo } from 'react'
 import { Pressable, StyleSheet, Text } from 'react-native'
 import { ChanelLabeledMessage } from 'types/LabeledMessageType'
-import { replaceCurrentUserFromDMChannelName } from "@raven/lib/utils/operations"
-import useCurrentRavenUser from '@raven/lib/hooks/useCurrentRavenUser'
-import { useGetUser } from '@raven/lib/hooks/useGetUser'
-import UserAvatar from '@components/layout/UserAvatar'
-import { useIsUserActive } from '@hooks/useIsUserActive'
-import GroupIcon from '@assets/icons/Group.svg'
 import { getRandomRgba } from 'utils/functions'
 
 const styles = StyleSheet.create({

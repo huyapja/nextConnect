@@ -35,13 +35,13 @@ export default function Profile() {
                     <View className='flex flex-col gap-4 mt-1.5'>
                         <ProfilePicture />
                         <View className='flex flex-col gap-0.5'>
-                            <Text className='pl-2 pb-1 text-xs text-muted-foreground/80'>Personal Info</Text>
+                            <Text className='pl-2 pb-1 text-xs text-muted-foreground/80'>Thông tin cá nhân</Text>
                             <UserFullName />
                             <CustomStatus />
                             <UserAvailability />
                         </View>
                         <View className='flex flex-col gap-0.5'>
-                            <Text className='pl-2 pb-1 text-xs text-muted-foreground/80'>Preferences</Text>
+                            <Text className='pl-2 pb-1 text-xs text-muted-foreground/80'>Tuỳ chọn</Text>
                             <NotificationSetting />
                             <AppearanceSetting />
                             <Preferences />
@@ -51,7 +51,7 @@ export default function Profile() {
                         <View className='flex flex-col justify-center items-center pt-2 gap-1'>
                             <Text className='text-lg text-muted-foreground/90 font-cal-sans'>raven</Text>
                             <View className='flex flex-col items-center justify-center'>
-                                <Text className='text-xs text-muted-foreground/80'>by The Commit Company</Text>
+                                <Text className='text-xs text-muted-foreground/80'>by Hải Nam Tech</Text>
                                 <Text className='text-xs text-muted-foreground/80'>Version {nativeApplicationVersion} ({nativeBuildVersion})</Text>
                             </View>
                         </View>

@@ -28,7 +28,7 @@ const NotificationSetting = () => {
         if (enabled) {
             messaging.requestPermission().then((authorizationStatus) => {
                 if (authorizationStatus !== AuthorizationStatus.AUTHORIZED && authorizationStatus !== AuthorizationStatus.EPHEMERAL) {
-                    throw new Error('User has not granted permission to receive notifications.')
+                    throw new Error('Bạn chưa cấp quyền nhận thông báo.')
                 }
             }).then(() => {
                 messaging.getToken().then((token) => {
@@ -41,10 +41,10 @@ const NotificationSetting = () => {
                         }).then(() => {
                             setEnabled(true)
                         }).catch((error) => {
-                            toast.error('Failed to subscribe to push notifications.')
+                            toast.error('Đăng ký nhận thông báo thất bại.')
                         })
                     } else {
-                        toast.error('Failed to get token to subscribe.')
+                        toast.error('Lấy token đăng ký thất bại.')
                     }
                 })
             })
@@ -66,7 +66,7 @@ const NotificationSetting = () => {
             <View className='flex flex-row py-2.5 px-4 rounded-xl justify-between bg-background dark:bg-card'>
                 <View className='flex-row items-center gap-2'>
                     <BellOutlineIcon height={18} width={18} fill={colors.icon} />
-                    <Text className='text-base'>Push Notifications</Text>
+                    <Text className='text-base'>Thông báo đẩy</Text>
                 </View>
                 <Toggle value={enabled} onValueChange={onToggle} />
             </View>

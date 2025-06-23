@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LabeledMessageItem } from 'types/LabeledMessageType';
 import ChannelRow from './ChannelRow';
+import { router } from 'expo-router';
 
 const styles = StyleSheet.create({
     container: {
@@ -27,19 +28,49 @@ const styles = StyleSheet.create({
     },
 })
 
-const LabeledItem = ({ data }: { data: LabeledMessageItem }) => {
+const LabeledItem = ({ data, onLongPress }: { data: LabeledMessageItem, onLongPress: (label: LabeledMessageItem) => void }) => {
     const { colors } = useColorScheme()
     const [isExpanded, setIsExpanded] = useState(false)
+    const onAddConversation = () => {
+        router.push('./add-conversation', {
+            relativeToDirectory: true
+        })
+    }
 
     return (
         <View style={styles.container}>
-            <TouchableOpacity onPress={() => setIsExpanded(!isExpanded)} style={styles.header} activeOpacity={0.7}>
+            <TouchableOpacity
+                onLongPress={() => onLongPress(data)}
+                onPress={() => setIsExpanded(!isExpanded)}
+                style={styles.header}
+                activeOpacity={0.7}
+            >
                 <Text className='text-foreground' style={styles.headerText}>{data.label}</Text>
                 {isExpanded ? <ChevronDownIcon fill={colors.icon} /> : <ChevronRightIcon fill={colors.icon} />}
             </TouchableOpacity>
-            {isExpanded && <>
-                {data.channels.map((channel) => <ChannelRow key={channel.channel_id} row={channel} />)}
-            </>}
+            {isExpanded && (
+                <>
+                    {data.channels.map((channel) => <ChannelRow key={channel.channel_id} row={channel} />)}
+                    {
+                        data.channels?.length === 0 && (
+                            <>
+                                <Text
+                                    style={{color: colors.secondary}}
+                                    className='italic px-4'
+                                >Chưa có cuộc trò chuyện nào được thêm vào nhãn này</Text>
+                                <View className='py-2.5 px-4'>
+                                    <TouchableOpacity
+                                        onPress={onAddConversation}
+                                        className='py-2 rounded-xl'
+                                    >
+                                        <Text className='text-base italic font-medium text-primary'>Thêm cuộc trò chuyện</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </>
+                        )
+                    }
+                </>
+            )}
         </View>
     )
 }
