@@ -1,11 +1,11 @@
 import { Loader } from '@/components/common/Loader'
 import { HStack } from '@/components/layout/Stack'
-import { DropdownMenu, Flex, FlexProps, IconButton, Inset, Popover, Separator } from '@radix-ui/themes'
+import { Flex, FlexProps, IconButton, Inset, Popover, Separator } from '@radix-ui/themes'
 import { IconButtonProps } from '@radix-ui/themes/dist/cjs/components/icon-button'
 import { useCurrentEditor } from '@tiptap/react'
 import clsx from 'clsx'
 import { Suspense, lazy } from 'react'
-import { BiBellOff, BiChevronDown, BiPaperclip, BiSmile, BiSolidSend } from 'react-icons/bi'
+import { BiAt, BiPaperclip, BiSmile, BiSolidSend } from 'react-icons/bi'
 import DocumentLinkButton from './DocumentLinkButton'
 import { ToolbarFileProps } from './Tiptap'
 import { DEFAULT_BUTTON_STYLE, ICON_PROPS } from './ToolPanel'
@@ -38,7 +38,7 @@ export const RightToolbarButtons = ({ fileProps, channelID, isEdit, ...sendProps
     <Flex gap='2' align='center' px='1' py='1'>
       <Flex gap='3' align='center'>
         {!isEdit && channelID && <DocumentLinkButton channelID={channelID} />}
-        {/* <MentionButtons /> */}
+        <MentionButtons />
       </Flex>
       <Separator orientation='vertical' />
       {/* <Flex gap='3' align='center'>
@@ -57,40 +57,40 @@ export const RightToolbarButtons = ({ fileProps, channelID, isEdit, ...sendProps
   )
 }
 
-// const MentionButtons = () => {
-//   const { editor } = useCurrentEditor()
+const MentionButtons = () => {
+  const { editor } = useCurrentEditor()
 
-//   if (!editor) {
-//     return null
-//   }
+  if (!editor) {
+    return null
+  }
 
-//   return (
-//     <Flex gap='3'>
-//       <IconButton
-//         onClick={() => editor.chain().focus().insertContent('#').run()}
-//         aria-label='mention channel'
-//         title='Mention a channel'
-//         className={DEFAULT_BUTTON_STYLE}
-//         variant='ghost'
-//         size='1'
-//         disabled={!editor.can().chain().focus().insertContent('#').run() || !editor.isEditable}
-//       >
-//         <BiHash {...ICON_PROPS} />
-//       </IconButton>
-//       <IconButton
-//         onClick={() => editor.chain().focus().insertContent('@').run()}
-//         aria-label='mention user'
-//         variant='ghost'
-//         className={DEFAULT_BUTTON_STYLE}
-//         size='1'
-//         title='Mention a user'
-//         disabled={!editor.can().chain().focus().insertContent('@').run() || !editor.isEditable}
-//       >
-//         <BiAt {...ICON_PROPS} />
-//       </IconButton>
-//     </Flex>
-//   )
-// }
+  return (
+    <Flex gap='3'>
+      {/* <IconButton
+        onClick={() => editor.chain().focus().insertContent('#').run()}
+        aria-label='mention channel'
+        title='Mention a channel'
+        className={DEFAULT_BUTTON_STYLE}
+        variant='ghost'
+        size='1'
+        disabled={!editor.can().chain().focus().insertContent('#').run() || !editor.isEditable}
+      >
+        <BiHash {...ICON_PROPS} />
+      </IconButton> */}
+      <IconButton
+        onClick={() => editor.chain().focus().insertContent('@').run()}
+        aria-label='mention user'
+        variant='ghost'
+        className={DEFAULT_BUTTON_STYLE}
+        size='1'
+        title='Mention a user'
+        disabled={!editor.can().chain().focus().insertContent('@').run() || !editor.isEditable}
+      >
+        <BiAt {...ICON_PROPS} />
+      </IconButton>
+    </Flex>
+  )
+}
 
 const EmojiPickerButton = () => {
   const { editor } = useCurrentEditor()
@@ -263,7 +263,7 @@ export const SendButton = ({ sendMessage, messageSending, setContent, boxProps, 
       >
         {messageSending ? <Loader /> : <BiSolidSend {...ICON_PROPS} />}
       </IconButton>
-      <DropdownMenu.Root>
+      {/* <DropdownMenu.Root>
         <DropdownMenu.Trigger>
           <IconButton
             aria-label='send message'
@@ -282,7 +282,7 @@ export const SendButton = ({ sendMessage, messageSending, setContent, boxProps, 
             Send without notification
           </DropdownMenu.Item>
         </DropdownMenu.Content>
-      </DropdownMenu.Root>
+      </DropdownMenu.Root> */}
     </HStack>
   )
 }
