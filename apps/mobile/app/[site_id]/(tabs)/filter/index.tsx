@@ -1,5 +1,6 @@
 import FilterList from '@components/features/FilterConversation/FilterList';
 import { useColorScheme } from '@hooks/useColorScheme'
+import { Stack } from 'expo-router';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -7,7 +8,7 @@ const Conversation = () => {
     const { colors } = useColorScheme();
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <>
             <View/>
             <ScrollView
                 contentContainerStyle={{ paddingBottom: 5 }}
@@ -16,7 +17,7 @@ const Conversation = () => {
             >
                 <FilterList/>
             </ScrollView>
-        </SafeAreaView>
+        </>
     )
 }
 

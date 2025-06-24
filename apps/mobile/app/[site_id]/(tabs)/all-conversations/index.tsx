@@ -8,13 +8,7 @@ const Conversation = () => {
 
     return (
         <SafeAreaView style={{ flex: 1 }}>
-            <ScrollView
-                contentContainerStyle={{ paddingBottom: 5 }}
-                showsVerticalScrollIndicator={false}
-                style={{ flex: 1, backgroundColor: colors.background }}
-            >
-                <ConversationList filter='all'/>
-            </ScrollView>
+            <ConversationList filter='all'/>
         </SafeAreaView>
     )
 }

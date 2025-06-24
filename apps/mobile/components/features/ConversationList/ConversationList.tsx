@@ -6,7 +6,7 @@ import { LegendList } from "@legendapp/list";
 import { useDebounce } from "@raven/lib/hooks/useDebounce";
 import { ChannelListContext, ChannelListContextType } from "@raven/lib/providers/ChannelListProvider";
 import { useContext, useMemo, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, ScrollView, View } from "react-native";
 import { FilterConversationType } from "types/FilterConversationTypes";
 import DmRow from "./DMRow";
 import DMListEmptyState from "./DMListEmptyState";
@@ -86,14 +86,14 @@ const ConversationList = ({ filter='all' }: ConversationListProps) => {
     }
 
     return (
-        <View className="flex flex-col">
+        <>
             <View className="px-3 pt-3 pb-1.5">
                 <SearchInput
                     onChangeText={setSearchQuery}
                     value={searchQuery}
                 />
             </View>
-            <View className='flex-1'>
+            <ScrollView>
                 <LegendList
                     data={filteredDMs}
                     renderItem={({ item }: any) => {
@@ -111,8 +111,8 @@ const ConversationList = ({ filter='all' }: ConversationListProps) => {
                     ListEmptyComponent={<DMListEmptyState searchQuery={searchQuery} />}
                 />
                 <Divider />
-            </View>
-        </View>
+            </ScrollView>
+        </>
     )
 }
 

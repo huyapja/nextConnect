@@ -3,7 +3,7 @@ import ConversationList from '@components/features/ConversationList/Conversation
 import { FilterItems } from '@components/features/FilterConversation/FilterList'
 import { useColorScheme } from '@hooks/useColorScheme'
 import { Stack, useLocalSearchParams } from 'expo-router'
-import { SafeAreaView, Text } from 'react-native'
+import { SafeAreaView, Text, View } from 'react-native'
 import { ScrollView } from 'react-native-gesture-handler'
 import { FilterConversationType } from 'types/FilterConversationTypes'
 
@@ -34,15 +34,9 @@ const index = () => {
                     }
                 }}
             />
-            <SafeAreaView style={{ flex: 1 }}>
-                <ScrollView
-                    contentContainerStyle={{ paddingBottom: 5 }}
-                    showsVerticalScrollIndicator={false}
-                    style={{ flex: 1, backgroundColor: colors.background }}
-                >
-                    <ConversationList filter={type as string as FilterConversationType}/>
-                </ScrollView>
-            </SafeAreaView>
+            <View className='flex-1'>
+                <ConversationList filter={type as string as FilterConversationType}/>
+            </View>
         </>
     )
 }
