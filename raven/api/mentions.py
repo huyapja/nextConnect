@@ -91,6 +91,7 @@ def get_unread_mention_count():
 		)
 		.where(mention.user == frappe.session.user)
 		.where(mention.is_read != 1)
+        .where(mention.is_hidden != 1)
 		.where(channel_member.user_id == frappe.session.user)
 		.where(message.owner != frappe.session.user)
 		.where(message.is_retracted != 1)
