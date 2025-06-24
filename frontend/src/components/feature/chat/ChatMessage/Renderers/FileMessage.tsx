@@ -165,16 +165,17 @@ export const FileMessageBlock = memo(
     const [objectURL, setObjectURL] = useState<string>('')
 
     useEffect(() => {
-      if (typeof message?.file !== 'string') {
-        if (message?.file instanceof File || message?.file instanceof Blob) {
-          const url = URL.createObjectURL(message.file)
+      if (message?.file && typeof message.file !== 'string') {
+        const file = message.file as Blob | File
+        if (file instanceof File || file instanceof Blob) {
+          const url = URL.createObjectURL(file)
           setObjectURL(url)
           return () => {
             URL.revokeObjectURL(url)
           }
         }
       }
-    }, [message.file])
+    }, [message?.file])
 
     const fileURL = typeof message.file === 'string' ? message.file?.split('?')[0] : objectURL
 
@@ -202,6 +203,9 @@ export const FileMessageBlock = memo(
 
     const isDesktop = useIsDesktop()
 
+    // 🟢 Đây là biến showRetryButton
+    const showRetryButton = isError || (isPending && !!fileURL)
+
     return (
       <Box {...props}>
         {isVideo ? (
@@ -219,7 +223,7 @@ export const FileMessageBlock = memo(
             {fileURL && (
               <Box className='relative w-fit'>
                 <img src={fileURL} alt={fileName} className='rounded-md shadow-md max-w-full max-h-96 object-contain' />
-                {(isPending || isError) && (
+                {showRetryButton && (
                   <Box
                     className='absolute top-2 right-2 flex gap-1 items-center'
                     style={{
@@ -228,30 +232,26 @@ export const FileMessageBlock = memo(
                       borderRadius: '6px'
                     }}
                   >
-                    {isError ? (
-                      <>
-                        <Button
-                          size='1'
-                          variant='soft'
-                          color='gray'
-                          onClick={() => onRetry?.(message.name ?? message.id)}
-                        >
-                          Gửi lại
-                        </Button>
-                        <Button
-                          size='1'
-                          variant='soft'
-                          color='red'
-                          onClick={() => onRemove?.(message.name ?? message.id)}
-                        >
-                          Xoá
-                        </Button>
-                      </>
-                    ) : (
-                      <Text size='1' color='gray'>
-                        Đang gửi...
-                      </Text>
-                    )}
+                    <Button size='1' variant='soft' color='gray' onClick={() => onRetry?.(message.name ?? message.id)}>
+                      Gửi lại
+                    </Button>
+                    <Button size='1' variant='soft' color='red' onClick={() => onRemove?.(message.name ?? message.id)}>
+                      Xoá
+                    </Button>
+                  </Box>
+                )}
+                {isPending && !showRetryButton && (
+                  <Box
+                    className='absolute top-2 right-2 flex items-center'
+                    style={{
+                      backgroundColor: 'rgba(0,0,0,0.5)',
+                      padding: '2px 6px',
+                      borderRadius: '6px'
+                    }}
+                  >
+                    <Text size='1' color='gray'>
+                      Đang gửi...
+                    </Text>
                   </Box>
                 )}
               </Box>
@@ -311,23 +311,21 @@ export const FileMessageBlock = memo(
               )}
             </Flex>
 
-            {(isPending || isError) && (
+            {showRetryButton ? (
               <Flex align='center' gap='2'>
-                {isError ? (
-                  <>
-                    <Button size='1' variant='soft' color='gray' onClick={() => onRetry?.(message.name ?? message.id)}>
-                      Gửi lại
-                    </Button>
-                    <Button size='1' variant='soft' color='red' onClick={() => onRemove?.(message.name ?? message.id)}>
-                      Xoá
-                    </Button>
-                  </>
-                ) : (
-                  <Text size='1' color='gray'>
-                    Đang gửi...
-                  </Text>
-                )}
+                <Button size='1' variant='soft' color='gray' onClick={() => onRetry?.(message.name ?? message.id)}>
+                  Gửi lại
+                </Button>
+                <Button size='1' variant='soft' color='red' onClick={() => onRemove?.(message.name ?? message.id)}>
+                  Xoá
+                </Button>
               </Flex>
+            ) : (
+              isPending && (
+                <Text size='1' color='gray'>
+                  Đang gửi...
+                </Text>
+              )
             )}
           </Flex>
         )}
