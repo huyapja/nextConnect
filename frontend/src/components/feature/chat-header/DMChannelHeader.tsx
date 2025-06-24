@@ -13,6 +13,7 @@ import { BiChevronLeft } from 'react-icons/bi'
 import { Link } from 'react-router-dom'
 import ChannelHeaderMenu from './ChannelHeaderMenu'
 import ChannelLabelBadge from '../channels/ChannelLabelBadge'
+import VideoCall from '../call-stringee/CallStringee'
 
 interface DMChannelHeaderProps {
   channelData: DMChannelListItem
@@ -106,6 +107,7 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
 
       <Flex className='mr-3' gap='4' align='center'>
         <ChannelHeaderMenu channelData={channelData} />
+        {peerUserId && <VideoCall toUserId={peerUserId} channelId={channelData.name}/>}
       </Flex>
     </PageHeader>
   )
