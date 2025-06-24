@@ -7,6 +7,7 @@ import clsx from 'clsx'
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { BiSolidSend } from 'react-icons/bi'
 import { FiArrowLeft, FiCpu, FiPaperclip, FiRefreshCw } from 'react-icons/fi'
+import { useNavigate, useParams } from 'react-router-dom'
 import { commonButtonStyle } from '../labels/LabelItemMenu'
 import ChatbotFileMessage from './ChatbotFileMessage'
 
@@ -72,6 +73,8 @@ const ChatbotAIChatBox: React.FC<Props> = ({
   const messagesTopRef = useRef<HTMLDivElement>(null)
   const textAreaRef = useRef<HTMLTextAreaElement>(null)
   const thinkingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const { workspaceID } = useParams<{ workspaceID: string; channelID: string }>()
+  const navigate = useNavigate()
 
   const { currentUser } = useContext(UserContext)
   const user = useGetUser(currentUser)
@@ -192,6 +195,9 @@ const ChatbotAIChatBox: React.FC<Props> = ({
     return `${minutes}m ${remainingSeconds}s`
   }
 
+  const handleNavigateBack = useCallback(() => {
+    navigate(`/${workspaceID}`)
+  }, [])
   return (
     <div className='flex flex-col w-full h-screen'>
       {/* Header */}
@@ -200,7 +206,7 @@ const ChatbotAIChatBox: React.FC<Props> = ({
           <div className='flex items-center gap-3'>
             {/* Back button - chỉ hiển thị trên mobile */}
             <button
-              onClick={() => window.history.back()}
+              onClick={handleNavigateBack}
               className='md:hidden flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors'
             >
               <FiArrowLeft className='text-gray-600 dark:text-gray-400' size={18} />

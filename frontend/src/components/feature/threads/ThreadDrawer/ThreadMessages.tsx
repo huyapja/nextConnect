@@ -12,7 +12,7 @@ import { VirtuosoHandle } from 'react-virtuoso'
 import { Message } from '../../../../../../types/Messaging/Message'
 import AIEvent from '../../ai/AIEvent'
 import useFileUpload from '../../chat/ChatInput/FileInput/useFileUpload'
-import Tiptap from '../../chat/ChatInput/Tiptap'
+import TiptapThread from '../../chat/ChatInput/Tiptap_Thread'
 import TypingIndicator from '../../chat/ChatInput/TypingIndicator/TypingIndicator'
 import { useTyping } from '../../chat/ChatInput/TypingIndicator/useTyping'
 import { useSendMessage } from '../../chat/ChatInput/useSendMessage'
@@ -169,9 +169,9 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
       >
         <ThreadFirstMessage message={threadMessage} />
         <ChatStream
-          channelID={threadID ?? ''}
+          channelID={threadID}
           virtuosoRef={virtuosoRef as MutableRefObject<VirtuosoHandle>}
-          ref={chatStreamRef}
+          ref={chatStreamRef as any}
           replyToMessage={handleReplyAction}
           showThreadButton={false}
           onModalClose={onModalClose}
@@ -183,7 +183,7 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
         {isUserInChannel && (
           <Stack>
             <TypingIndicator channel={threadID ?? ''} />
-            <Tiptap
+            <TiptapThread
               key={threadID}
               channelID={threadID}
               fileProps={{

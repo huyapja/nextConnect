@@ -1,23 +1,18 @@
 import { Loader } from '@/components/common/Loader'
 import { HStack } from '@/components/layout/Stack'
-import { useBoolean } from '@/hooks/useBoolean'
-import { DIALOG_CONTENT_CLASS } from '@/utils/layout/dialog'
-import { Dialog, DropdownMenu, Flex, FlexProps, IconButton, Inset, Popover, Separator } from '@radix-ui/themes'
+import { DropdownMenu, Flex, FlexProps, IconButton, Inset, Popover, Separator } from '@radix-ui/themes'
 import { IconButtonProps } from '@radix-ui/themes/dist/cjs/components/icon-button'
 import { useCurrentEditor } from '@tiptap/react'
 import clsx from 'clsx'
 import { Suspense, lazy } from 'react'
-import { BiAt, BiBellOff, BiChevronDown, BiHash, BiPaperclip, BiSmile, BiSolidSend } from 'react-icons/bi'
-import { HiOutlineGif } from 'react-icons/hi2'
-import { MdOutlineBarChart } from 'react-icons/md'
-import AISavedPromptsButton from './AISavedPromptsButton'
+import { BiBellOff, BiChevronDown, BiPaperclip, BiSmile, BiSolidSend } from 'react-icons/bi'
 import DocumentLinkButton from './DocumentLinkButton'
 import { ToolbarFileProps } from './Tiptap'
 import { DEFAULT_BUTTON_STYLE, ICON_PROPS } from './ToolPanel'
 
 const EmojiPicker = lazy(() => import('@/components/common/EmojiPicker/EmojiPicker'))
-const CreatePollContent = lazy(() => import('@/components/feature/polls/CreatePoll'))
-const GIFPicker = lazy(() => import('@/components/common/GIFPicker/GIFPicker'))
+// const CreatePollContent = lazy(() => import('@/components/feature/polls/CreatePoll'))
+// const GIFPicker = lazy(() => import('@/components/common/GIFPicker/GIFPicker'))
 
 export type RightToolbarButtonsProps = {
   fileProps?: ToolbarFileProps
@@ -43,17 +38,17 @@ export const RightToolbarButtons = ({ fileProps, channelID, isEdit, ...sendProps
     <Flex gap='2' align='center' px='1' py='1'>
       <Flex gap='3' align='center'>
         {!isEdit && channelID && <DocumentLinkButton channelID={channelID} />}
-        <MentionButtons />
+        {/* <MentionButtons /> */}
       </Flex>
       <Separator orientation='vertical' />
-      <Flex gap='3' align='center'>
+      {/* <Flex gap='3' align='center'>
         <AISavedPromptsButton />
         {channelID && <CreatePollButton channelID={channelID} />}
-      </Flex>
-      <Separator orientation='vertical' />
+      </Flex> */}
+      {/* <Separator orientation='vertical' /> */}
       <Flex gap='3' align='center'>
         <EmojiPickerButton />
-        <GIFPickerButton />
+        {/* <GIFPickerButton /> */}
         {fileProps && <FilePickerButton fileProps={fileProps} />}
       </Flex>
       <Separator orientation='vertical' />
@@ -62,40 +57,40 @@ export const RightToolbarButtons = ({ fileProps, channelID, isEdit, ...sendProps
   )
 }
 
-const MentionButtons = () => {
-  const { editor } = useCurrentEditor()
+// const MentionButtons = () => {
+//   const { editor } = useCurrentEditor()
 
-  if (!editor) {
-    return null
-  }
+//   if (!editor) {
+//     return null
+//   }
 
-  return (
-    <Flex gap='3'>
-      <IconButton
-        onClick={() => editor.chain().focus().insertContent('#').run()}
-        aria-label='mention channel'
-        title='Mention a channel'
-        className={DEFAULT_BUTTON_STYLE}
-        variant='ghost'
-        size='1'
-        disabled={!editor.can().chain().focus().insertContent('#').run() || !editor.isEditable}
-      >
-        <BiHash {...ICON_PROPS} />
-      </IconButton>
-      <IconButton
-        onClick={() => editor.chain().focus().insertContent('@').run()}
-        aria-label='mention user'
-        variant='ghost'
-        className={DEFAULT_BUTTON_STYLE}
-        size='1'
-        title='Mention a user'
-        disabled={!editor.can().chain().focus().insertContent('@').run() || !editor.isEditable}
-      >
-        <BiAt {...ICON_PROPS} />
-      </IconButton>
-    </Flex>
-  )
-}
+//   return (
+//     <Flex gap='3'>
+//       <IconButton
+//         onClick={() => editor.chain().focus().insertContent('#').run()}
+//         aria-label='mention channel'
+//         title='Mention a channel'
+//         className={DEFAULT_BUTTON_STYLE}
+//         variant='ghost'
+//         size='1'
+//         disabled={!editor.can().chain().focus().insertContent('#').run() || !editor.isEditable}
+//       >
+//         <BiHash {...ICON_PROPS} />
+//       </IconButton>
+//       <IconButton
+//         onClick={() => editor.chain().focus().insertContent('@').run()}
+//         aria-label='mention user'
+//         variant='ghost'
+//         className={DEFAULT_BUTTON_STYLE}
+//         size='1'
+//         title='Mention a user'
+//         disabled={!editor.can().chain().focus().insertContent('@').run() || !editor.isEditable}
+//       >
+//         <BiAt {...ICON_PROPS} />
+//       </IconButton>
+//     </Flex>
+//   )
+// }
 
 const EmojiPickerButton = () => {
   const { editor } = useCurrentEditor()
@@ -137,44 +132,44 @@ const EmojiPickerButton = () => {
   )
 }
 
-const GIFPickerButton = () => {
-  const { editor } = useCurrentEditor()
+// const GIFPickerButton = () => {
+//   const { editor } = useCurrentEditor()
 
-  if (!editor) {
-    return null
-  }
+//   if (!editor) {
+//     return null
+//   }
 
-  return (
-    <Popover.Root>
-      <Popover.Trigger>
-        <IconButton
-          size='1'
-          variant='ghost'
-          className={DEFAULT_BUTTON_STYLE}
-          title='Add GIF'
-          // disabled
-          aria-label={'add GIF'}
-        >
-          <HiOutlineGif {...ICON_PROPS} />
-        </IconButton>
-      </Popover.Trigger>
-      <Popover.Content>
-        <Inset>
-          <Suspense fallback={<Loader />}>
-            {/* FIXME: 1. Handle 'HardBreak' coz it adds newline (empty); and if user doesn't write any text, then newline is added as text content.
-                               2. Also if you write first & then add GIF there's no 'HardBreak'.
-                    */}
-            <GIFPicker
-              onSelect={(gif) =>
-                editor.chain().focus().setImage({ src: gif.media_formats.gif.url }).setHardBreak().run()
-              }
-            />
-          </Suspense>
-        </Inset>
-      </Popover.Content>
-    </Popover.Root>
-  )
-}
+//   return (
+//     <Popover.Root>
+//       <Popover.Trigger>
+//         <IconButton
+//           size='1'
+//           variant='ghost'
+//           className={DEFAULT_BUTTON_STYLE}
+//           title='Add GIF'
+//           // disabled
+//           aria-label={'add GIF'}
+//         >
+//           <HiOutlineGif {...ICON_PROPS} />
+//         </IconButton>
+//       </Popover.Trigger>
+//       <Popover.Content>
+//         <Inset>
+//           <Suspense fallback={<Loader />}>
+//             {/* FIXME: 1. Handle 'HardBreak' coz it adds newline (empty); and if user doesn't write any text, then newline is added as text content.
+//                                2. Also if you write first & then add GIF there's no 'HardBreak'.
+//                     */}
+//             <GIFPicker
+//               onSelect={(gif) =>
+//                 editor.chain().focus().setImage({ src: gif.media_formats.gif.url }).setHardBreak().run()
+//               }
+//             />
+//           </Suspense>
+//         </Inset>
+//       </Popover.Content>
+//     </Popover.Root>
+//   )
+// }
 
 const FilePickerButton = ({ fileProps }: { fileProps: ToolbarFileProps }) => {
   const { editor } = useCurrentEditor()
@@ -292,31 +287,31 @@ export const SendButton = ({ sendMessage, messageSending, setContent, boxProps, 
   )
 }
 
-const CreatePollButton = ({ channelID }: { channelID: string }) => {
-  const [isOpen, , setIsOpen] = useBoolean(false)
-  const { editor } = useCurrentEditor()
+// const CreatePollButton = ({ channelID }: { channelID: string }) => {
+//   const [isOpen, , setIsOpen] = useBoolean(false)
+//   const { editor } = useCurrentEditor()
 
-  return (
-    <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
-      <Dialog.Trigger>
-        <IconButton
-          size='1'
-          variant='ghost'
-          className={DEFAULT_BUTTON_STYLE}
-          disabled={editor?.isEditable === false}
-          title='Create Poll'
-          aria-label={'create poll'}
-        >
-          <MdOutlineBarChart />
-        </IconButton>
-      </Dialog.Trigger>
-      <Dialog.Content className={DIALOG_CONTENT_CLASS}>
-        <Dialog.Title>Create Poll</Dialog.Title>
-        <Dialog.Description size='2'>Create a quick poll to get everyone's thoughts on a topic.</Dialog.Description>
-        <Suspense fallback={<Loader />}>
-          <CreatePollContent channelID={channelID} setIsOpen={setIsOpen} />
-        </Suspense>
-      </Dialog.Content>
-    </Dialog.Root>
-  )
-}
+//   return (
+//     <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
+//       <Dialog.Trigger>
+//         <IconButton
+//           size='1'
+//           variant='ghost'
+//           className={DEFAULT_BUTTON_STYLE}
+//           disabled={editor?.isEditable === false}
+//           title='Create Poll'
+//           aria-label={'create poll'}
+//         >
+//           <MdOutlineBarChart />
+//         </IconButton>
+//       </Dialog.Trigger>
+//       <Dialog.Content className={DIALOG_CONTENT_CLASS}>
+//         <Dialog.Title>Create Poll</Dialog.Title>
+//         <Dialog.Description size='2'>Create a quick poll to get everyone's thoughts on a topic.</Dialog.Description>
+//         <Suspense fallback={<Loader />}>
+//           <CreatePollContent channelID={channelID} setIsOpen={setIsOpen} />
+//         </Suspense>
+//       </Dialog.Content>
+//     </Dialog.Root>
+//   )
+// }

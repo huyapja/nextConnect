@@ -13,9 +13,12 @@ import WorkspacesSidebar from '@/components/layout/Sidebar/WorkspacesSidebar'
 import { HStack } from '@/components/layout/Stack'
 import { useFetchActiveUsersRealtime } from '@/hooks/fetchers/useFetchActiveUsers'
 import { useActiveSocketConnection } from '@/hooks/useActiveSocketConnection'
+import { useChannelDoneListener } from '@/hooks/useChannelDoneListener'
+import { useLastMessageUpdatedListener } from '@/hooks/useLastMessageUpdatedListener'
 import { useIsMobile, useIsTablet } from '@/hooks/useMediaQuery'
 import { useUnreadThreadsCountEventListener } from '@/hooks/useUnreadThreadsCount'
 import { UserContext } from '@/utils/auth/UserProvider'
+import eventBus from '@/utils/event-emitter'
 import { SidebarMode, SidebarModeProvider, useSidebarMode } from '@/utils/layout/sidebar'
 import { showNotification } from '@/utils/pushNotifications'
 import { hasRavenUserRole } from '@/utils/roles'
@@ -24,8 +27,6 @@ import { UserListProvider } from '@/utils/users/UserListProvider'
 import { useFrappeEventListener, useSWRConfig } from 'frappe-react-sdk'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { ChannelListProvider } from '../utils/channel/ChannelListProvider'
-import { useLastMessageUpdatedListener } from '@/hooks/useLastMessageUpdatedListener'
-import { useChannelDoneListener } from '@/hooks/useChannelDoneListener'
 
 const AddRavenUsersPage = lazy(() => import('@/pages/AddRavenUsersPage'))
 
@@ -77,16 +78,11 @@ const MainPageContent = () => {
     if (event.channel_id) {
       mutate(['thread_reply_count', event.channel_id], { message: event.number_of_replies }, { revalidate: true })
 
-      window.dispatchEvent(
-        new CustomEvent('thread_updated', {
-          detail: {
-            threadId: event.channel_id,
-            sentBy: event.sent_by,
-            lastMessageTimestamp: event.last_message_timestamp,
-            numberOfReplies: event.number_of_replies
-          }
-        })
-      )
+      eventBus.emit('thread:updated', {
+        threadId: event.channel_id,
+        numberOfReplies: event.number_of_replies,
+        lastMessageTimestamp: event.last_message_timestamp
+      })
     }
 
     if (event.sent_by === currentUser || threadID === event.channel_id) return
