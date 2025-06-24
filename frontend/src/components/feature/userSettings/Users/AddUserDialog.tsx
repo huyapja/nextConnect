@@ -2,6 +2,7 @@ import { ErrorText, Label } from '@/components/common/Form'
 import { Loader } from '@/components/common/Loader'
 import { ErrorBanner } from '@/components/layout/AlertBanner/ErrorBanner'
 import { HStack, Stack } from '@/components/layout/Stack'
+import { UserContext } from '@/utils/auth/UserProvider'
 import { DIALOG_CONTENT_CLASS } from '@/utils/layout/dialog'
 import { UserListContext } from '@/utils/users/UserListProvider'
 import { Box, Button, Dialog, Text, TextField } from '@radix-ui/themes'
@@ -11,6 +12,12 @@ import { useForm } from 'react-hook-form'
 
 const AddUserDialog = () => {
   const [open, setOpen] = useState(false)
+  const {currentUser} = useContext(UserContext);
+    const { users } = useContext(UserListContext)
+
+
+  console.log(currentUser, users);
+  
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
