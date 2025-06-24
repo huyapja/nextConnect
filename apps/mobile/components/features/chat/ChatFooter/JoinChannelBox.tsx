@@ -6,7 +6,7 @@ import { View } from "react-native"
 
 interface JoinChannelBoxProps {
     channelID: string,
-    isThread: boolean,
+    isThread?: boolean,
     user: string,
 }
 

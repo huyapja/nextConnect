@@ -417,8 +417,8 @@ const useChatStream = (channelID: string, listRef?: React.RefObject<LegendListRe
         }
 
         if (messages.length > 0) {
-            let currentDate = messages[messages.length - 1].creation.split(' ')[0]
-            let currentDateTime = new Date(messages[messages.length - 1].creation.split('.')[0]).getTime()
+            let currentDate = messages[messages.length - 1].creation?.split(' ')[0]
+            let currentDateTime = new Date(messages[messages.length - 1].creation?.split('.')[0]).getTime()
 
             messagesWithDateSeparators.push({
                 creation: currentDate,

@@ -35,7 +35,7 @@ type Props = {
     pinnedMessagesString?: string
 }
 
-const ChatLayout = ({ channelID, isThread = false, pinnedMessagesString }: Props) => {
+const ChatLayout = ({ channelID, isThread, pinnedMessagesString }: Props) => {
     const { height } = useGradualAnimation()
     const scrollRef = useRef<LegendListRef>(null)
     const isNearBottomRef = useRef(true)
@@ -49,10 +49,10 @@ const ChatLayout = ({ channelID, isThread = false, pinnedMessagesString }: Props
         isNearBottomRef.current = isNearBottom
     }, [])
 
-    const scrollToEndIfNearBottom = (animated: boolean = true) => {
+    const scrollToEndIfNearBottom = (animated?: boolean) => {
         if (isNearBottomRef.current) {
             scrollRef.current?.scrollToEnd({
-                animated
+                animated: !!animated,
             })
         }
     }

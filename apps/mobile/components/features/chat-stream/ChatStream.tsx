@@ -20,8 +20,7 @@ type Props = {
     pinnedMessagesString?: string
 }
 
-const ChatStream = ({ channelID, isThread = false, scrollRef, onMomentumScrollEnd, onScrollBeginDrag, pinnedMessagesString }: Props) => {
-
+const ChatStream = ({ channelID, isThread, scrollRef, onMomentumScrollEnd, onScrollBeginDrag, pinnedMessagesString }: Props) => {
 
     /** Fetching this here to avoid blank screen when the user opens the chat.
      * Each message item fetches this atom value
@@ -151,18 +150,17 @@ const getEstimatedItemSize = (index: number, item: MessageDateBlock) => {
 }
 
 const messageKeyExtractor = (item: MessageDateBlock) => {
+    let key = '';
     if (!item) {
-        return 'empty'
+        key = 'empty'
+    } else if (item.message_type === 'header') {
+        key = `header-${item.name}`
+    } else if (item.message_type === 'date') {
+        key = `date-${item.creation}`
+    } else {
+        key = `${item.name}-${item.modified}`
     }
-
-    if (item.message_type === 'header') {
-        return `header-${item.name}`
-    }
-
-    if (item.message_type === 'date') {
-        return `date-${item.creation}`
-    }
-    return `${item.name}-${item.modified}`
+    return key;
 }
 
 const MessageContentRenderer = ({ item }: { item: MessageDateBlock }) => {

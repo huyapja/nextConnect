@@ -140,11 +140,13 @@ const MessageItem = memo(({ message }: Props) => {
                             />}
 
                             {(message.text && !is_retracted) ? <MessageTextRenderer text={message.text} /> : null}
-                            {is_retracted && (
+                            {!!is_retracted && (
                                 <Text
                                     className='italic text-sm border p-2 rounded'
                                     style={{ borderColor: colors.card }}
-                                >Tin nhắn này đã bị thu hồi</Text>
+                                >
+                                    Tin nhắn này đã bị thu hồi
+                                </Text>
                             )}
                             {message.message_type === 'Image' && <ImageMessageRenderer message={message} doubleTapGesture={doubleTapGesture} />}
                             {message.message_type === 'File' && <FileMessageRenderer message={message} doubleTapGesture={doubleTapGesture} />}

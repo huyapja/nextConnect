@@ -18,7 +18,6 @@ export const useSendMessage = (siteID: string, channelID: string, onSend: VoidFu
     const sendMessage = async (content: string, sendWithoutFiles = false, sendSilently = false): Promise<void> => {
 
         if (content) {
-
             return call({
                 channel_id: channelID,
                 text: content,

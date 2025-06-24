@@ -13,7 +13,7 @@ interface MessageActionsBottomSheetProps {
     isThread?: boolean
 }
 
-const MessageActionsBottomSheet: React.FC<MessageActionsBottomSheetProps> = ({ messageActionsSheetRef, message, handleClose, isThread = false }) => {
+const MessageActionsBottomSheet: React.FC<MessageActionsBottomSheetProps> = ({ messageActionsSheetRef, message, handleClose, isThread }) => {
 
     // Loading this here since the app crashes if it's loaded inside the sheet
     // App crash message: "Handler for tag <number> does not exist"

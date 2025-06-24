@@ -22,7 +22,7 @@ interface MessageActionsProps {
     isThread?: boolean
 }
 
-const MessageActions = ({ message, onClose, quickReactionEmojis, isThread = false }: MessageActionsProps) => {
+const MessageActions = ({ message, onClose, quickReactionEmojis, isThread }: MessageActionsProps) => {
 
     const { myProfile } = useCurrentRavenUser()
     const isOwner = myProfile?.name === message?.owner && !message?.is_bot_message
