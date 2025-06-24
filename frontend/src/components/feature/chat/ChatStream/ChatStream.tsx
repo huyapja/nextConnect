@@ -20,13 +20,15 @@ import {
 import { useLocation } from 'react-router-dom'
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso'
 import { Message } from '../../../../../../types/Messaging/Message'
-import { PendingMessage } from '../ChatInput/useSendMessage'
 import ChatDialogs from './ChatDialogs'
 import ChatStreamLoader from './ChatStreamLoader'
 import { MessageItemRenderer } from './MessageListRenderer'
 import ScrollToBottomButtons from './ScrollToBottomButtons'
 import useChatStream from './useChatStream'
 import { useChatStreamActions } from './useChatStreamActions'
+import { PendingMessage } from '../ChatInput/useSendMessage'
+import { getFileExtension } from '@/utils/operations'
+import { isImageFile } from '../ChatMessage/Renderers/FileMessage'
 
 type Props = {
   channelID: string
@@ -35,8 +37,9 @@ type Props = {
   pinnedMessagesString?: string
   onModalClose?: () => void
   virtuosoRef: MutableRefObject<VirtuosoHandle>
-  pendingMessages?: PendingMessage[]
-  retryPendingMessages?: () => Promise<void>
+  pendingMessages: PendingMessage[]
+  removePendingMessage: (id: string) => void
+  sendOnePendingMessage: (id: string) => void
 }
 
 interface ScrollState {
@@ -148,7 +151,9 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
       pinnedMessagesString,
       onModalClose,
       virtuosoRef,
-      pendingMessages
+      pendingMessages,
+      sendOnePendingMessage,
+      removePendingMessage
     },
     ref
   ) => {
@@ -210,11 +215,19 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
       clearAllNewMessages
     } = useChatStream(channelID, virtuosoRef, pinnedMessagesString, scrollState.isAtBottom)
 
+    // useEffect(() => {
+    //   if (messages && messages?.length > 0 && !renderState.isInitialLoadComplete) {
+    //     setTimeout(() => {
+    //       dispatchRenderState({ type: 'SET_INITIAL_LOAD_COMPLETE', payload: true })
+    //     }, 100)
+    //     setTimeout(() => dispatchRenderState({ type: 'SET_VIRTUOSO_READY', payload: true }), 200)
+    //     setTimeout(() => dispatchRenderState({ type: 'SET_CONTENT_MEASURED', payload: true }), 300)
+    //     setTimeout(() => dispatchRenderState({ type: 'SET_INITIAL_RENDER_COMPLETE', payload: true }), 500)
+    //   }
+    // }, [messages, renderState.isInitialLoadComplete])
+
     useEffect(() => {
-      if (
-        ((messages && messages?.length > 0) || (pendingMessages && pendingMessages?.length > 0)) &&
-        !renderState.isInitialLoadComplete
-      ) {
+      if (((messages && messages?.length > 0) || pendingMessages?.length > 0) && !renderState.isInitialLoadComplete) {
         setTimeout(() => {
           dispatchRenderState({ type: 'SET_INITIAL_LOAD_COMPLETE', payload: true })
         }, 100)
@@ -354,14 +367,22 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
 
       return [
         ...baseMessages,
-        ...pending.map((m) => ({
-          name: m.id,
-          message_type: 'Text',
-          content: m.content,
-          owner: userID,
-          is_pending: true,
-          is_error: m.status === 'error'
-        }))
+        ...pending.map((m) => {
+          const ext = m.fileMeta?.name ? getFileExtension(m.fileMeta.name) : ''
+          const fixedType = m.message_type === 'File' && isImageFile(ext) ? 'Image' : m.message_type
+
+          return {
+            name: m.id,
+            message_type: fixedType,
+            content: m.content,
+            owner: userID,
+            is_pending: true,
+            is_error: m.status === 'error',
+            file: m.file,
+            fileMeta: m.fileMeta,
+            modified: m.createdAt ? new Date(m.createdAt).toISOString() : new Date(0).toISOString()
+          }
+        })
       ]
     }, [messages, pendingMessages, userID])
 
@@ -383,7 +404,9 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
             setReactionMessage={reactionActions.setReactionMessage}
             seenUsers={seenUsers}
             channel={channel}
-            isPending={!!(message as any).is_pending}
+            isPending={!!message.is_pending}
+            sendOnePendingMessage={sendOnePendingMessage}
+            removePendingMessage={removePendingMessage}
           />
         )
       },
@@ -521,13 +544,13 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
 
         {error && <ErrorBanner error={error} />}
 
-        {((messages && messages?.length > 0) || (pendingMessages && pendingMessages?.length > 0)) && (
+        {((messages && messages?.length > 0) || pendingMessages?.length > 0) && (
           <Virtuoso
             ref={virtuosoRef}
             data={combinedMessages}
             itemContent={itemRenderer}
             followOutput={scrollState.isAtBottom ? 'auto' : false}
-            initialTopMostItemIndex={!isSavedMessage ? messages && messages?.length - 1 : targetIndex}
+            initialTopMostItemIndex={!isSavedMessage ? messages?.length - 1 : targetIndex}
             atTopStateChange={handleAtTopStateChange}
             atBottomStateChange={handleAtBottomStateChange}
             rangeChanged={handleRangeChanged}
