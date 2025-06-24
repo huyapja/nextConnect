@@ -93,60 +93,68 @@ const ChatbotAIBody = ({ botID }: { botID?: string }) => {
 
   // Hàm gửi tin nhắn Chatbot AI
   const handleSendMessage = useCallback(async () => {
-    const hasText = input.trim() !== ''
+    const trimmedInput = input.trim()
+    const hasText = trimmedInput !== ''
     const hasFile = !!selectedFile
 
-    // Nếu không có gì để gửi hoặc đang loading thì thoát
     if ((!hasText && !hasFile) || sending || loadingMessages) return
 
-    const context = localMessages?.map((msg) => ({
-      role: msg.role,
-      content: msg.content
-    }))
-
-    // Tạo message tạm nếu có nội dung
-    const tempMessage: Message = {
-      id: `temp-${Date.now()}`,
-      role: 'user',
-      content: input.trim(),
-      pending: true
+    const clearFileInput = () => {
+      const fileInput = document.querySelector<HTMLInputElement>("input[type='file']")
+      if (fileInput) fileInput.value = ''
     }
 
-    if (hasText) {
+    const createContext = () =>
+      localMessages?.map((msg) => ({
+        role: msg.role,
+        content: msg.content
+      })) || []
+
+    const tempMessage: Message | null = hasText
+      ? {
+          id: `temp-${Date.now()}`,
+          role: 'user',
+          content: trimmedInput,
+          pending: true
+        }
+      : null
+
+    if (tempMessage) {
       setLocalMessages((prev) => [...prev, tempMessage])
     }
 
-    // Reset input và trạng thái file
     setInput('')
     setFileError(null)
     setIsThinking(true)
 
     try {
+      const context = createContext()
+
       if (hasFile) {
-        // Gửi file kèm message nếu có
         const fileWrapper = selectedFile as CustomFile
-        fileWrapper.fileID = fileWrapper.name + Date.now()
+        fileWrapper.fileID = `${fileWrapper.name}-${Date.now()}`
+
         await addFile(fileWrapper)
-        await uploadFiles() // Đã bao gồm input.trim() làm message nếu có
+        await uploadFiles()
       } else if (hasText) {
-        // Gửi riêng message nếu không có file
         await sendMessage({
           conversation_id: botID!,
-          message: tempMessage.content,
+          message: trimmedInput,
           context
         })
       }
 
       await mutateMessages()
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (err: any) {
+    } catch (error) {
+      console.error('Error sending message:', error)
       toast.error('Đã xảy ra lỗi khi gửi tin nhắn. Vui lòng thử lại.')
-      if (hasText) {
-        // Nếu gửi lỗi thì xoá message tạm khỏi UI
+
+      if (tempMessage) {
         setLocalMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id))
       }
     } finally {
       setSelectedFile(null)
+      clearFileInput()
     }
   }, [
     input,
@@ -192,20 +200,22 @@ const ChatbotAIBody = ({ botID }: { botID?: string }) => {
 
   // Thêm xử lý realtime cho tin nhắn AI
   useFrappeEventListener('raven:new_ai_message', (data) => {
-    if (data.conversation_id === botID) {
-      const alreadyExists = localMessages.some((msg) => msg.id === data.message_id)
-      if (alreadyExists) return
+    if (data.conversation_id !== botID) return
 
-      setLocalMessages((prev) => [
+    setLocalMessages((prev) => {
+      const exists = prev.some((msg) => msg.id === data.message_id)
+      if (exists) return prev
+
+      return [
         ...prev,
         {
           id: data.message_id,
           role: 'ai',
           content: data.message
         }
-      ])
-      setIsThinking(false)
-    }
+      ]
+    })
+    setIsThinking(false)
   })
 
   useFrappeEventListener('raven:error', (error) => {

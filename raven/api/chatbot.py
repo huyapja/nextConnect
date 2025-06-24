@@ -60,7 +60,7 @@ def extract_text_from_file(file_url):
 # Helper: Xây dựng context từ các tin nhắn gần nhất
 def build_context(conversation_id, model="gpt-3.5-turbo"):
     MAX_TOTAL_TOKENS = 3000
-    MAX_FILE_TOKENS = 1000
+    MAX_FILE_TOKENS = 1500
     MAX_MESSAGE_COUNT = 50
 
     try:
@@ -95,7 +95,12 @@ def build_context(conversation_id, model="gpt-3.5-turbo"):
             if file_tokens == 0:
                 continue
             elif file_tokens > MAX_FILE_TOKENS:
-                content += "\n\n[Nội dung file quá dài, đã bị lược bỏ]"
+                approx_summary = file_text.strip()[:1500]
+                content += (
+                    "\n\n[Nội dung file tóm tắt:]\n"
+                    + approx_summary +
+                    "\n\n[Ghi chú: Nội dung đã được rút gọn vì quá dài]"
+                )
             else:
                 content += f"\n\n[Nội dung file đính kèm:]\n{file_text.strip()}"
 
@@ -209,6 +214,10 @@ def handle_ai_reply(conversation_id):
         for attempt in range(max_retries):
             if attempt > 0:
                 time.sleep(delay_base * attempt)
+
+            # 🛠️ Fix race condition: delay nhỏ ở lần đầu để chờ file được commit
+            if attempt == 0:
+                time.sleep(0.3)
 
             context = build_context(conversation_id)
 
