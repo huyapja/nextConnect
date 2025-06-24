@@ -5,7 +5,7 @@ import { useIsDesktop } from '@/hooks/useMediaQuery'
 import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { ChannelIcon } from '@/utils/layout/channelIcon'
 import { Box, Button, Dialog, Flex, Text, TextField } from '@radix-ui/themes'
-import { useFrappeUpdateDoc } from 'frappe-react-sdk'
+import { useFrappeUpdateDoc, useSWR, useSWRConfig } from 'frappe-react-sdk'
 import { ChangeEvent, useCallback } from 'react'
 import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -40,18 +40,21 @@ export const RenameChannelModalContent = ({
   } = methods
   const { updateDoc, loading: updatingDoc, error } = useFrappeUpdateDoc()
 
+  const {mutate} = useSWRConfig()
+
   const onSubmit = async (data: RenameChannelForm) => {
     return updateDoc('Raven Channel', channelID ?? null, {
       channel_name: data.channel_name
     }).then(() => {
       toast.success('Channel name updated')
+      mutate("channel_list")
       onClose()
     })
   }
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      setValue('channel_name', event.target.value?.toLowerCase().replace(' ', '-'))
+      setValue('channel_name', event.target.value)
     },
     [setValue]
   )
@@ -61,32 +64,26 @@ export const RenameChannelModalContent = ({
   return (
     <FormProvider {...methods}>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <Dialog.Title>Rename this channel</Dialog.Title>
+        <Dialog.Title>Đổi tên kênh</Dialog.Title>
 
         <Flex gap='2' direction='column' width='100%'>
           <ErrorBanner error={error} />
           <Box width='100%'>
             <Label htmlFor='channel_name' isRequired>
-              Name
+              Tên kênh
             </Label>
             <Controller
               name='channel_name'
               control={control}
               rules={{
-                required: 'Please add a channel name',
+                required: 'Vui lòng nhập tên kênh',
                 maxLength: {
                   value: 50,
-                  message: 'Channel name cannot be more than 50 characters.'
+                  message: 'Tên kênh không được vượt quá 50 ký tự.'
                 },
                 minLength: {
                   value: 3,
-                  message: 'Channel name cannot be less than 3 characters.'
-                },
-                pattern: {
-                  // no special characters allowed
-                  // cannot start with a space
-                  value: /^[a-zA-Z0-9][a-zA-Z0-9-]*$/,
-                  message: 'Channel name can only contain letters, numbers and hyphens.'
+                  message: 'Tên kênh phải có ít nhất 3 ký tự.'
                 }
               }}
               render={({ field, fieldState: { error } }) => (
@@ -94,7 +91,7 @@ export const RenameChannelModalContent = ({
                   maxLength={50}
                   required
                   autoFocus={isDesktop}
-                  placeholder='e.g. wedding-gone-wrong, joffrey-tributes'
+                  placeholder='vd: dam-cuoi-loi, giai-cuu-joffrey'
                   color={error ? 'red' : undefined}
                   {...field}
                   aria-invalid={error ? 'true' : 'false'}
@@ -121,7 +118,7 @@ export const RenameChannelModalContent = ({
           </Dialog.Close>
           <Button type='submit' disabled={updatingDoc}>
             {updatingDoc && <Loader className='text-white' />}
-            {updatingDoc ? 'Saving' : 'Lưu'}
+            {updatingDoc ? 'Đang lưu' : 'Lưu'}
           </Button>
         </Flex>
       </form>
