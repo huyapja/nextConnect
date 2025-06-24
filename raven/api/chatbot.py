@@ -60,7 +60,7 @@ def extract_text_from_file(file_url):
 # Helper: Xây dựng context từ các tin nhắn gần nhất
 def build_context(conversation_id, model="gpt-3.5-turbo"):
     MAX_TOTAL_TOKENS = 3000
-    MAX_FILE_TOKENS = 1000
+    MAX_FILE_TOKENS = 1500  
     MAX_MESSAGE_COUNT = 50
 
     try:
