@@ -1,7 +1,7 @@
 import { UserContext } from '@/utils/auth/UserProvider'
-import { useUpdateLastMessageDetails } from '@/utils/channel/ChannelListProvider'
+import { useChannelList, useUpdateLastMessageDetails } from '@/utils/channel/ChannelListProvider'
 import { useFrappeDocumentEventListener, useFrappeEventListener } from 'frappe-react-sdk'
-import { useContext } from 'react'
+import { useContext, useEffect } from 'react'
 
 export const useWebSocketEvents = (
   channelID: string,
@@ -15,6 +15,13 @@ export const useWebSocketEvents = (
 ) => {
   const { currentUser } = useContext(UserContext)
   const { updateLastMessageForChannel } = useUpdateLastMessageDetails()
+  const { channels, dm_channels } = useChannelList()
+
+  useEffect(() => {
+    if (channelID) {
+      mutate(undefined, { revalidate: true })
+    }
+  }, [channelID])
 
   useFrappeDocumentEventListener('Raven Channel', channelID ?? '', () => {
     console.debug(`Raven Channel event received for channel: ${channelID}`)
@@ -166,36 +173,41 @@ export const useWebSocketEvents = (
 
   // Message retracted
   useFrappeEventListener('raven_message_retracted', (event) => {
-    mutate(
-      (d: any) => {
-        if (event.message_id && d) {
-          const updatedMessages = d.message.messages?.map((message: any) => {
-            if (message.name === event.message_id) {
-              if (event.is_last_message) {
-                updateLastMessageForChannel(message.channel_id, {
-                  message_id: message.name,
-                  content: 'Tin nhắn đã được thu hồi',
-                  owner: currentUser,
-                  message_type: message.message_type,
-                  is_bot_message: message.is_bot_message,
-                  bot: message.bot || null,
-                  timestamp: new Date().toISOString()
-                })
-              }
-              return { ...message, is_retracted: 1 }
-            }
-            return message
-          })
+    const { message_id, channel_id, is_last_message, owner, message_type, is_bot_message, bot, timestamp } = event
 
-          return {
-            message: {
-              messages: updatedMessages,
-              has_old_messages: d.message.has_old_messages,
-              has_new_messages: d.message.has_new_messages
-            }
+    const isKnownChannel = [...channels, ...dm_channels].some((c) => c.name === channel_id)
+
+    if (is_last_message && isKnownChannel) {
+      console.log('updateLastMessageForChannel')
+      updateLastMessageForChannel(channel_id, {
+        message_id,
+        content: 'Tin nhắn đã được thu hồi',
+        owner,
+        message_type,
+        is_bot_message,
+        bot: bot || null,
+        timestamp
+      })
+    }
+
+    if (channel_id !== channelID) return
+    console.log('mutate')
+
+    mutate(
+      (data: any) => {
+        if (!message_id || !data?.message?.messages) return data
+
+        const updatedMessages = data.message.messages.map((msg: any) =>
+          msg.name === message_id ? { ...msg, is_retracted: 1 } : msg
+        )
+
+        return {
+          ...data,
+          message: {
+            ...data.message,
+            messages: updatedMessages
           }
         }
-        return d
       },
       { revalidate: false }
     )
