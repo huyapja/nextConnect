@@ -4,7 +4,7 @@ import { forwardRef, useEffect, useState } from 'react'
 
 import { lazy, Suspense } from 'react'
 import EditLabelModal from './EditLabelModal'
-import DeleteLabelModal from './DeleteLabelModal'
+import { DeleteLabelModal } from './DeleteLabelModal'
 
 const CreateConversationModal = lazy(() => import('./conversations/CreateConversationModal'))
 

@@ -24,6 +24,7 @@ import clsx from 'clsx'
 import { useFrappeEventListener, useFrappeGetCall } from 'frappe-react-sdk'
 import { FiChevronDown, FiChevronRight } from 'react-icons/fi'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useLabelList } from '@/components/feature/labels/conversations/atoms/labelAtom'
 
 export const useMentionUnreadCount = () => {
   const { data: mentionsCount, mutate } = useFrappeGetCall<{ message: number }>(
@@ -139,6 +140,8 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
   const { workspaceID, channelID } = useParams()
   const { title, setTitle, tempMode, setLabelID } = useSidebarMode()
   const isIconOnly = tempMode === 'show-only-icons'
+
+  const { labelList, refreshLabelList } = useLabelList() // 👈 thêm dòng này!
 
   const { mentionUnreadCount, resetMentions } = useMentionUnreadCount()
 

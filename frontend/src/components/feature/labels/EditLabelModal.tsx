@@ -2,7 +2,7 @@ import { Button, Dialog, Flex } from '@radix-ui/themes'
 import { useState } from 'react'
 import { useFrappePostCall } from 'frappe-react-sdk'
 import { useSetAtom } from 'jotai'
-import { refreshLabelListAtom } from './conversations/atoms/labelAtom'
+import { labelListAtom, refreshLabelListAtom } from './conversations/atoms/labelAtom'
 import { toast } from 'sonner'
 import { useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
 
@@ -16,17 +16,17 @@ type Props = {
 const EditLabelModal = ({ name, label, isOpen, setIsOpen }: Props) => {
   const [newLabel, setNewLabel] = useState(label)
   const { call, loading: isLoading } = useFrappePostCall('raven.api.user_label.update_label')
-  const setRefreshKey = useSetAtom(refreshLabelListAtom)
   const { renameLabel } = useUpdateChannelLabels()
+  const setLabelList = useSetAtom(labelListAtom)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = newLabel.trim()
     if (!trimmed) return
 
+    // Nếu không thay đổi thì đóng luôn
     if (newLabel === label) {
-      setIsOpen(false)
-      toast.success('Nhãn đã được cập nhật')
+      toast.warning('Tên nhãn mới không được giống nhãn cũ')
       return
     }
 
@@ -39,15 +39,24 @@ const EditLabelModal = ({ name, label, isOpen, setIsOpen }: Props) => {
       const message = res?.message?.message
 
       if (message === 'Label updated') {
+        // ✅ Update sortedChannelsAtom (user_labels trong channel)
         renameLabel(name, trimmed)
-        setRefreshKey((prev) => prev + 1)
+
+        // ✅ Update labelListAtom local — không cần refetch
+        setLabelList((prev) => prev.map((l) => (l.label_id === name ? { ...l, label: trimmed } : l)))
+
+        // ❌ Không cần setRefreshKey nữa
+        // setRefreshKey((prev) => prev + 1)
+
         setIsOpen(false)
         toast.success('Nhãn đã được cập nhật')
       } else {
         console.error('Lỗi không rõ:', res)
+        toast.error('Đã có lỗi xảy ra khi cập nhật nhãn')
       }
     } catch (err) {
       console.error('Lỗi khi cập nhật nhãn:', err)
+      toast.error('Đã có lỗi xảy ra khi cập nhật nhãn')
     }
   }
 

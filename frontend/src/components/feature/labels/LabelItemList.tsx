@@ -16,7 +16,7 @@ import { useSWRConfig } from 'frappe-react-sdk'
 import { useIsMobile, useIsTablet } from '@/hooks/useMediaQuery'
 import { truncateText } from '@/utils/textUtils/truncateText'
 import { useSetAtom } from 'jotai'
-import { refreshLabelListAtom } from './conversations/atoms/labelAtom'
+import { labelListAtom, refreshLabelListAtom } from './conversations/atoms/labelAtom'
 
 type Props = {
   channelID: string
@@ -52,7 +52,8 @@ const LabelItemList = ({
   const setRefreshKey = useSetAtom(refreshLabelListAtom)
 
   const { removeChannel, loading: isLoading } = useRemoveChannelFromLabel()
-  const { updateChannelLabels } = useUpdateChannelLabels()
+  const { removeLabelFromChannel, updateChannelLabels } = useUpdateChannelLabels()
+
   const { clearManualMark } = useChannelActions()
 
   const handleClick = () => {
@@ -64,16 +65,36 @@ const LabelItemList = ({
     }
   }
 
+  const setLabelList = useSetAtom(labelListAtom)
+
   const handleRemove = async () => {
     try {
       await removeChannel(labelID, channelID)
-      onRemoveLocally?.(channelID)
-      updateChannelLabels(channelID, (prevLabels) => prevLabels.filter((l) => l.label_id !== labelID))
-      setRefreshKey((prev) => prev + 1)
 
-      toast.success(`Đã xóa thành công`)
+      // ✅ Update local sortedChannelsAtom
+      updateChannelLabels(channelID, (prevLabels) => prevLabels.filter((l) => l.label_id !== labelID))
+
+      // ✅ Update local labelListAtom
+      setLabelList((prev) =>
+        prev.map((l) => {
+          if (l.label_id === labelID) {
+            return {
+              ...l,
+              channels: l.channels.filter((c) => c.channel_id !== channelID)
+            }
+          }
+          return l
+        })
+      )
+
+      // ❌ Không cần setRefreshKey nữa
+      // setRefreshKey((prev) => prev + 1)
+
+      toast.success(`Đã xoá thành công`)
       setShowModal(false)
-      mutate('channel_list')
+
+      // mutate('channel_list') → nếu bạn muốn sync lại sidebar channel thì giữ lại
+      // mutate('channel_list')
     } catch (err) {
       console.error('Xoá thất bại:', err)
       toast.error('Xoá channel khỏi nhãn thất bại')

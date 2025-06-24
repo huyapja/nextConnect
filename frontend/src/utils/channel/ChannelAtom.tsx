@@ -166,8 +166,23 @@ export const useUpdateChannelLabels = () => {
     })
   }
 
-  const removeLabelFromChannel = (channelID: string, labelID: string) => {
-    updateChannelLabels(channelID, (prev) => prev.filter((l) => l.label_id !== labelID))
+  const removeLabelFromChannel = (channelID: string | '*', labelID: string) => {
+    if (channelID === '*') {
+      // ✅ Xoá label khỏi tất cả channel
+      setSortedChannels((prev) =>
+        prev?.map((channel) => {
+          if (!Array.isArray(channel.user_labels)) return channel
+          const updatedLabels = channel.user_labels.filter((l) => l.label_id !== labelID)
+          return {
+            ...channel,
+            user_labels: updatedLabels
+          }
+        })
+      )
+    } else {
+      // Xoá khỏi 1 channel cụ thể
+      updateChannelLabels(channelID, (prev) => prev.filter((l) => l.label_id !== labelID))
+    }
   }
 
   const renameLabel = (oldLabelID: string, newLabel: string) => {
