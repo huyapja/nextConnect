@@ -169,6 +169,9 @@ export const FileMessageBlock = memo(
     const processingIds = useAtomValue(messageProcessingIdsAtom)
     const isProcessing = processingIds.includes(message.id)
 
+    console.log(processingIds);
+    
+
     useEffect(() => {
       if (message?.file && typeof message.file !== 'string') {
         const file = message.file as Blob | File

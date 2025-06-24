@@ -8,9 +8,7 @@ import { Message } from '../../../../../../types/Messaging/Message'
 import { CustomFile } from '../../file-upload/FileDrop'
 import { isImageFile } from '../ChatMessage/Renderers/FileMessage'
 import { set as idbSet, get as idbGet } from 'idb-keyval'
-
-import { atom, useAtom } from 'jotai'
-export const messageProcessingIdsAtom = atom<string[]>([])
+import { useAtom } from 'jotai'
 
 export type PendingMessage = {
   id: string
@@ -21,6 +19,10 @@ export type PendingMessage = {
   file?: CustomFile
   fileMeta?: { name: string; size: number; type: string }
 }
+
+import { atom } from 'jotai'
+
+export const messageProcessingIdsAtom = atom<string[]>([])
 
 export const useSendMessage = (
   channelID: string,
@@ -41,8 +43,8 @@ export const useSendMessage = (
 
   const [pendingMessages, setPendingMessages] = useState<Record<string, PendingMessage[]>>({})
   const pendingQueueRef = useRef<Record<string, PendingMessage[]>>({})
-  const processingRef = useRef<Map<string, boolean>>(new Map())
   const [processingIds, setProcessingIds] = useAtom(messageProcessingIdsAtom)
+  const isProcessing = (id: string) => processingIds.includes(id)
 
   const createClientId = () => `${Date.now()}-${Math.random()}`
 
@@ -122,7 +124,7 @@ export const useSendMessage = (
 
   const sendTextMessage = async (content: string, json?: any, sendSilently = false) => {
     const pendingTextMsg = (pendingMessages[channelID] || []).find(
-      (m) => m.message_type === 'Text' && m.content === content
+      (m) => m.message_type === 'Text' && m.content?.trim() === content?.trim()
     )
 
     const client_id = pendingTextMsg ? pendingTextMsg.id : createClientId()
@@ -136,9 +138,18 @@ export const useSendMessage = (
     uploadedFiles.forEach(({ client_id, message, file }) => {
       if (message) {
         updateSidebarMessage(message)
-        removePendingMessage(client_id)
-
         onMessageSent([message])
+
+        // ✅ Remove pendingMessage nào có file trùng
+        updatePendingState((msgs) =>
+          msgs.filter(
+            (m) =>
+              !(
+                (m.message_type === 'File' || m.message_type === 'Image') &&
+                m.fileMeta?.name?.trim().toLowerCase() === message.content?.trim().toLowerCase()
+              )
+          )
+        )
       } else {
         updatePendingState((msgs) => [
           ...msgs,
@@ -155,26 +166,26 @@ export const useSendMessage = (
     })
   }
 
-const sendMessage = async (content: string, json?: any, sendSilently = false) => {
-  if (content.trim()) {
+  const sendMessage = async (content: string, json?: any, sendSilently = false) => {
     try {
-      await sendTextMessage(content, json, sendSilently)
-    } catch (err) {
-      const client_id = createClientId()
-      const newPending: PendingMessage = {
-        id: client_id,
-        content,
-        status: 'pending',
-        createdAt: Date.now(),
-        message_type: 'Text'
+      if (content.trim()) {
+        await sendTextMessage(content, json, sendSilently)
       }
-      updatePendingState((msgs) => [...msgs, newPending])
+      await sendFileMessages()
+    } catch (err) {
+      if (content.trim()) {
+        const client_id = createClientId()
+        const newPending: PendingMessage = {
+          id: client_id,
+          content,
+          status: 'pending',
+          createdAt: Date.now(),
+          message_type: 'Text'
+        }
+        updatePendingState((msgs) => [...msgs, newPending])
+      }
     }
   }
-
-  // gửi file lúc nào cũng gửi — không để chung try/catch với text
-  await sendFileMessages()
-}
 
   useEffect(() => {
     const loadPending = async () => {
@@ -211,12 +222,11 @@ const sendMessage = async (content: string, json?: any, sendSilently = false) =>
   }
 
   const sendOnePendingMessage = async (id: string) => {
-    if (processingRef.current.get(id)) {
+    if (isProcessing(id)) {
       console.warn(`Message ${id} is already processing, skip.`)
       return
     }
 
-    processingRef.current.set(id, true)
     setProcessingIds((prev) => [...prev, id])
 
     try {
@@ -227,6 +237,7 @@ const sendMessage = async (content: string, json?: any, sendSilently = false) =>
         await sendOneMessage(msg.content || '', msg.id)
       } else if (msg.message_type === 'File' || msg.message_type === 'Image') {
         let file = msg.file
+
         if (!file) {
           file = await idbGet(`file-${msg.id}`)
         }
@@ -243,28 +254,27 @@ const sendMessage = async (content: string, json?: any, sendSilently = false) =>
         } else {
           console.warn('Cannot retry file: missing file in RAM and IndexedDB')
         }
+      } else {
+        console.warn('Cannot retry file: unknown type')
       }
     } catch (err) {
       console.error('sendOnePendingMessage error', err)
     } finally {
-      processingRef.current.delete(id)
       setProcessingIds((prev) => prev.filter((x) => x !== id))
     }
   }
 
   const removePendingMessage = (id: string) => {
-    if (processingRef.current.get(id)) {
+    if (isProcessing(id)) {
       console.warn(`Message ${id} is already processing, skip remove.`)
       return
     }
 
-    processingRef.current.set(id, true)
     setProcessingIds((prev) => [...prev, id])
 
     try {
       updatePendingState((msgs) => msgs.filter((m) => m.id !== id))
     } finally {
-      processingRef.current.delete(id)
       setProcessingIds((prev) => prev.filter((x) => x !== id))
     }
   }
@@ -287,7 +297,7 @@ const sendMessage = async (content: string, json?: any, sendSilently = false) =>
 
   return {
     sendMessage,
-    loading, // dùng cho input chính
+    loading,
     pendingMessages: pendingMessages[channelID] || [],
     retryPendingMessages,
     sendOnePendingMessage,
