@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useFrappeGetCall, useFrappeEventListener, useFrappeGetDoc } from 'frappe-react-sdk'
+import { useFrappeGetCall, useFrappeEventListener, useFrappeGetDoc, useFrappePostCall } from 'frappe-react-sdk'
 import { 
   FiPhone, FiPhoneCall, FiPhoneOff, 
   FiVideo, FiMic, FiMicOff, FiHeadphones 
@@ -34,7 +34,7 @@ declare global {
   }
 }
 
-export default function StringeeCallComponent({ toUserId }: { toUserId: string }) {
+export default function StringeeCallComponent({ toUserId, channelId }: { toUserId: string, channelId?: string }) {
   
   const { appearance } = useTheme()
   const [client, setClient] = useState<any>(null)
@@ -55,6 +55,9 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
   // Thêm state cho call duration
   const [callDuration, setCallDuration] = useState(0) // seconds
   const [callStartTime, setCallStartTime] = useState<Date | null>(null)
+  
+  // State để track xem đã lưu lịch sử cuộc gọi chưa
+  const [callHistorySaved, setCallHistorySaved] = useState(false)
   
   const [networkStats, setNetworkStats] = useState<{
     ping: number | null
@@ -95,6 +98,9 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
   const { data } = useFrappeGetCall<{ message: { user_id: string; token: string } }>(
     'raven.api.stringee_token.get_stringee_token'
   )
+  
+  // Hook để gọi API lưu lịch sử cuộc gọi
+  const { call: saveCallHistory } = useFrappePostCall('raven.api.raven_message.send_call_history_message')
   
   // Get caller info for incoming calls
   const callerUserId = incoming?.fromNumber
@@ -143,6 +149,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
     if (call || incoming) {
       setCallDuration(0)
       setCallStartTime(null)
+      setCallHistorySaved(false) // Reset flag lưu lịch sử
     }
   }, [call, incoming])
 
@@ -407,6 +414,23 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
     }
   }
 
+  // Function để lưu lịch sử cuộc gọi
+  const saveCallHistoryToChat = async (callType: 'audio' | 'video', callStatus: 'completed' | 'missed' | 'rejected' | 'ended', duration?: number) => {
+    if (!channelId || callHistorySaved) return
+    
+    try {
+      await saveCallHistory({
+        channel_id: channelId,
+        call_type: callType,
+        call_status: callStatus,
+        duration: duration
+      })
+      setCallHistorySaved(true) // Đánh dấu đã lưu
+    } catch (error) {
+      console.error('Failed to save call history:', error)
+    }
+  }
+
 
 
 
@@ -528,62 +552,92 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
 
     // Listen for realtime call status updates using frappe-react-sdk hook
   useFrappeEventListener('call_status_update', (data: any) => {
-    if (data.status === 'ended') {
+    console.log('🔄 Received call_status_update:', data, 'currentSessionId:', currentSessionId)
+    
+    // Match by session ID to ensure we only handle our call
+    if (data.session_id === currentSessionId) {
       
-      // AGGRESSIVE audio stop immediately - caller hangup
-      stopAllAudio()
-      
-      // Additional immediate audio cleanup
-      if (phoneRingRef.current) {
-        phoneRingRef.current.pause()
-        phoneRingRef.current.currentTime = 0
-        phoneRingRef.current.volume = 0
-        phoneRingRef.current.src = ''
-        phoneRingRef.current.loop = false
-      }
-      
-      if (phoneRingAudio) {
-        phoneRingAudio.pause()
-        phoneRingAudio.currentTime = 0
-        phoneRingAudio.volume = 0
-        phoneRingAudio.loop = false
-      }
-      
-      // Force remove ring audio from DOM
-      document.querySelectorAll('audio').forEach(audio => {
-        if (audio.src.includes('phone-ring') || audio.src.includes('ringtone')) {
-          audio.pause()
-          audio.currentTime = 0
-          audio.volume = 0
-          audio.loop = false
-          try {
-            audio.remove()
-          } catch (e) {
-            // Could not remove audio element
-          }
+      // Handle call connected notification - chỉ cho outgoing calls
+      if (data.status === 'connected' && callStatus === 'connecting' && !incoming) {
+        console.log('✅ Received call connected notification via realtime for outgoing call')
+        
+        // Aggressive audio stop
+        stopAllAudio()
+        
+        setIsCallConnected(true)
+        setCallStatus('connected')
+        
+        // Clear call timeout when connected
+        if (callTimeoutRef.current) {
+          clearTimeout(callTimeoutRef.current)
+          callTimeoutRef.current = null
         }
-      })
-      
-      // Clear video streams
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = null
-      }
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = null
-      }
-      if (remoteAudioRef.current) {
-        remoteAudioRef.current.srcObject = null
+        
+        // Start network monitoring when call is connected
+        setTimeout(() => {
+          startNetworkMonitoring()
+        }, 1000)
       }
       
-      // Force UI update - cập nhật ngay lập tức nhưng KHÔNG đóng modal
-      setCallStatus('ended')
-      setIsCallConnected(false)
-      setHasRemoteVideo(false)
-      setHasRemoteAudio(false)
-      setVideoUpgradeRequest(null)
-      setForceRender(prev => prev + 1) // Force re-render
-      
-      // KHÔNG tự động đóng modal - để người dùng nhấn nút kết thúc để đóng
+      // Handle call ended notification
+      if (data.status === 'ended') {
+        console.log('🔚 Received call ended notification via realtime')
+        
+        // AGGRESSIVE audio stop immediately - caller hangup
+        stopAllAudio()
+        
+        // Additional immediate audio cleanup
+        if (phoneRingRef.current) {
+          phoneRingRef.current.pause()
+          phoneRingRef.current.currentTime = 0
+          phoneRingRef.current.volume = 0
+          phoneRingRef.current.src = ''
+          phoneRingRef.current.loop = false
+        }
+        
+        if (phoneRingAudio) {
+          phoneRingAudio.pause()
+          phoneRingAudio.currentTime = 0
+          phoneRingAudio.volume = 0
+          phoneRingAudio.loop = false
+        }
+        
+        // Force remove ring audio from DOM
+        document.querySelectorAll('audio').forEach(audio => {
+          if (audio.src.includes('phone-ring') || audio.src.includes('ringtone')) {
+            audio.pause()
+            audio.currentTime = 0
+            audio.volume = 0
+            audio.loop = false
+            try {
+              audio.remove()
+            } catch (e) {
+              // Could not remove audio element
+            }
+          }
+        })
+        
+        // Clear video streams
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = null
+        }
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = null
+        }
+        if (remoteAudioRef.current) {
+          remoteAudioRef.current.srcObject = null
+        }
+        
+        // Force UI update - cập nhật ngay lập tức nhưng KHÔNG đóng modal
+        setCallStatus('ended')
+        setIsCallConnected(false)
+        setHasRemoteVideo(false)
+        setHasRemoteAudio(false)
+        setVideoUpgradeRequest(null)
+        setForceRender(prev => prev + 1) // Force re-render
+        
+        // KHÔNG tự động đóng modal - để người dùng nhấn nút kết thúc để đóng
+      }
     }
   })
 
@@ -737,7 +791,8 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
 
   const setupCallEvents = (callObj: any) => {
     callObj.on('addremotestream', (stream: MediaStream) => {
-      setIsCallConnected(true)
+      // KHÔNG tự động set connected - chỉ xử lý stream
+      // setIsCallConnected sẽ được set khi user nhấn Accept hoặc trong signalingstate
       
       const videoTracks = stream.getVideoTracks()
       const audioTracks = stream.getAudioTracks()
@@ -841,69 +896,82 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
     })
 
     callObj.on('signalingstate', (state: any) => {
+      console.log('🔄 Stringee signalingstate:', state, 'callStatus:', callStatus, 'call:', !!call, 'incoming:', !!incoming)
+      
       // Khi cuộc gọi được trả lời/kết nối
       if (state.code === 3 || state.reason === 'Answered' || state.reason === 'CALL_ANSWERED') {
         
-        // AGGRESSIVE audio cleanup on call connected
-        stopAllAudio()
+        // Xử lý signal Answered cho cả incoming và outgoing calls
+        // Logic đơn giản: Nếu chưa connected thì set connected
+        console.log('📞 Processing Answered signal, isCallConnected:', isCallConnected)
         
-        // Additional specific audio cleanup
-        if (ringbackAudioRef.current) {
-          ringbackAudioRef.current.pause()
-          ringbackAudioRef.current.currentTime = 0
-          ringbackAudioRef.current.loop = false
-          ringbackAudioRef.current.volume = 0
-          ringbackAudioRef.current.src = ''
-        }
-        if (phoneRingRef.current) {
-          phoneRingRef.current.pause()
-          phoneRingRef.current.currentTime = 0
-          phoneRingRef.current.loop = false
-          phoneRingRef.current.volume = 0
-          phoneRingRef.current.src = ''
-        }
-        
-        // Force stop global audio
-        if (phoneRingAudio) {
-          phoneRingAudio.pause()
-          phoneRingAudio.currentTime = 0
-          phoneRingAudio.loop = false
-          phoneRingAudio.volume = 0
-        }
-        
-        if (ringbackAudio) {
-          ringbackAudio.pause()
-          ringbackAudio.currentTime = 0
-          ringbackAudio.loop = false
-          ringbackAudio.volume = 0
-        }
-        
-        // Force stop and remove all ringtones from DOM
-        document.querySelectorAll('audio').forEach(audio => {
-          if (audio.src.includes('phone-ring') || audio.src.includes('ringtone')) {
-            audio.pause()
-            audio.currentTime = 0
-            audio.loop = false
-            audio.volume = 0
-            try {
-              audio.remove()
-            } catch (e) {
-              // Could not remove audio element
-            }
+        if (!isCallConnected) {
+          console.log('✅ Setting call connected from Stringee signal...')
+          console.log('📊 State before signalingstate update - callStatus:', callStatus, 'isCallConnected:', isCallConnected, 'call:', !!call, 'incoming:', !!incoming)
+          
+          // AGGRESSIVE audio cleanup on call connected
+          stopAllAudio()
+          
+          // Additional specific audio cleanup
+          if (ringbackAudioRef.current) {
+            ringbackAudioRef.current.pause()
+            ringbackAudioRef.current.currentTime = 0
+            ringbackAudioRef.current.loop = false
+            ringbackAudioRef.current.volume = 0
+            ringbackAudioRef.current.src = ''
           }
-        })
-        
-        setIsCallConnected(true)
-        setCallStatus('connected')
-        
-        // Clear call timeout when connected
-        if (callTimeoutRef.current) {
-          clearTimeout(callTimeoutRef.current)
-          callTimeoutRef.current = null
+          if (phoneRingRef.current) {
+            phoneRingRef.current.pause()
+            phoneRingRef.current.currentTime = 0
+            phoneRingRef.current.loop = false
+            phoneRingRef.current.volume = 0
+            phoneRingRef.current.src = ''
+          }
+          
+          // Force stop global audio
+          if (phoneRingAudio) {
+            phoneRingAudio.pause()
+            phoneRingAudio.currentTime = 0
+            phoneRingAudio.loop = false
+            phoneRingAudio.volume = 0
+          }
+          
+          if (ringbackAudio) {
+            ringbackAudio.pause()
+            ringbackAudio.currentTime = 0
+            ringbackAudio.loop = false
+            ringbackAudio.volume = 0
+          }
+          
+          // Force stop and remove all ringtones from DOM
+          document.querySelectorAll('audio').forEach(audio => {
+            if (audio.src.includes('phone-ring') || audio.src.includes('ringtone')) {
+              audio.pause()
+              audio.currentTime = 0
+              audio.loop = false
+              audio.volume = 0
+              try {
+                audio.remove()
+              } catch (e) {
+                // Could not remove audio element
+              }
+            }
+          })
+          
+          setIsCallConnected(true)
+          setCallStatus('connected')
+          
+          // Clear call timeout when connected
+          if (callTimeoutRef.current) {
+            clearTimeout(callTimeoutRef.current)
+            callTimeoutRef.current = null
+          }
+          
+          // Start network monitoring when call is connected
+          startNetworkMonitoring()
+        } else {
+          console.log('⏳ Call already connected, skipping duplicate signal')
         }
-        
-        // Start network monitoring when call is connected
-        startNetworkMonitoring()
       }
       
       // Khi cuộc gọi bị từ chối
@@ -1047,12 +1115,18 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
           if (newCall && (callStatus === 'connecting' || !isCallConnected)) {
             console.log('Forcing hangup due to timeout...')
             
+            // Lưu lịch sử cuộc gọi nhỡ trước khi hangup
+            await saveCallHistoryToChat(
+              isVideoCall ? 'video' : 'audio',
+              'missed'
+            )
+            
             // Directly hangup the StringeeCall
             newCall.hangup(() => {
               console.log('StringeeCall hangup completed')
             })
             
-            // Also call our hangup function
+            // Also call our hangup function (không cần lưu lịch sử nữa vì đã lưu ở trên)
             await hangupCall()
           }
         } catch (error) {
@@ -1176,6 +1250,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
     // Reset call duration states
     setCallDuration(0)
     setCallStartTime(null)
+    setCallHistorySaved(false) // Reset flag lưu lịch sử
     
     // Reset detailed stats view
     setShowDetailedStats(false)
@@ -1233,10 +1308,34 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
     })
     
     incoming.answer((res: any) => {
+      console.log('✅ Incoming call answered:', res)
+      console.log('📊 State before answer - callStatus:', callStatus, 'isCallConnected:', isCallConnected, 'call:', !!call, 'incoming:', !!incoming)
       
       setCall(incoming)
       setIncoming(null)
-      setCallStatus('connected')
+      // ✅ Set trạng thái tạm thời để UI update ngay, signalingstate sẽ confirm lại
+      setCallStatus('connected') 
+      setIsCallConnected(true)
+      
+      console.log('📊 State after answer - setting call to incoming, incoming to null, status to connected')
+      
+      // 🔄 Gửi realtime event để thông báo cho bên gọi biết cuộc gọi đã được chấp nhận
+      if (currentSessionId && data?.message?.user_id) {
+        fetch('/api/method/raven.api.stringee_token.update_call_status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Frappe-CSRF-Token': (window as any).frappe?.csrf_token || '',
+          },
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            status: 'connected',
+            answered_at: new Date().toISOString()
+          })
+        }).catch(error => {
+          console.error('Failed to send call answered notification:', error)
+        })
+      }
       
       // Clear call timeout when answered
       if (callTimeoutRef.current) {
@@ -1244,10 +1343,11 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
         callTimeoutRef.current = null
       }
       
+      // ❌ Xóa startNetworkMonitoring - để signalingstate xử lý
       // Start network monitoring after answering
-      setTimeout(() => {
-        startNetworkMonitoring()
-      }, 1000)
+      // setTimeout(() => {
+      //   startNetworkMonitoring()
+      // }, 1000)
       
       // Multiple aggressive cleanups after answer
       setTimeout(() => {
@@ -1272,6 +1372,23 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
     }
     
     if (!call) return
+    
+    // Lưu lịch sử cuộc gọi nếu chưa lưu
+    if (!callHistorySaved) {
+      if (isCallConnected && callDuration > 0) {
+        await saveCallHistoryToChat(
+          isVideoCall ? 'video' : 'audio',
+          'completed',
+          callDuration
+        )
+      } else if (callStatus === 'connecting') {
+        // Cuộc gọi chưa được trả lời
+        await saveCallHistoryToChat(
+          isVideoCall ? 'video' : 'audio',
+          'ended'
+        )
+      }
+    }
     
     // Gọi API để cập nhật trạng thái và gửi realtime TRƯỚC khi hangup
     if (currentSessionId) {
@@ -1326,8 +1443,14 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
     // KHÔNG tự động đóng modal - để người dùng nhấn nút đóng
   }
 
-  const rejectCall = () => {
+  const rejectCall = async () => {
     if (!incoming) return
+    
+    // Lưu lịch sử cuộc gọi bị từ chối
+    await saveCallHistoryToChat(
+      isVideoCall ? 'video' : 'audio',
+      'rejected'
+    )
     
     // Clear call timeout
     if (callTimeoutRef.current) {

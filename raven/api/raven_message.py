@@ -1008,3 +1008,94 @@ def retract_message(message_id: str):
 
     return {"message": "Đã thu hồi tin nhắn"}
 
+
+@frappe.whitelist(methods=["POST"])
+def send_call_history_message(channel_id, call_type, call_status, duration=None):
+    """
+    Gửi tin nhắn lịch sử cuộc gọi vào channel
+    
+    Args:
+        channel_id: ID của channel
+        call_type: "audio" hoặc "video" 
+        call_status: "completed", "missed", "rejected", "ended"
+        duration: Thời lượng cuộc gọi (giây) nếu cuộc gọi thành công
+    """
+    
+    # Tạo nội dung tin nhắn với icon và format đẹp
+    if call_type == "audio":
+        icon = "📞"
+        call_type_text = "Audio"
+    else:
+        icon = "📹" 
+        call_type_text = "Video"
+    
+    # Format thời gian gọi
+    call_time = frappe.utils.now_datetime().strftime("%H:%M")
+    
+    if call_status == "missed":
+        # Cuộc gọi nhỡ - màu đỏ
+        content = f'<div style="color: #e74c3c; font-weight: 500;">{icon} Cuộc gọi {call_type_text.lower()} nhỡ - {call_time}</div>'
+        text_content = f"{icon} Cuộc gọi {call_type_text.lower()} nhỡ - {call_time}"
+    elif call_status in ["completed", "ended"] and duration:
+        # Cuộc gọi thành công - màu xanh lá
+        duration_formatted = format_call_duration(duration)
+        content = f'<div style="color: #27ae60; font-weight: 500;">{icon} Gọi {call_type_text.lower()} - {duration_formatted}</div>'
+        text_content = f"{icon} Gọi {call_type_text.lower()} - {duration_formatted}"
+    else:
+        # Cuộc gọi bị từ chối hoặc kết thúc - màu xám
+        content = f'<div style="color: #7f8c8d; font-weight: 500;">{icon} Cuộc gọi {call_type_text.lower()} đã kết thúc - {call_time}</div>'
+        text_content = f"{icon} Cuộc gọi {call_type_text.lower()} đã kết thúc - {call_time}"
+
+    # Tạo tin nhắn với type System để không tính vào unread count
+    doc_fields = {
+        "doctype": "Raven Message",
+        "channel_id": channel_id,
+        "text": text_content,
+        "content": content,
+        "message_type": "System",  # Sử dụng System type để hiển thị khác biệt
+    }
+
+    doc = frappe.get_doc(doc_fields)
+    doc.flags.send_silently = True  # Gửi thầm lặng, không notification
+    doc.insert()
+
+    # Cập nhật last message của channel
+    last_message = {
+        "message_id": doc.name,
+        "content": text_content,
+        "owner": doc.owner,
+        "message_type": "System",
+        "is_bot_message": 0,
+        "bot": None,
+    }
+
+    frappe.db.set_value("Raven Channel", channel_id, {
+        "last_message_details": frappe.as_json(last_message),
+        "last_message_timestamp": doc.creation
+    })
+
+    # Gửi realtime event để update UI
+    frappe.publish_realtime(
+        "new_message",
+        {
+            "channel_id": channel_id,
+            "message_id": doc.name,
+            "user": frappe.session.user,
+            "type": "call_history"
+        },
+        doctype="Raven Channel",
+        docname=channel_id,
+        after_commit=True
+    )
+
+    return {"message_id": doc.name, "success": True}
+
+def format_call_duration(duration_seconds):
+    """Format thời lượng cuộc gọi từ giây sang MM:SS"""
+    if not duration_seconds:
+        return "00:00"
+    
+    minutes = int(duration_seconds // 60)
+    seconds = int(duration_seconds % 60)
+    return f"{minutes:02d}:{seconds:02d}"
+
