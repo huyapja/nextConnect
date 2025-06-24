@@ -1,26 +1,16 @@
 import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
-import { UserContext } from '@/utils/auth/UserProvider'
-import { useUpdateLastMessageDetails } from '@/utils/channel/ChannelListProvider'
 import { useFrappePostCall } from 'frappe-react-sdk'
-import { useContext, useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Message } from '../../../../../../types/Messaging/Message'
 // import { useOnlineStatus } from '../../network/useNetworkStatus'
 import { CustomFile } from '../../file-upload/FileDrop'
 import { isImageFile } from '../ChatMessage/Renderers/FileMessage'
 import { set as idbSet, get as idbGet } from 'idb-keyval'
+import { PendingMessage } from './useSendMessage'
 
-export type PendingMessage = {
-  id: string
-  content?: string
-  status: 'pending' | 'error'
-  createdAt: number
-  message_type: 'Text' | 'File' | 'Image'
-  file?: CustomFile
-  fileMeta?: { name: string; size: number; type: string }
-}
-
-export const useSendMessage = (
+export const useSendMessageThread = (
   channelID: string,
+  threadID: string,
   uploadFiles: (
     selectedMessage?: Message | null
   ) => Promise<{ client_id: string; message: RavenMessage | null; file: CustomFile }[]>,
@@ -32,9 +22,7 @@ export const useSendMessage = (
   selectedMessage?: Message | null
 ) => {
   const { call, loading } = useFrappePostCall<{ message: RavenMessage }>('raven.api.raven_message.send_message')
-  const { updateLastMessageForChannel } = useUpdateLastMessageDetails()
-  const { currentUser } = useContext(UserContext)
-  const STORAGE_KEY = `pending_messages_${channelID}`
+  const STORAGE_KEY = `pending_thread_messages_${threadID}`
 
   const [pendingMessages, setPendingMessages] = useState<Record<string, PendingMessage[]>>({})
   const pendingQueueRef = useRef<Record<string, PendingMessage[]>>({})
@@ -42,9 +30,8 @@ export const useSendMessage = (
   const createClientId = () => `${Date.now()}-${Math.random()}`
 
   const persistPendingMessages = async (updated: Record<string, PendingMessage[]>) => {
-    const current = updated[channelID] || []
+    const current = updated[threadID] || []
 
-    // Chỉ lưu metadata (không lưu file vào STORAGE_KEY)
     const safeToSave = current.map((m) => {
       if (m.message_type === 'File' || m.message_type === 'Image') {
         const { id, content, status, createdAt, message_type, fileMeta } = m
@@ -55,50 +42,33 @@ export const useSendMessage = (
 
     await idbSet(STORAGE_KEY, safeToSave)
 
-    // Lưu từng file riêng biệt nếu nhỏ hơn 5MB
     for (const m of current) {
       if ((m.message_type === 'File' || m.message_type === 'Image') && m.file) {
-        const maxSize = 5 * 1024 * 1024 // 5MB
-        if (m.file.size <= maxSize) {
-          await idbSet(`file-${m.id}`, m.file)
-        } else {
-          console.warn(`Skip saving large file: ${m.file.name} (${m.file.size} bytes)`)
-        }
+        await idbSet(`file-${m.id}`, m.file)
       }
     }
   }
 
   const updatePendingState = (updater: (messages: PendingMessage[]) => PendingMessage[]) => {
     setPendingMessages((prev) => {
-      const updatedChannel = updater(prev[channelID] || [])
+      const updatedThread = updater(prev[threadID] || [])
       const updated = {
         ...prev,
-        [channelID]: updatedChannel
+        [threadID]: updatedThread
       }
       pendingQueueRef.current = {
         ...pendingQueueRef.current,
-        [channelID]: updatedChannel.filter((m) => m.status === 'pending')
+        [threadID]: updatedThread.filter((m) => m.status === 'pending')
       }
       persistPendingMessages(updated)
       return updated
     })
   }
 
-  const updateSidebarMessage = (msg: RavenMessage, fallbackText?: string) => {
-    updateLastMessageForChannel(channelID, {
-      message_id: msg.name,
-      content: fallbackText || msg.content || '',
-      owner: currentUser,
-      message_type: msg.message_type,
-      is_bot_message: msg.is_bot_message,
-      bot: msg.bot || null,
-      timestamp: new Date().toISOString()
-    })
-  }
-
   const sendOneMessage = async (content: string, client_id: string, json?: any, sendSilently = false) => {
     const res = await call({
       channel_id: channelID,
+      parent_message: threadID,
       text: content,
       client_id,
       json_content: json,
@@ -111,15 +81,13 @@ export const useSendMessage = (
 
     const msgWithClientId = { ...message, client_id: returnedClientId }
 
-    updateSidebarMessage(msgWithClientId)
     onMessageSent([msgWithClientId])
 
     updatePendingState((msgs) => msgs.filter((m) => m.id !== returnedClientId))
   }
 
   const sendTextMessage = async (content: string, json?: any, sendSilently = false) => {
-    // Tìm xem đã có pending message nào trùng content chưa
-    const pendingTextMsg = (pendingMessages[channelID] || []).find(
+    const pendingTextMsg = (pendingMessages[threadID] || []).find(
       (m) => m.message_type === 'Text' && m.content === content
     )
 
@@ -133,7 +101,6 @@ export const useSendMessage = (
 
     uploadedFiles.forEach(({ client_id, message, file }) => {
       if (message) {
-        updateSidebarMessage(message)
         onMessageSent([message])
       } else {
         updatePendingState((msgs) => [
@@ -142,7 +109,7 @@ export const useSendMessage = (
             id: client_id,
             status: 'pending',
             createdAt: Date.now(),
-            message_type: isImageFile(file.name) ? 'Image' : 'File', // <--- Sửa ở đây
+            message_type: isImageFile(file.name) ? 'Image' : 'File',
             file,
             fileMeta: { name: file.name, size: file.size, type: file.type }
           }
@@ -188,18 +155,18 @@ export const useSendMessage = (
 
         setPendingMessages((prev) => ({
           ...prev,
-          [channelID]: restored
+          [threadID]: restored
         }))
 
-        pendingQueueRef.current[channelID] = restored.filter((m) => m.status === 'pending')
+        pendingQueueRef.current[threadID] = restored.filter((m) => m.status === 'pending')
       }
     }
 
     loadPending()
-  }, [channelID])
+  }, [threadID])
 
   const retryPendingMessages = async () => {
-    const queue = [...(pendingQueueRef.current[channelID] || [])]
+    const queue = [...(pendingQueueRef.current[threadID] || [])]
 
     for (const msg of queue) {
       try {
@@ -209,7 +176,6 @@ export const useSendMessage = (
           const result = await uploadOneFile(msg.file, selectedMessage)
           if (result.message) {
             onMessageSent([result.message])
-            updateSidebarMessage(result.message)
             removePendingMessage(msg.id)
           } else {
             updatePendingState((msgs) => msgs.map((m) => (m.id === msg.id ? { ...m, status: 'error' } : m)))
@@ -224,7 +190,7 @@ export const useSendMessage = (
   }
 
   const sendOnePendingMessage = async (id: string) => {
-    const msg = (pendingMessages[channelID] || []).find((m) => m.id === id)
+    const msg = (pendingMessages[threadID] || []).find((m) => m.id === id)
     if (!msg) return
 
     try {
@@ -233,7 +199,6 @@ export const useSendMessage = (
       } else if (msg.message_type === 'File' || msg.message_type === 'Image') {
         let file = msg.file
 
-        // Nếu không có file trong RAM → load từ idb
         if (!file) {
           file = await idbGet(`file-${msg.id}`)
         }
@@ -242,7 +207,6 @@ export const useSendMessage = (
           const result = await uploadOneFile(file, selectedMessage)
           if (result.message) {
             onMessageSent([result.message])
-            updateSidebarMessage(result.message)
             removePendingMessage(id)
           } else {
             updatePendingState((msgs) => msgs.map((m) => (m.id === id ? { ...m, status: 'error' } : m)))
@@ -279,12 +243,12 @@ export const useSendMessage = (
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [channelID])
+  }, [threadID])
 
   return {
     sendMessage,
     loading,
-    pendingMessages: pendingMessages[channelID] || [],
+    pendingMessages: pendingMessages[threadID] || [],
     retryPendingMessages,
     sendOnePendingMessage,
     removePendingMessage

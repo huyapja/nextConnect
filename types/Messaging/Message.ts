@@ -39,6 +39,9 @@ export interface FileMessage extends BaseMessage {
 }
 
 export interface ImageMessage extends BaseMessage {
+    id: string
+    is_error: any
+    is_pending: any
     fileMeta: any
     text: string,
     file: string,
@@ -50,6 +53,9 @@ export interface ImageMessage extends BaseMessage {
 }
 
 export interface TextMessage extends BaseMessage {
+    is_error: any
+    is_pending: any
+    id: string
     text: string,
     message_type: 'Text',
     content?: string
