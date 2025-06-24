@@ -88,7 +88,7 @@ def create_call_session(caller_id, callee_id, call_type="video"):
 			caller_name = frappe.get_cached_value("Raven User", caller_id, "first_name")
 		if not caller_name:
 			caller_name = caller_id
-	
+		
 		# Gửi thông báo realtime cho người nhận
 		frappe.publish_realtime(
 			event="incoming_call",
@@ -213,7 +213,7 @@ def reject_call(session_id):
 		
 	except Exception as e:
 		frappe.log_error(f"Lỗi khi từ chối cuộc gọi: {str(e)}")
-		frappe.throw(_("Không thể từ chối cuộc gọi"))
+		frappe.throw(_("Không thể từ chối cuộc gọi")) 
 
 @frappe.whitelist(methods=["POST"])
 def send_video_upgrade_request(session_id, from_user, to_user):

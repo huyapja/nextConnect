@@ -51,6 +51,11 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
   const [videoUpgradeRequest, setVideoUpgradeRequest] = useState<{fromUser: string, fromUserName?: string, sessionId: string} | null>(null)
   const [callerUserName, setCallerUserName] = useState<string>('')
   const [isMuted, setIsMuted] = useState(false)
+  
+  // Thêm state cho call duration
+  const [callDuration, setCallDuration] = useState(0) // seconds
+  const [callStartTime, setCallStartTime] = useState<Date | null>(null)
+  
   const [networkStats, setNetworkStats] = useState<{
     ping: number | null
     bitrate: number | null
@@ -72,6 +77,17 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
   const cleanupFunctionsRef = useRef<(() => void)[]>([])
   const audioPermissionRequestedRef = useRef<boolean>(false)
   const statsIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Thêm ref cho call duration timer
+  const callDurationIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Thêm ref cho call timeout (30s)
+  const callTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Thêm state để force restart progress ring animation
+  const [progressKey, setProgressKey] = useState(0)
+  
+
 
   // Get user info
   const { data: userData } = useFrappeGetDoc('Raven User', toUserId)
@@ -88,6 +104,47 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
 
   // Audio context for better audio handling
   const audioContextRef = useRef<AudioContext | null>(null)
+
+  // Function để format thời gian gọi
+  const formatCallDuration = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
+
+  // useEffect để đếm thời gian cuộc gọi
+  useEffect(() => {
+    if (callStatus === 'connected' && !callDurationIntervalRef.current) {
+      // Bắt đầu đếm thời gian
+      if (!callStartTime) {
+        setCallStartTime(new Date())
+      }
+      
+      callDurationIntervalRef.current = setInterval(() => {
+        setCallDuration(prev => prev + 1)
+      }, 1000)
+    } else if (callStatus !== 'connected' && callDurationIntervalRef.current) {
+      // Dừng đếm thời gian khi không connected
+      clearInterval(callDurationIntervalRef.current)
+      callDurationIntervalRef.current = null
+    }
+
+    // Cleanup interval khi component unmount
+    return () => {
+      if (callDurationIntervalRef.current) {
+        clearInterval(callDurationIntervalRef.current)
+        callDurationIntervalRef.current = null
+      }
+    }
+  }, [callStatus, callStartTime])
+
+  // Reset call duration khi bắt đầu cuộc gọi mới
+  useEffect(() => {
+    if (call || incoming) {
+      setCallDuration(0)
+      setCallStartTime(null)
+    }
+  }, [call, incoming])
 
   // Get colors based on theme
   const getIconColor = (color: 'green' | 'blue' | 'red' | 'white' | 'gray') => {
@@ -473,15 +530,39 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
   useFrappeEventListener('call_status_update', (data: any) => {
     if (data.status === 'ended') {
       
-      // Ngắt toàn bộ audio
-      ringbackAudioRef.current?.pause()
-      if (ringbackAudioRef.current) {
-        ringbackAudioRef.current.currentTime = 0
-      }
-      phoneRingRef.current?.pause()
+      // AGGRESSIVE audio stop immediately - caller hangup
+      stopAllAudio()
+      
+      // Additional immediate audio cleanup
       if (phoneRingRef.current) {
+        phoneRingRef.current.pause()
         phoneRingRef.current.currentTime = 0
+        phoneRingRef.current.volume = 0
+        phoneRingRef.current.src = ''
+        phoneRingRef.current.loop = false
       }
+      
+      if (phoneRingAudio) {
+        phoneRingAudio.pause()
+        phoneRingAudio.currentTime = 0
+        phoneRingAudio.volume = 0
+        phoneRingAudio.loop = false
+      }
+      
+      // Force remove ring audio from DOM
+      document.querySelectorAll('audio').forEach(audio => {
+        if (audio.src.includes('phone-ring') || audio.src.includes('ringtone')) {
+          audio.pause()
+          audio.currentTime = 0
+          audio.volume = 0
+          audio.loop = false
+          try {
+            audio.remove()
+          } catch (e) {
+            // Could not remove audio element
+          }
+        }
+      })
       
       // Clear video streams
       if (remoteVideoRef.current) {
@@ -494,19 +575,15 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
         remoteAudioRef.current.srcObject = null
       }
       
-      // Force UI update - cập nhật ngay lập tức
+      // Force UI update - cập nhật ngay lập tức nhưng KHÔNG đóng modal
       setCallStatus('ended')
       setIsCallConnected(false)
       setHasRemoteVideo(false)
       setHasRemoteAudio(false)
-      setIsVideoCall(true)
       setVideoUpgradeRequest(null)
       setForceRender(prev => prev + 1) // Force re-render
       
-      // Tự động đóng modal sau 3 giây
-      setTimeout(() => {
-        performCleanup()
-      }, 3000)
+      // KHÔNG tự động đóng modal - để người dùng nhấn nút kết thúc để đóng
     }
   })
 
@@ -819,6 +896,12 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
         setIsCallConnected(true)
         setCallStatus('connected')
         
+        // Clear call timeout when connected
+        if (callTimeoutRef.current) {
+          clearTimeout(callTimeoutRef.current)
+          callTimeoutRef.current = null
+        }
+        
         // Start network monitoring when call is connected
         startNetworkMonitoring()
       }
@@ -839,10 +922,13 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
           phoneRingRef.current.currentTime = 0
         }
         
-        // Tự động đóng modal sau 1.5 giây
-        setTimeout(() => {
-          performCleanup()
-        }, 1500)
+        // Clear call timeout when rejected
+        if (callTimeoutRef.current) {
+          clearTimeout(callTimeoutRef.current)
+          callTimeoutRef.current = null
+        }
+        
+        // KHÔNG tự động đóng modal - để người dùng nhấn nút kết thúc để đóng
       }
       
       // Khi cuộc gọi kết thúc (chỉ xử lý nếu chưa có callStatus là 'ended')
@@ -861,10 +947,13 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
           phoneRingRef.current.currentTime = 0
         }
         
-        // Tự động đóng modal sau 2 giây
-        setTimeout(() => {
-          performCleanup()
-        }, 2000)
+        // Clear call timeout when ended
+        if (callTimeoutRef.current) {
+          clearTimeout(callTimeoutRef.current)
+          callTimeoutRef.current = null
+        }
+        
+        // KHÔNG tự động đóng modal - để người dùng nhấn nút kết thúc để đóng
       }
     })
 
@@ -919,6 +1008,9 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
     setCallStatus('connecting')
     setIsVideoCall(isVideoCall)
     
+    // Reset progress ring animation
+    setProgressKey(prev => prev + 1)
+    
     // Create call with explicit video parameter
     const newCall = new window.StringeeCall2(client, data.message.user_id, toUserId, isVideoCall)
     
@@ -944,6 +1036,34 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
 
     newCall.makeCall((res: any) => {
       // Call initiated
+      
+      // Start 30 second timeout - independent timeout to ensure it works
+      const timeoutId = setTimeout(async () => {
+        console.log('Call timeout after 30 seconds - force hangup START')
+        
+        // Force hangup by simulating button click
+        try {
+          // If call is still connecting, force hangup
+          if (newCall && (callStatus === 'connecting' || !isCallConnected)) {
+            console.log('Forcing hangup due to timeout...')
+            
+            // Directly hangup the StringeeCall
+            newCall.hangup(() => {
+              console.log('StringeeCall hangup completed')
+            })
+            
+            // Also call our hangup function
+            await hangupCall()
+          }
+        } catch (error) {
+          console.error('Error during timeout hangup:', error)
+        }
+        
+        console.log('Call timeout after 30 seconds - force hangup END')
+      }, 30000) // 30 seconds
+      
+      // Store the timeout ID
+      callTimeoutRef.current = timeoutId
     })
   }
 
@@ -1041,6 +1161,22 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
     // Stop network monitoring
     stopNetworkMonitoring()
     
+    // Stop call duration timer
+    if (callDurationIntervalRef.current) {
+      clearInterval(callDurationIntervalRef.current)
+      callDurationIntervalRef.current = null
+    }
+    
+    // Stop call timeout timer
+    if (callTimeoutRef.current) {
+      clearTimeout(callTimeoutRef.current)
+      callTimeoutRef.current = null
+    }
+    
+    // Reset call duration states
+    setCallDuration(0)
+    setCallStartTime(null)
+    
     // Reset detailed stats view
     setShowDetailedStats(false)
     
@@ -1102,6 +1238,12 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
       setIncoming(null)
       setCallStatus('connected')
       
+      // Clear call timeout when answered
+      if (callTimeoutRef.current) {
+        clearTimeout(callTimeoutRef.current)
+        callTimeoutRef.current = null
+      }
+      
       // Start network monitoring after answering
       setTimeout(() => {
         startNetworkMonitoring()
@@ -1123,6 +1265,12 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
   }
 
   const hangupCall = async () => {
+    // Nếu call đã ended hoặc rejected, chỉ cần đóng modal
+    if (callStatus === 'ended' || callStatus === 'rejected') {
+      performCleanup()
+      return
+    }
+    
     if (!call) return
     
     // Gọi API để cập nhật trạng thái và gửi realtime TRƯỚC khi hangup
@@ -1147,6 +1295,12 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
       }
     }
     
+    // Clear call timeout
+    if (callTimeoutRef.current) {
+      clearTimeout(callTimeoutRef.current)
+      callTimeoutRef.current = null
+    }
+    
     // Ngắt audio ngay lập tức
     ringbackAudioRef.current?.pause()
     if (ringbackAudioRef.current) {
@@ -1162,21 +1316,24 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
       // Call ended
     })
     
-    // Đóng modal ngay lập tức
+    // Cập nhật trạng thái ended nhưng KHÔNG đóng modal
     setCallStatus('ended')
     setIsCallConnected(false)
     setHasRemoteVideo(false)
     setHasRemoteAudio(false)
     setVideoUpgradeRequest(null)
     
-    // Đóng modal sau 1 giây để hiển thị thông báo "Cuộc gọi đã kết thúc"
-    setTimeout(() => {
-      performCleanup()
-    }, 1000)
+    // KHÔNG tự động đóng modal - để người dùng nhấn nút đóng
   }
 
   const rejectCall = () => {
     if (!incoming) return
+    
+    // Clear call timeout
+    if (callTimeoutRef.current) {
+      clearTimeout(callTimeoutRef.current)
+      callTimeoutRef.current = null
+    }
     
     // AGGRESSIVE audio stop immediately
     stopAllAudio()
@@ -1228,10 +1385,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
       stopAllAudio()
     }, 100)
     
-    // Tự động đóng modal sau 1 giây
-    setTimeout(() => {
-      performCleanup()
-    }, 1000)
+    // KHÔNG tự động đóng modal - để người dùng nhấn nút đóng
   }
 
   const upgradeToVideo = async () => {
@@ -1378,7 +1532,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
 
   return (
     <>
-      {/* CSS Animation for pulse effects */}
+      {/* CSS Animation for pulse effects and progress ring */}
       <style>{`
         @keyframes pulse {
           0% {
@@ -1396,6 +1550,25 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
             box-shadow: 0 8px 32px rgba(46, 213, 115, 0.4), 0 0 0 0px rgba(46, 213, 115, 0.3);
             opacity: 1;
           }
+        }
+        
+        @keyframes progressRing {
+          0% {
+            stroke-dashoffset: 377;
+          }
+          100% {
+            stroke-dashoffset: 0;
+          }
+        }
+        
+        .progress-ring {
+          transform: rotate(-90deg);
+        }
+        
+        .progress-ring-circle {
+          stroke-dasharray: 377;
+          stroke-dashoffset: 377;
+          animation: progressRing 30s linear forwards;
         }
       `}</style>
       
@@ -1567,48 +1740,98 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                    <div style={{
                      width: '120px',
                      height: '120px',
-                     borderRadius: '50%',
-                     backgroundColor: getUserAvatar() ? 'transparent' : (callStatus === 'connected' && !isVideoCall 
-                       ? getIconColor('green') 
-                       : getBackgroundColor('button')),
                      margin: '0 auto 24px',
+                     position: 'relative',
                      display: 'flex',
                      alignItems: 'center',
-                     justifyContent: 'center',
-                     fontSize: getUserAvatar() ? '16px' : '48px',
-                     border: callStatus === 'connected' && !isVideoCall 
-                       ? `4px solid ${getIconColor('green')}` 
-                       : `4px solid ${getIconColor('gray')}`,
-                     boxShadow: callStatus === 'connected' && !isVideoCall
-                       ? `0 8px 32px ${getIconColor('green')}66, 0 0 0 8px ${getIconColor('green')}1a`
-                       : appearance === 'light' 
-                         ? '0 8px 32px rgba(0, 0, 0, 0.1)'
-                         : '0 8px 32px rgba(0, 0, 0, 0.4)',
-                     animation: callStatus === 'connected' && !isVideoCall 
-                       ? 'pulse 2s infinite' 
-                       : 'none',
-                     transition: 'all 0.3s ease',
-                     backgroundImage: getUserAvatar() ? `url(${getUserAvatar()})` : 'none',
-                     backgroundSize: 'cover',
-                     backgroundPosition: 'center',
-                     position: 'relative',
-                     overflow: 'hidden'
+                     justifyContent: 'center'
                    }}>
-                     {!getUserAvatar() && (
-                       // Fallback to initials when no avatar
-                       <div style={{
-                         display: 'flex',
-                         alignItems: 'center',
-                         justifyContent: 'center',
-                         width: '100%',
-                         height: '100%',
-                         fontSize: '36px',
-                         fontWeight: '600',
-                         color: getIconColor('white')
-                       }}>
-                         {getAvatarInitials()}
-                       </div>
+                     {/* Progress Ring - chỉ hiển thị khi đang gọi đi */}
+                     {call && callStatus === 'connecting' && (
+                       <svg 
+                         key={`progress-${progressKey}`}
+                         width="140" 
+                         height="140" 
+                         style={{
+                           position: 'absolute',
+                           top: '-10px',
+                           left: '-10px',
+                           zIndex: 2
+                         }}
+                         className="progress-ring"
+                       >
+                         <circle
+                           cx="70"
+                           cy="70"
+                           r="60"
+                           fill="transparent"
+                           stroke={appearance === 'light' ? '#e5e7eb' : '#374151'}
+                           strokeWidth="3"
+                         />
+                         <circle
+                           cx="70"
+                           cy="70"
+                           r="60"
+                           fill="transparent"
+                           stroke={getIconColor('blue')}
+                           strokeWidth="3"
+                           className="progress-ring-circle"
+                           style={{
+                             filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.5))'
+                           }}
+                         />
+                       </svg>
                      )}
+                     
+                     {/* Avatar */}
+                     <div style={{
+                       width: '120px',
+                       height: '120px',
+                       borderRadius: '50%',
+                       backgroundColor: getUserAvatar() ? 'transparent' : (callStatus === 'connected' && !isVideoCall 
+                         ? getIconColor('green') 
+                         : getBackgroundColor('button')),
+                       display: 'flex',
+                       alignItems: 'center',
+                       justifyContent: 'center',
+                       fontSize: getUserAvatar() ? '16px' : '48px',
+                       border: callStatus === 'connected' && !isVideoCall 
+                         ? `4px solid ${getIconColor('green')}` 
+                         : `4px solid ${getIconColor('gray')}`,
+                       boxShadow: callStatus === 'connected' && !isVideoCall
+                         ? `0 8px 32px ${getIconColor('green')}66, 0 0 0 8px ${getIconColor('green')}1a`
+                         : appearance === 'light' 
+                           ? '0 8px 32px rgba(0, 0, 0, 0.1)'
+                           : '0 8px 32px rgba(0, 0, 0, 0.4)',
+                       animation: callStatus === 'connected' && !isVideoCall 
+                         ? 'pulse 2s infinite' 
+                         : 'none',
+                       transition: 'all 0.3s ease',
+                       backgroundImage: getUserAvatar() ? `url(${getUserAvatar()})` : 'none',
+                       backgroundSize: 'cover',
+                       backgroundPosition: 'center',
+                       position: 'relative',
+                       overflow: 'hidden',
+                       zIndex: 1
+                     }}>
+                       {!getUserAvatar() && (
+                         // Fallback to initials when no avatar
+                         <div style={{
+                           display: 'flex',
+                           alignItems: 'center',
+                           justifyContent: 'center',
+                           width: '100%',
+                           height: '100%',
+                           fontSize: '36px',
+                           fontWeight: '600',
+                           color: getIconColor('white')
+                         }}>
+                           {getAvatarInitials()}
+                         </div>
+                       )}
+                       
+
+                     </div>
                    </div>
                   
                                      {/* User Name */}
@@ -1630,7 +1853,9 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                      fontWeight: '400'
                    }}>
                      {callStatus === 'ended' 
-                       ? 'Cuộc gọi đã kết thúc'
+                       ? (callDuration > 0 
+                           ? `Cuộc gọi đã kết thúc - Thời gian: ${formatCallDuration(callDuration)}`
+                           : (incoming && !isCallConnected ? 'Cuộc gọi nhỡ' : 'Cuộc gọi đã kết thúc'))
                        : callStatus === 'rejected'
                          ? 'Cuộc gọi bị từ chối'
                          : incoming 
@@ -1638,7 +1863,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                            : call 
                              ? (callStatus === 'connected' 
                                  ? (isVideoCall && hasRemoteVideo 
-                                     ? 'Gọi video - Đã kết nối' 
+                                     ? 'Gọi video - Đã kết nối'
                                      : isVideoCall && !hasRemoteVideo
                                        ? 'Đang chờ video...'
                                        : 'Đang nói chuyện')
@@ -1681,33 +1906,37 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                        </div>
                      </div>
                    
-                   {/* Thời gian cuộc gọi cho Gọi thoại */}
-                   {callStatus === 'connected' && !isVideoCall && (
+                   {/* Thời gian cuộc gọi */}
+                   {(callStatus === 'connected' || callStatus === 'ended') && callDuration > 0 && (
                      <div style={{
                        marginTop: '12px',
-                       fontSize: '16px',
-                       color: getIconColor('green'),
-                       fontWeight: '500',
+                       fontSize: callStatus === 'ended' ? '20px' : '16px',
+                       color: callStatus === 'ended' ? getIconColor('white') : getIconColor('green'),
+                       fontWeight: '600',
                        display: 'flex',
                        alignItems: 'center',
                        justifyContent: 'center',
                        gap: '8px'
                      }}>
-                       <div style={{
-                         width: '8px',
-                         height: '8px',
-                         borderRadius: '50%',
-                         backgroundColor: getIconColor('green'),
-                         animation: 'pulse 1s infinite'
-                       }}></div>
-                       Cuộc gọi đang diễn ra
-                       <div style={{
-                         width: '8px',
-                         height: '8px',
-                         borderRadius: '50%',
-                         backgroundColor: getIconColor('green'),
-                         animation: 'pulse 1s infinite reverse'
-                       }}></div>
+                       {callStatus === 'connected' && (
+                         <div style={{
+                           width: '8px',
+                           height: '8px',
+                           borderRadius: '50%',
+                           backgroundColor: getIconColor('green'),
+                           animation: 'pulse 1s infinite'
+                         }}></div>
+                       )}
+                       <span style={{
+                         background: callStatus === 'ended' 
+                           ? 'linear-gradient(45deg, #4ade80, #22c55e)'
+                           : 'none',
+                         WebkitBackgroundClip: callStatus === 'ended' ? 'text' : 'initial',
+                         WebkitTextFillColor: callStatus === 'ended' ? 'transparent' : 'inherit',
+                         fontSize: callStatus === 'ended' ? '22px' : '16px'
+                       }}>
+                         {formatCallDuration(callDuration)}
+                       </span>
                      </div>
                    )}
                    
@@ -1859,7 +2088,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
               gap: '30px',
               alignItems: 'center'
             }}>
-              {incoming && !call ? (
+              {incoming && !call && callStatus !== 'rejected' && callStatus !== 'ended' ? (
                 // Incoming call controls - Zalo style
                 <>
                   <button
@@ -1995,14 +2224,20 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                       height: '64px',
                       borderRadius: '50%',
                       border: 'none',
-                      backgroundColor: getIconColor('red'),
-                      color: 'white',
+                      backgroundColor: (callStatus === 'ended' || callStatus === 'rejected') 
+                        ? getBackgroundColor('button') 
+                        : getIconColor('red'),
+                      color: (callStatus === 'ended' || callStatus === 'rejected') 
+                        ? getIconColor('white') 
+                        : 'white',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontSize: '24px',
-                      boxShadow: '0 4px 16px rgba(255, 71, 87, 0.3)',
+                      boxShadow: (callStatus === 'ended' || callStatus === 'rejected')
+                        ? `0 4px 16px ${getIconColor('gray')}33`
+                        : '0 4px 16px rgba(255, 71, 87, 0.3)',
                       transition: 'all 0.2s ease'
                     }}
                     onMouseOver={(e) => {
@@ -2013,6 +2248,7 @@ export default function StringeeCallComponent({ toUserId }: { toUserId: string }
                       e.currentTarget.style.transform = 'scale(1)'
                       e.currentTarget.style.opacity = '1'
                     }}
+                    title={(callStatus === 'ended' || callStatus === 'rejected') ? 'Đóng' : 'Kết thúc cuộc gọi'}
                   >
                     <FiPhoneOff size={24} />
                   </button>
