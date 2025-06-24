@@ -67,39 +67,35 @@ const LabelItemList = ({
 
   const setLabelList = useSetAtom(labelListAtom)
 
+
   const handleRemove = async () => {
-    try {
-      await removeChannel(labelID, channelID)
+  try {
+    await removeChannel(labelID, channelID)
 
-      // ✅ Update local sortedChannelsAtom
-      updateChannelLabels(channelID, (prevLabels) => prevLabels.filter((l) => l.label_id !== labelID))
+    // ✅ Update local sortedChannelsAtom + overrideLabelsAtom
+    removeLabelFromChannel(channelID, labelID)
 
-      // ✅ Update local labelListAtom
-      setLabelList((prev) =>
-        prev.map((l) => {
-          if (l.label_id === labelID) {
-            return {
-              ...l,
-              channels: l.channels.filter((c) => c.channel_id !== channelID)
-            }
+    // ✅ Update local labelListAtom
+    setLabelList((prev) =>
+      prev.map((l) => {
+        if (l.label_id === labelID) {
+          return {
+            ...l,
+            channels: l.channels.filter((c) => c.channel_id !== channelID)
           }
-          return l
-        })
-      )
+        }
+        return l
+      })
+    )
 
-      // ❌ Không cần setRefreshKey nữa
-      // setRefreshKey((prev) => prev + 1)
-
-      toast.success(`Đã xoá thành công`)
-      setShowModal(false)
-
-      // mutate('channel_list') → nếu bạn muốn sync lại sidebar channel thì giữ lại
-      // mutate('channel_list')
-    } catch (err) {
-      console.error('Xoá thất bại:', err)
-      toast.error('Xoá channel khỏi nhãn thất bại')
-    }
+    toast.success(`Đã xoá thành công`)
+    setShowModal(false)
+  } catch (err) {
+    console.error('Xoá thất bại:', err)
+    toast.error('Xoá channel khỏi nhãn thất bại')
   }
+}
+
 
   const isTablet = useIsTablet()
   const isMobile = useIsMobile()
