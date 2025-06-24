@@ -210,6 +210,10 @@ def handle_ai_reply(conversation_id):
             if attempt > 0:
                 time.sleep(delay_base * attempt)
 
+            # 🛠️ Fix race condition: delay nhỏ ở lần đầu để chờ file được commit
+            if attempt == 0:
+                time.sleep(0.3)
+
             context = build_context(conversation_id)
 
             if context:
