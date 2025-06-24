@@ -947,7 +947,7 @@ def add_forwarded_message_to_channel(channel_id, forwarded_message):
             },
             user=member
         )
-        
+
     return "message forwarded"
 
 
@@ -978,14 +978,12 @@ def retract_message(message_id: str):
     is_last_message = last_message_id == message.name
 
     message.db_set("is_retracted", 1)
-    frappe.db.commit()
-
     if is_last_message:
         fallback_message = {
             "message_id": message.name,
             "content": "Tin nhắn đã được thu hồi",
             "owner": message.owner,
-            "message_type": "Text",
+            "message_type": message.message_type,
             "is_bot_message": 0,
             "bot": None,
         }
@@ -1002,9 +1000,13 @@ def retract_message(message_id: str):
             "channel_id": message.channel_id,
             "is_thread": message.is_thread,
             "is_last_message": is_last_message,
+            "owner": message.owner,
+            "message_type": message.message_type,
+            "is_bot_message": message.is_bot_message,
+            "bot": message.bot,
+            "timestamp": message.creation.isoformat()
         },
         doctype="Raven Channel",
-        docname=message.channel_id,
         after_commit=True
     )
 
