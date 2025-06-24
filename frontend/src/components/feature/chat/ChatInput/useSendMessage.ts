@@ -43,9 +43,8 @@ export const useSendMessage = (
 
   const [pendingMessages, setPendingMessages] = useState<Record<string, PendingMessage[]>>({})
   const pendingQueueRef = useRef<Record<string, PendingMessage[]>>({})
-  const processingRef = useRef<Map<string, boolean>>(new Map())
-
   const [processingIds, setProcessingIds] = useAtom(messageProcessingIdsAtom)
+  const isProcessing = (id: string) => processingIds.includes(id)
 
   const createClientId = () => `${Date.now()}-${Math.random()}`
 
@@ -125,7 +124,7 @@ export const useSendMessage = (
 
   const sendTextMessage = async (content: string, json?: any, sendSilently = false) => {
     const pendingTextMsg = (pendingMessages[channelID] || []).find(
-      (m) => m.message_type === 'Text' && m.content === content
+      (m) => m.message_type === 'Text' && m.content?.trim() === content?.trim()
     )
 
     const client_id = pendingTextMsg ? pendingTextMsg.id : createClientId()
@@ -140,6 +139,17 @@ export const useSendMessage = (
       if (message) {
         updateSidebarMessage(message)
         onMessageSent([message])
+
+        // ✅ Remove pendingMessage nào có file trùng
+        updatePendingState((msgs) =>
+          msgs.filter(
+            (m) =>
+              !(
+                (m.message_type === 'File' || m.message_type === 'Image') &&
+                m.fileMeta?.name?.trim().toLowerCase() === message.content?.trim().toLowerCase()
+              )
+          )
+        )
       } else {
         updatePendingState((msgs) => [
           ...msgs,
@@ -212,12 +222,11 @@ export const useSendMessage = (
   }
 
   const sendOnePendingMessage = async (id: string) => {
-    if (processingRef.current.get(id)) {
+    if (isProcessing(id)) {
       console.warn(`Message ${id} is already processing, skip.`)
       return
     }
 
-    processingRef.current.set(id, true)
     setProcessingIds((prev) => [...prev, id])
 
     try {
@@ -251,24 +260,21 @@ export const useSendMessage = (
     } catch (err) {
       console.error('sendOnePendingMessage error', err)
     } finally {
-      processingRef.current.delete(id)
       setProcessingIds((prev) => prev.filter((x) => x !== id))
     }
   }
 
   const removePendingMessage = (id: string) => {
-    if (processingRef.current.get(id)) {
+    if (isProcessing(id)) {
       console.warn(`Message ${id} is already processing, skip remove.`)
       return
     }
 
-    processingRef.current.set(id, true)
     setProcessingIds((prev) => [...prev, id])
 
     try {
       updatePendingState((msgs) => msgs.filter((m) => m.id !== id))
     } finally {
-      processingRef.current.delete(id)
       setProcessingIds((prev) => prev.filter((x) => x !== id))
     }
   }

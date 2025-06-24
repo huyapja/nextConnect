@@ -356,7 +356,7 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
     const combinedMessages = useMemo(() => {
       const baseMessages = messages ?? []
       const pending = pendingMessages ?? []
-
+      
       return [
         ...baseMessages,
         ...pending.map((m) => {
