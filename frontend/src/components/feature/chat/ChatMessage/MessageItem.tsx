@@ -821,7 +821,7 @@ export const MessageContent = ({
 }: MessageContentProps) => {
   const displayText =
     message.message_type === 'File' || message.message_type === 'Image' ? '' : message.text || message.content
-
+    
   return (
     <Box {...props}>
       {displayText ? (
@@ -862,6 +862,8 @@ export const MessageContent = ({
           user={user}
         />
       )}
+
+      
 
       {message.message_type === 'Poll' && <PollMessageBlock message={message} user={user} />}
     </Box>

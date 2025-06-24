@@ -55,10 +55,15 @@ export const useSendMessage = (
 
     await idbSet(STORAGE_KEY, safeToSave)
 
-    // Lưu từng file riêng biệt
+    // Lưu từng file riêng biệt nếu nhỏ hơn 5MB
     for (const m of current) {
       if ((m.message_type === 'File' || m.message_type === 'Image') && m.file) {
-        await idbSet(`file-${m.id}`, m.file)
+        const maxSize = 5 * 1024 * 1024 // 5MB
+        if (m.file.size <= maxSize) {
+          await idbSet(`file-${m.id}`, m.file)
+        } else {
+          console.warn(`Skip saving large file: ${m.file.name} (${m.file.size} bytes)`)
+        }
       }
     }
   }

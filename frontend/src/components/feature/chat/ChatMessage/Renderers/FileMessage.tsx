@@ -179,160 +179,209 @@ export const FileMessageBlock = memo(
 
     const fileURL = typeof message.file === 'string' ? message.file?.split('?')[0] : objectURL
 
-    const fileName = message.fileMeta?.name ? message.fileMeta.name : fileURL ? getFileName(fileURL) : 'Unknown file'
+    const fileName = message.fileMeta?.name
+      ? message.fileMeta.name
+      : fileURL
+      ? getFileName(fileURL)
+      : 'Unknown file'
 
     const fileExtension = message.fileMeta?.name
       ? getFileExtension(message.fileMeta.name)
       : fileURL
-        ? getFileExtension(fileURL)
-        : ''
+      ? getFileExtension(fileURL)
+      : ''
 
-    const isVideo = isVideoFile(fileExtension)
+    const isVideo = isVideoFile(fileExtension, message.fileMeta?.type)
     const isImage = isImageFile(fileExtension)
     const isPDF = fileExtension === 'pdf'
 
+    const isDesktop = useIsDesktop()
+
     const copyLink = () => {
       if (!fileURL) return
-      if (fileURL.startsWith('http') || fileURL.startsWith('https') || fileURL.startsWith('blob:')) {
-        navigator.clipboard.writeText(fileURL)
-      } else {
-        navigator.clipboard.writeText(window.location.origin + fileURL)
-      }
+      const fullURL = fileURL.startsWith('http') || fileURL.startsWith('blob:')
+        ? fileURL
+        : window.location.origin + fileURL
+      navigator.clipboard.writeText(fullURL)
       toast.success('Link copied')
     }
 
-    const isDesktop = useIsDesktop()
-
-    // 🟢 Đây là biến showRetryButton
     const showRetryButton = isError || (isPending && !!fileURL)
 
-    return (
-      <Box {...props}>
-        {isVideo ? (
-          <Flex gap='2' direction='column'>
-            <Link href={fileURL} size='1' download title='Download' color='gray' target='_blank'>
-              {fileName}
-            </Link>
-            {fileURL && <video src={fileURL} controls className='rounded-md shadow-md max-h-96 max-w-[620px]'></video>}
-          </Flex>
-        ) : isImage ? (
-          <Flex gap='2' direction='column'>
-            <Link href={fileURL} size='1' download title='Download' color='gray' target='_blank'>
-              {fileName}
-            </Link>
-            {fileURL && (
-              <Box className='relative w-fit'>
-                <img src={fileURL} alt={fileName} className='rounded-md shadow-md max-w-full max-h-96 object-contain' />
-                {showRetryButton && (
-                  <Box
-                    className='absolute top-2 right-2 flex gap-1 items-center'
-                    style={{
-                      backgroundColor: 'rgba(0,0,0,0.5)',
-                      padding: '2px 6px',
-                      borderRadius: '6px'
-                    }}
-                  >
-                    <Button size='1' variant='soft' color='gray' onClick={() => onRetry?.(message.name ?? message.id)}>
-                      Gửi lại
-                    </Button>
-                    <Button size='1' variant='soft' color='red' onClick={() => onRemove?.(message.name ?? message.id)}>
-                      Xoá
-                    </Button>
-                  </Box>
-                )}
-                {isPending && !showRetryButton && (
-                  <Box
-                    className='absolute top-2 right-2 flex items-center'
-                    style={{
-                      backgroundColor: 'rgba(0,0,0,0.5)',
-                      padding: '2px 6px',
-                      borderRadius: '6px'
-                    }}
-                  >
-                    <Text size='1' color='gray'>
-                      Đang gửi...
-                    </Text>
-                  </Box>
-                )}
-              </Box>
-            )}
+    const RetryOrPendingOverlay = () => {
+      if (showRetryButton) {
+        return (
+          <Box
+            className='absolute top-2 right-2 flex gap-1 items-center'
+            style={{
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              padding: '2px 6px',
+              borderRadius: '6px'
+            }}
+          >
+            <Button size='1' variant='soft' color='gray' onClick={() => onRetry?.(message.name ?? message.id)}>
+              Gửi lại
+            </Button>
+            <Button size='1' variant='soft' color='red' onClick={() => onRemove?.(message.name ?? message.id)}>
+              Xoá
+            </Button>
+          </Box>
+        )
+      }
+
+      if (isPending && !fileURL) {
+        return (
+          <Box
+            className='absolute top-2 right-2 flex items-center'
+            style={{
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              padding: '2px 6px',
+              borderRadius: '6px'
+            }}
+          >
+            <Text size='1' color='red'>
+              File lớn, không gửi lại được
+            </Text>
+          </Box>
+        )
+      }
+
+      if (isPending) {
+        return (
+          <Box
+            className='absolute top-2 right-2 flex items-center'
+            style={{
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              padding: '2px 6px',
+              borderRadius: '6px'
+            }}
+          >
+            <Text size='1' color='gray'>
+              Đang gửi...
+            </Text>
+          </Box>
+        )
+      }
+
+      return null
+    }
+
+    const renderVideoBlock = () => (
+      <Flex gap='2' direction='column'>
+        <Link href={fileURL} size='1' download title='Download' color='gray' target='_blank'>
+          {fileName}
+        </Link>
+        {fileURL ? (
+          <Box className='relative w-fit'>
+            <video src={fileURL} controls className='rounded-md shadow-md max-h-96 max-w-[620px]' />
+            <RetryOrPendingOverlay />
+          </Box>
+        ) : (
+          <Text size='1' color='red'>
+            Không thể hiển thị video
+          </Text>
+        )}
+      </Flex>
+    )
+
+    const renderImageBlock = () => (
+      <Flex gap='2' direction='column'>
+        <Link href={fileURL} size='1' download title='Download' color='gray' target='_blank'>
+          {fileName}
+        </Link>
+        {fileURL ? (
+          <Box className='relative w-fit'>
+            <img src={fileURL} alt={fileName} className='rounded-md shadow-md max-w-full max-h-96 object-contain' />
+            <RetryOrPendingOverlay />
+          </Box>
+        ) : (
+          <Text size='1' color='red'>
+            Không thể hiển thị ảnh
+          </Text>
+        )}
+      </Flex>
+    )
+
+    const renderFileBlock = () => (
+      <Flex
+        align='center'
+        gap='4'
+        p='4'
+        className='border bg-gray-1 dark:bg-gray-3 rounded-md border-gray-4 dark:border-gray-6 w-fit'
+      >
+        <Flex align='center' gap='2'>
+          <FileExtensionIcon ext={fileExtension} />
+          <Text as='span' size='2' className='text-ellipsis overflow-hidden line-clamp-1'>
+            {fileName}
+          </Text>
+        </Flex>
+
+        <Flex align='center' gap='2'>
+          {isPDF && isDesktop && fileURL && (
+            <PDFPreviewButton fileURL={fileURL} fileName={fileName} message={message} user={user} />
+          )}
+          {fileURL && (
+            <>
+              <IconButton
+                size={{ md: '1', sm: '2' }}
+                title='Copy link'
+                color='gray'
+                onClick={copyLink}
+                variant='soft'
+              >
+                <BiLink className='text-lg sm:text-base' />
+              </IconButton>
+              <IconButton
+                size={{ md: '1', sm: '2' }}
+                asChild
+                title='Download'
+                color='gray'
+                variant='soft'
+              >
+                <Link className='no-underline' href={fileURL} download>
+                  {isDesktop ? (
+                    <BiDownload className='text-lg sm:text-base' />
+                  ) : (
+                    <BiShow className='text-lg sm:text-base' />
+                  )}
+                </Link>
+              </IconButton>
+            </>
+          )}
+        </Flex>
+
+        {showRetryButton ? (
+          <Flex align='center' gap='2'>
+            <Button size='1' variant='soft' color='gray' onClick={() => onRetry?.(message.name ?? message.id)}>
+              Gửi lại
+            </Button>
+            <Button size='1' variant='soft' color='red' onClick={() => onRemove?.(message.name ?? message.id)}>
+              Xoá
+            </Button>
           </Flex>
         ) : (
-          <Flex
-            align='center'
-            gap='4'
-            p='4'
-            className='border bg-gray-1 dark:bg-gray-3 rounded-md border-gray-4 dark:border-gray-6 w-fit'
-          >
-            <Flex align='center' gap='2'>
-              <FileExtensionIcon ext={fileExtension} />
-              <Text as='span' size='2' className='text-ellipsis overflow-hidden line-clamp-1'>
-                {fileName}
-              </Text>
-            </Flex>
-
-            <Flex align='center' gap='2'>
-              {isPDF && isDesktop && fileURL && (
-                <PDFPreviewButton fileURL={fileURL} fileName={fileName} message={message} user={user} />
-              )}
-              {fileURL && (
-                <>
-                  <IconButton
-                    size={{
-                      md: '1',
-                      sm: '2'
-                    }}
-                    title='Copy link'
-                    color='gray'
-                    onClick={copyLink}
-                    variant='soft'
-                  >
-                    <BiLink className='text-lg sm:text-base' />
-                  </IconButton>
-                  <IconButton
-                    size={{
-                      md: '1',
-                      sm: '2'
-                    }}
-                    asChild
-                    title='Download'
-                    color='gray'
-                    variant='soft'
-                  >
-                    <Link className='no-underline' href={fileURL} download>
-                      {isDesktop ? (
-                        <BiDownload className='text-lg sm:text-base' />
-                      ) : (
-                        <BiShow className='text-lg sm:text-base' />
-                      )}
-                    </Link>
-                  </IconButton>
-                </>
-              )}
-            </Flex>
-
-            {showRetryButton ? (
-              <Flex align='center' gap='2'>
-                <Button size='1' variant='soft' color='gray' onClick={() => onRetry?.(message.name ?? message.id)}>
-                  Gửi lại
-                </Button>
-                <Button size='1' variant='soft' color='red' onClick={() => onRemove?.(message.name ?? message.id)}>
-                  Xoá
-                </Button>
-              </Flex>
-            ) : (
-              isPending && (
-                <Text size='1' color='gray'>
-                  Đang gửi...
-                </Text>
-              )
-            )}
-          </Flex>
+          isPending && (
+            <Text size='1' color='gray'>
+              Đang gửi...
+            </Text>
+          )
         )}
+      </Flex>
+    )
+
+    // --- MAIN RENDER ---
+    return (
+      <Box {...props}>
+        {isVideo
+          ? renderVideoBlock()
+          : isImage
+          ? renderImageBlock()
+          : renderFileBlock()}
       </Box>
     )
   }
 )
+
 
 const PDFPreviewButton = ({
   fileURL,
