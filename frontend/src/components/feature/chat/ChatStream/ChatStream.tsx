@@ -359,22 +359,34 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
 
       return [
         ...baseMessages,
-        ...pending.map((m) => {
-          const ext = m.fileMeta?.name ? getFileExtension(m.fileMeta.name) : ''
-          const fixedType = m.message_type === 'File' && isImageFile(ext) ? 'Image' : m.message_type
+        ...pending
+          .filter((m) => {
+            return !baseMessages.some((msg) => {
+              if (msg.message_type === 'Image' || msg.message_type === 'File') {
+                // So khớp file name
+                return msg.content === m.fileMeta?.name
+              } else {
+                // Text
+                return msg.name === m.id
+              }
+            })
+          })
+          .map((m) => {
+            const ext = m.fileMeta?.name ? getFileExtension(m.fileMeta.name) : ''
+            const fixedType = m.message_type === 'File' && isImageFile(ext) ? 'Image' : m.message_type
 
-          return {
-            name: m.id,
-            message_type: fixedType,
-            content: m.content,
-            owner: userID,
-            is_pending: true,
-            is_error: m.status === 'error',
-            file: m.file,
-            fileMeta: m.fileMeta,
-            modified: m.createdAt ? new Date(m.createdAt).toISOString() : new Date(0).toISOString()
-          }
-        })
+            return {
+              name: m.id,
+              message_type: fixedType,
+              content: m.content,
+              owner: userID,
+              is_pending: true,
+              is_error: m.status === 'error',
+              file: m.file,
+              fileMeta: m.fileMeta,
+              modified: m.createdAt ? new Date(m.createdAt).toISOString() : new Date(0).toISOString()
+            }
+          })
       ]
     }, [messages, pendingMessages, userID])
 

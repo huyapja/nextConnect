@@ -9,6 +9,8 @@ import { Suspense, lazy, memo, useMemo, useRef, useState } from 'react'
 import { Blurhash } from 'react-blurhash'
 import { BiChevronDown, BiChevronRight, BiDownload, BiX } from 'react-icons/bi'
 import { ImageMessage } from '../../../../../../../types/Messaging/Message'
+import { useAtomValue } from 'jotai'
+import { messageProcessingIdsAtom } from '../../ChatInput/useSendMessage'
 
 const ImageViewer = lazy(() => import('@/components/common/ImageViewer'))
 
@@ -222,6 +224,7 @@ interface ImageMessageProps {
 //   )
 // })
 
+
 export const ImageMessageBlock = memo(
   ({ message, isScrolling = false, user, onRetry, onRemove }: ImageMessageProps) => {
     const [isOpen, setIsOpen] = useState(false)
@@ -229,6 +232,9 @@ export const ImageMessageBlock = memo(
 
     const isPending = message.is_pending
     const isError = message.is_error
+
+    const processingIds = useAtomValue(messageProcessingIdsAtom)
+    const isProcessing = processingIds.includes(message.id)
 
     const fileName = useMemo(() => {
       const file = message.file as File | string | undefined
@@ -373,6 +379,7 @@ export const ImageMessageBlock = memo(
                 size='1'
                 variant='soft'
                 color='gray'
+                disabled={isProcessing}
                 onClick={(e) => {
                   e.stopPropagation()
                   onRetry?.(message.name ?? message.id)
@@ -385,6 +392,7 @@ export const ImageMessageBlock = memo(
                 size='1'
                 variant='soft'
                 color='red'
+                disabled={isProcessing}
                 onClick={(e) => {
                   e.stopPropagation()
                   onRemove?.(message.name ?? message.id)
