@@ -169,9 +169,9 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
       >
         <ThreadFirstMessage message={threadMessage} />
         <ChatStream
-          channelID={threadID ?? ''}
+          channelID={threadID}
           virtuosoRef={virtuosoRef as MutableRefObject<VirtuosoHandle>}
-          ref={chatStreamRef}
+          ref={chatStreamRef as any}
           replyToMessage={handleReplyAction}
           showThreadButton={false}
           onModalClose={onModalClose}

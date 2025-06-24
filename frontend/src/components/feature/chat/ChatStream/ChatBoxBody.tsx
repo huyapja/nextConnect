@@ -168,7 +168,7 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
   // Gửi tin nhắn (có kèm file và reply message nếu có)
   const { sendMessage, loading, pendingMessages, retryPendingMessages } = useSendMessage(
     channelData.name,
-    uploadFiles,
+    uploadFiles as any,
     onMessageSendCompleted,
     selectedMessage
   )

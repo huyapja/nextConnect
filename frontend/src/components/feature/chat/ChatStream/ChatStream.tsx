@@ -20,13 +20,13 @@ import {
 import { useLocation } from 'react-router-dom'
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso'
 import { Message } from '../../../../../../types/Messaging/Message'
+import { PendingMessage } from '../ChatInput/useSendMessage'
 import ChatDialogs from './ChatDialogs'
 import ChatStreamLoader from './ChatStreamLoader'
 import { MessageItemRenderer } from './MessageListRenderer'
 import ScrollToBottomButtons from './ScrollToBottomButtons'
 import useChatStream from './useChatStream'
 import { useChatStreamActions } from './useChatStreamActions'
-import { PendingMessage } from '../ChatInput/useSendMessage'
 
 type Props = {
   channelID: string
@@ -35,8 +35,8 @@ type Props = {
   pinnedMessagesString?: string
   onModalClose?: () => void
   virtuosoRef: MutableRefObject<VirtuosoHandle>
-  pendingMessages: PendingMessage[]
-  retryPendingMessages: () => Promise<void>
+  pendingMessages?: PendingMessage[]
+  retryPendingMessages?: () => Promise<void>
 }
 
 interface ScrollState {
@@ -148,8 +148,7 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
       pinnedMessagesString,
       onModalClose,
       virtuosoRef,
-      pendingMessages,
-      retryPendingMessages
+      pendingMessages
     },
     ref
   ) => {
@@ -211,19 +210,11 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
       clearAllNewMessages
     } = useChatStream(channelID, virtuosoRef, pinnedMessagesString, scrollState.isAtBottom)
 
-    // useEffect(() => {
-    //   if (messages && messages?.length > 0 && !renderState.isInitialLoadComplete) {
-    //     setTimeout(() => {
-    //       dispatchRenderState({ type: 'SET_INITIAL_LOAD_COMPLETE', payload: true })
-    //     }, 100)
-    //     setTimeout(() => dispatchRenderState({ type: 'SET_VIRTUOSO_READY', payload: true }), 200)
-    //     setTimeout(() => dispatchRenderState({ type: 'SET_CONTENT_MEASURED', payload: true }), 300)
-    //     setTimeout(() => dispatchRenderState({ type: 'SET_INITIAL_RENDER_COMPLETE', payload: true }), 500)
-    //   }
-    // }, [messages, renderState.isInitialLoadComplete])
-
     useEffect(() => {
-      if (((messages && messages?.length > 0) || pendingMessages?.length > 0) && !renderState.isInitialLoadComplete) {
+      if (
+        ((messages && messages?.length > 0) || (pendingMessages && pendingMessages?.length > 0)) &&
+        !renderState.isInitialLoadComplete
+      ) {
         setTimeout(() => {
           dispatchRenderState({ type: 'SET_INITIAL_LOAD_COMPLETE', payload: true })
         }, 100)
@@ -392,7 +383,7 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
             setReactionMessage={reactionActions.setReactionMessage}
             seenUsers={seenUsers}
             channel={channel}
-            isPending={!!message.is_pending}
+            isPending={!!(message as any).is_pending}
           />
         )
       },
@@ -530,13 +521,13 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
 
         {error && <ErrorBanner error={error} />}
 
-        {((messages && messages?.length > 0) || pendingMessages?.length > 0) && (
+        {((messages && messages?.length > 0) || (pendingMessages && pendingMessages?.length > 0)) && (
           <Virtuoso
             ref={virtuosoRef}
             data={combinedMessages}
             itemContent={itemRenderer}
             followOutput={scrollState.isAtBottom ? 'auto' : false}
-            initialTopMostItemIndex={!isSavedMessage ? messages?.length - 1 : targetIndex}
+            initialTopMostItemIndex={!isSavedMessage ? messages && messages?.length - 1 : targetIndex}
             atTopStateChange={handleAtTopStateChange}
             atBottomStateChange={handleAtBottomStateChange}
             rangeChanged={handleRangeChanged}

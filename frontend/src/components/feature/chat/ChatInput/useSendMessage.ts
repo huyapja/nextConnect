@@ -57,7 +57,7 @@ export type PendingMessage = {
 
 export const useSendMessage = (
   channelID: string,
-  uploadFiles: (selectedMessage?: Message | null) => Promise<RavenMessage[]>,
+  uploadFiles: (selectedMessage?: Message | null) => Promise<any[]>,
   onMessageSent: (messages: RavenMessage[]) => void,
   selectedMessage?: Message | null
 ) => {
