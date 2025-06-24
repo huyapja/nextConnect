@@ -5,7 +5,7 @@ import { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
 import { useSetAtom } from 'jotai'
 import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
-import { refreshLabelListAtom } from '../labels/conversations/atoms/labelAtom'
+import { labelListAtom, refreshLabelListAtom } from '../labels/conversations/atoms/labelAtom'
 
 const ChannelLabelBadge = ({
   channelID,
@@ -20,8 +20,6 @@ const ChannelLabelBadge = ({
 }) => {
   const { removeChannel, loading: isLoading } = useRemoveChannelFromLabel()
   const { updateChannelLabels } = useUpdateChannelLabels()
-  const { mutate } = useSWRConfig()
-  const setRefreshKey = useSetAtom(refreshLabelListAtom)
 
   const [isHovered, setIsHovered] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -31,17 +29,36 @@ const ChannelLabelBadge = ({
     setShowModal(true)
   }
 
+  const setLabelList = useSetAtom(labelListAtom)
+
   const handleConfirmRemove = async () => {
     try {
       await removeChannel(labelID, channelID)
 
-      onRemoveLocally?.(channelID)
+      // ✅ Update local sortedChannelsAtom
       updateChannelLabels(channelID, (prevLabels) => prevLabels.filter((l) => l.label_id !== labelID))
-      setRefreshKey((prev) => prev + 1)
+
+      // ✅ Update local labelListAtom
+      setLabelList((prev) =>
+        prev.map((l) => {
+          if (l.label_id === labelID) {
+            return {
+              ...l,
+              channels: l.channels.filter((c) => c.channel_id !== channelID)
+            }
+          }
+          return l
+        })
+      )
+
+      // ❌ Không cần setRefreshKey nữa
+      // setRefreshKey((prev) => prev + 1)
 
       toast.success(`Đã xoá thành công`)
       setShowModal(false)
-      mutate('channel_list')
+
+      // mutate('channel_list') → nếu bạn muốn sync lại sidebar channel thì giữ lại
+      // mutate('channel_list')
     } catch (err) {
       console.error('Xoá thất bại:', err)
       toast.error('Xoá channel khỏi nhãn thất bại')

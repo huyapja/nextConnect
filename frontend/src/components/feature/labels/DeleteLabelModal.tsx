@@ -1,30 +1,36 @@
-import { Dialog, Button, Flex, Text } from '@radix-ui/themes'
-import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
+import { Button, Dialog, Flex, Text } from '@radix-ui/themes'
+import { useFrappePostCall } from 'frappe-react-sdk'
 import { useSetAtom } from 'jotai'
-import { refreshLabelListAtom } from './conversations/atoms/labelAtom'
+import { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
+import { sortedChannelsAtom, useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
+import { labelListAtom } from './conversations/atoms/labelAtom'
 
 type Props = {
-  name: string // label_id
-  label: string // label name
+  name: string
+  label: string
   isOpen: boolean
-  setIsOpen: (v: boolean) => void
+  setIsOpen: (open: boolean) => void
 }
 
-const DeleteLabelModal = ({ name, label, isOpen, setIsOpen }: Props) => {
+export const DeleteLabelModal = ({ name, label, isOpen, setIsOpen }: Props) => {
   const { call, loading: isLoading } = useFrappePostCall('raven.api.user_label.delete_label')
-  const setRefreshKey = useSetAtom(refreshLabelListAtom)
-  const { mutate } = useSWRConfig()
+  const setLabelList = useSetAtom(labelListAtom)
+  const { removeLabelFromChannel } = useUpdateChannelLabels()
+
   const handleDelete = async () => {
     try {
       const res = await call({ label_id: name })
       const message = res?.message?.message
 
       if (message === 'Label deleted') {
-        toast.success(`Xóa nhãn thành công`)
-        setRefreshKey((prev) => prev + 1)
-        mutate('channel_list')
+        // ✅ Xoá label khỏi labelListAtom
+        setLabelList((prev) => prev.filter((l) => l.label_id !== name))
 
+        // ✅ Xoá label khỏi sortedChannelsAtom (dùng function giống Edit)
+        removeLabelFromChannel('*', name) // dấu * là sẽ áp dụng cho ALL channel
+
+        toast.success(`Xóa nhãn thành công`)
         setIsOpen(false)
       } else {
         console.error('Lỗi không rõ:', res)
@@ -55,5 +61,3 @@ const DeleteLabelModal = ({ name, label, isOpen, setIsOpen }: Props) => {
     </Dialog.Root>
   )
 }
-
-export default DeleteLabelModal

@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 
 import { sortedChannelsAtom, useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
 import { useFrappePostCall } from 'frappe-react-sdk'
-import { refreshLabelListAtom } from './atoms/labelAtom'
+import { labelListAtom, refreshLabelListAtom } from './atoms/labelAtom'
 
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import clsx from 'clsx'
@@ -34,6 +34,7 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
 
   const { call, loading } = useFrappePostCall('raven.api.user_channel_label.add_label_to_multiple_channels')
   const { addLabelToChannel } = useUpdateChannelLabels()
+  const setLabelList = useSetAtom(labelListAtom)
 
   const setRefreshKey = useSetAtom(refreshLabelListAtom)
 
@@ -104,11 +105,33 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
 
       // ✅ Cập nhật local sortedChannelsAtom
       channel_ids?.forEach((channelID) => {
+        // Update sortedChannelsAtom
         addLabelToChannel(channelID, { label_id: name, label })
-      })
 
-      // ✅ Cập nhật key để trigger re-render các nơi khác
-      setRefreshKey((prev) => prev + 1)
+        // Update labelListAtom
+        setLabelList((prev) =>
+          prev.map((l) => {
+            if (l.label_id === name) {
+              const hasChannel = l.channels.some((c) => c.channel_id === channelID)
+              if (!hasChannel) {
+                const ch = channels.find((c) => c.name === channelID)
+                return {
+                  ...l,
+                  channels: [
+                    ...l.channels,
+                    {
+                      channel_id: channelID,
+                      channel_name: ch?.channel_name || '',
+                      is_direct_message: ch?.is_direct_message === 1
+                    }
+                  ]
+                }
+              }
+            }
+            return l
+          })
+        )
+      })
 
       // mutate('channel_list')
 

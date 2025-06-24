@@ -9,7 +9,7 @@ import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { FiPlus } from 'react-icons/fi'
 import { IoMdClose } from 'react-icons/io'
 import { toast } from 'sonner'
-import { refreshLabelListAtom } from './conversations/atoms/labelAtom'
+import { labelListAtom, refreshLabelListAtom } from './conversations/atoms/labelAtom'
 
 interface CreateLabelForm {
   label: string
@@ -112,15 +112,29 @@ export const CreateLabelContent = ({ setIsOpen }: { isOpen: boolean; setIsOpen: 
   const labelValue = watch('label') || ''
   const { call, loading } = useFrappePostCall('raven.api.user_label.create_label')
 
-  const setRefreshKey = useSetAtom(refreshLabelListAtom)
+  const setLabelList = useSetAtom(labelListAtom)
 
   const onSubmit = async (data: CreateLabelForm) => {
     try {
-      await call({ label: data.label.trim() })
-      toast.success('Đã tạo nhãn')
-      reset()
-      setIsOpen(false)
-      setRefreshKey((prev) => prev + 1)
+      const res = await call({ label: data.label.trim() })
+
+      const label_id = res?.label_id
+      const label_name = data.label.trim()
+
+      if (res.message.message === 'Label created') {
+        // ✅ Add label mới vào labelListAtom
+        setLabelList((prev) => [
+          { label_id, label: label_name, channels: [] }, // channels rỗng
+          ...prev
+        ])
+
+        toast.success('Đã tạo nhãn')
+        reset()
+        setIsOpen(false)
+      } else {
+        toast.error('Không thể tạo nhãn')
+        console.error('API không trả label_id:', res)
+      }
     } catch (err) {
       console.error(err)
       toast.error('Không thể tạo nhãn')
@@ -192,7 +206,7 @@ export const CreateLabelContent = ({ setIsOpen }: { isOpen: boolean; setIsOpen: 
               </Button>
             </Dialog.Close>
             <Button className='cursor-pointer' type='submit' size='2' disabled={loading}>
-              Tạo
+              {loading ? 'Đang tạo...' : 'Tạo'}
             </Button>
           </Flex>
         </Flex>

@@ -1,10 +1,7 @@
 import BeatLoader from '@/components/layout/Loaders/BeatLoader'
 import { Flex, Text } from '@radix-ui/themes'
-import { useFrappeGetCall } from 'frappe-react-sdk'
-import { useAtomValue } from 'jotai'
-import { useEffect } from 'react'
 import { LuAtSign } from 'react-icons/lu'
-import { refreshLabelListAtom } from './conversations/atoms/labelAtom'
+import {  useLabelList } from './conversations/atoms/labelAtom'
 import LabelItem from './LabelItem'
 
 interface Label {
@@ -18,25 +15,14 @@ interface Label {
 }
 
 const LabelByUserList = () => {
-  const refreshKey = useAtomValue(refreshLabelListAtom)
+  const { labelList, loading, error } = useLabelList()
 
-  const { data, error, isLoading, mutate } = useFrappeGetCall<{ message: Label[] }>(
-    'raven.api.user_label.get_my_labels'
-  )
-
-  // Gọi lại API khi refreshKey thay đổi
-  useEffect(() => {
-    mutate()
-  }, [refreshKey])
-
-  const labels: Label[] = data?.message || []
-
-  if (isLoading && labels?.length === 0) return <BeatLoader text='Đang tải label...' />
-  if (error && labels?.length === 0) return <div className='text-red-500'>Lỗi: {error.message}</div>
+  if (loading && labelList?.length === 0) return <BeatLoader text='Đang tải label...' />
+  if (error && labelList?.length === 0) return <div className='text-red-500'>Lỗi: {error.message}</div>
 
   return (
     <div className='space-y-2'>
-      {labels?.length === 0 ? (
+      {labelList?.length === 0 ? (
         <Flex direction='column' align='center' justify='center' className='h-[320px] px-6 text-center'>
           <LuAtSign size={48} className='text-gray-8 mb-4' />
           <Text size='5' weight='medium' className='mb-2'>
@@ -47,7 +33,7 @@ const LabelByUserList = () => {
           </Text>
         </Flex>
       ) : (
-        labels?.map((labelItem) => (
+        labelList?.map((labelItem) => (
           <LabelItem
             channels={labelItem.channels}
             key={labelItem.label_id}
