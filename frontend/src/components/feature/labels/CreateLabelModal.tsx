@@ -118,7 +118,10 @@ export const CreateLabelContent = ({ setIsOpen }: { isOpen: boolean; setIsOpen: 
     try {
       const res = await call({ label: data.label.trim() })
 
-      const label_id = res?.label_id
+      console.log(res);
+      
+
+      const label_id = res?.message?.label_id
       const label_name = data.label.trim()
 
       if (res.message.message === 'Label created') {

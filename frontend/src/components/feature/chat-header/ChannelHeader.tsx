@@ -9,9 +9,10 @@ import { BiChevronLeft } from 'react-icons/bi'
 import { Link } from 'react-router-dom'
 import { ViewPinnedMessagesButton } from '../pinned-messages/ViewPinnedMessagesButton'
 import ViewChannelDetailsModal from '../channels/ViewChannelDetailsModal'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import ChannelLabelBadge from '../channels/ChannelLabelBadge'
 import { useIsTablet } from '@/hooks/useMediaQuery'
+import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
 
 interface ChannelHeaderProps {
   channelData: ChannelListItem
@@ -22,7 +23,13 @@ export const ChannelHeader = ({ channelData }: ChannelHeaderProps) => {
 
   const isTablet = useIsTablet()
 
-  const userLabels = channelData.user_labels as UserLabel[]
+  const enrichedChannels = useEnrichedSortedChannels()
+  const enrichedChannel = useMemo(
+    () => enrichedChannels.find((ch) => ch.name === channelData.name),
+    [enrichedChannels, channelData.name]
+  )
+
+  const userLabels = enrichedChannel?.user_labels || []
 
   return (
     <PageHeader>
