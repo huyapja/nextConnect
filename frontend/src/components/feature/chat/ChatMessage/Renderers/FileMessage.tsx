@@ -10,6 +10,8 @@ import { FileExtensionIcon } from '@/utils/layout/FileExtIcon'
 import { memo, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useIsDesktop } from '@/hooks/useMediaQuery'
+import { useAtomValue } from 'jotai'
+import { messageProcessingIdsAtom } from '../../ChatInput/useSendMessage'
 
 type FileMessageBlockProps = BoxProps & {
   message: FileMessage
@@ -164,6 +166,9 @@ export const FileMessageBlock = memo(
 
     const [objectURL, setObjectURL] = useState<string>('')
 
+    const processingIds = useAtomValue(messageProcessingIdsAtom)
+    const isProcessing = processingIds.includes(message.id)
+
     useEffect(() => {
       if (message?.file && typeof message.file !== 'string') {
         const file = message.file as Blob | File
@@ -179,17 +184,13 @@ export const FileMessageBlock = memo(
 
     const fileURL = typeof message.file === 'string' ? message.file?.split('?')[0] : objectURL
 
-    const fileName = message.fileMeta?.name
-      ? message.fileMeta.name
-      : fileURL
-      ? getFileName(fileURL)
-      : 'Unknown file'
+    const fileName = message.fileMeta?.name ? message.fileMeta.name : fileURL ? getFileName(fileURL) : 'Unknown file'
 
     const fileExtension = message.fileMeta?.name
       ? getFileExtension(message.fileMeta.name)
       : fileURL
-      ? getFileExtension(fileURL)
-      : ''
+        ? getFileExtension(fileURL)
+        : ''
 
     const isVideo = isVideoFile(fileExtension, message.fileMeta?.type)
     const isImage = isImageFile(fileExtension)
@@ -199,9 +200,8 @@ export const FileMessageBlock = memo(
 
     const copyLink = () => {
       if (!fileURL) return
-      const fullURL = fileURL.startsWith('http') || fileURL.startsWith('blob:')
-        ? fileURL
-        : window.location.origin + fileURL
+      const fullURL =
+        fileURL.startsWith('http') || fileURL.startsWith('blob:') ? fileURL : window.location.origin + fileURL
       navigator.clipboard.writeText(fullURL)
       toast.success('Link copied')
     }
@@ -219,10 +219,10 @@ export const FileMessageBlock = memo(
               borderRadius: '6px'
             }}
           >
-            <Button size='1' variant='soft' color='gray' onClick={() => onRetry?.(message.name ?? message.id)}>
+            <Button disabled={isProcessing} size='1' variant='soft' color='gray' onClick={() => onRetry?.(message.name ?? message.id)}>
               Gửi lại
             </Button>
-            <Button size='1' variant='soft' color='red' onClick={() => onRemove?.(message.name ?? message.id)}>
+            <Button disabled={isProcessing} size='1' variant='soft' color='red' onClick={() => onRemove?.(message.name ?? message.id)}>
               Xoá
             </Button>
           </Box>
@@ -322,22 +322,10 @@ export const FileMessageBlock = memo(
           )}
           {fileURL && (
             <>
-              <IconButton
-                size={{ md: '1', sm: '2' }}
-                title='Copy link'
-                color='gray'
-                onClick={copyLink}
-                variant='soft'
-              >
+              <IconButton size={{ md: '1', sm: '2' }} title='Copy link' color='gray' onClick={copyLink} variant='soft'>
                 <BiLink className='text-lg sm:text-base' />
               </IconButton>
-              <IconButton
-                size={{ md: '1', sm: '2' }}
-                asChild
-                title='Download'
-                color='gray'
-                variant='soft'
-              >
+              <IconButton size={{ md: '1', sm: '2' }} asChild title='Download' color='gray' variant='soft'>
                 <Link className='no-underline' href={fileURL} download>
                   {isDesktop ? (
                     <BiDownload className='text-lg sm:text-base' />
@@ -352,10 +340,10 @@ export const FileMessageBlock = memo(
 
         {showRetryButton ? (
           <Flex align='center' gap='2'>
-            <Button size='1' variant='soft' color='gray' onClick={() => onRetry?.(message.name ?? message.id)}>
+            <Button  disabled={isProcessing} size='1' variant='soft' color='gray' onClick={() => onRetry?.(message.name ?? message.id)}>
               Gửi lại
             </Button>
-            <Button size='1' variant='soft' color='red' onClick={() => onRemove?.(message.name ?? message.id)}>
+            <Button  disabled={isProcessing} size='1' variant='soft' color='red' onClick={() => onRemove?.(message.name ?? message.id)}>
               Xoá
             </Button>
           </Flex>
@@ -370,18 +358,9 @@ export const FileMessageBlock = memo(
     )
 
     // --- MAIN RENDER ---
-    return (
-      <Box {...props}>
-        {isVideo
-          ? renderVideoBlock()
-          : isImage
-          ? renderImageBlock()
-          : renderFileBlock()}
-      </Box>
-    )
+    return <Box {...props}>{isVideo ? renderVideoBlock() : isImage ? renderImageBlock() : renderFileBlock()}</Box>
   }
 )
-
 
 const PDFPreviewButton = ({
   fileURL,

@@ -3,6 +3,8 @@ import { memo } from 'react'
 import { TextMessage } from '../../../../../../../types/Messaging/Message'
 import { UserFields } from '@/utils/users/UserListProvider'
 import { TiptapRenderer } from './TiptapRenderer/TiptapRenderer'
+import { useAtomValue } from 'jotai'
+import { messageProcessingIdsAtom } from '../../ChatInput/useSendMessage'
 
 export const TextMessageBlock = memo(
   ({
@@ -20,6 +22,8 @@ export const TextMessageBlock = memo(
     const isError = message.is_error
 
     const showRetryButton = isError || isPending
+    const processingIds = useAtomValue(messageProcessingIdsAtom)
+    const isProcessing = processingIds.includes(message.id)
 
     return (
       <Box className='relative'>
@@ -46,10 +50,10 @@ export const TextMessageBlock = memo(
                   width: 'fit-content'
                 }}
               >
-                <Button size='1' variant='soft' color='gray' onClick={() => onRetry?.(message.name ?? message.id)}>
+                <Button  disabled={isProcessing} size='1' variant='soft' color='gray' onClick={() => onRetry?.(message.name ?? message.id)}>
                   Gửi lại
                 </Button>
-                <Button size='1' variant='soft' color='red' onClick={() => onRemove?.(message.name ?? message.id)}>
+                <Button  disabled={isProcessing} size='1' variant='soft' color='red' onClick={() => onRemove?.(message.name ?? message.id)}>
                   Xoá
                 </Button>
               </Flex>
