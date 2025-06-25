@@ -109,10 +109,10 @@ const MentionItem = ({
       title={item.full_name}
       aria-label={`Mention ${item.full_name}`}
       className={clsx(
-        'px-3 py-1.5 gap-2 rounded-md',
+        'px-3 py-1.5 gap-2 rounded-md transition-colors cursor-pointer',
         index === itemsLength - 1 ? 'rounded-b-md' : 'rounded-b-none',
         index === 0 ? 'rounded-t-md' : 'rounded-t-none',
-        index === selectedIndex ? 'bg-accent-a5' : 'bg-panel-translucent'
+        index === selectedIndex ? 'bg-accent-a5' : 'bg-panel-translucent hover:bg-accent-a3'
       )}
       key={index}
       onClick={() => selectItem(index)}
@@ -128,7 +128,6 @@ const MentionItem = ({
       />
       <HStack width='100%' justify='between' align='center' gap='2'>
         <Text as='span' weight='medium' size='2'>
-          {' '}
           {item.full_name}
         </Text>
         <Text as='span' color='gray'>

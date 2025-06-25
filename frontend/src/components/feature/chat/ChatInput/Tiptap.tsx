@@ -410,9 +410,9 @@ const Tiptap = forwardRef(
         },
         suggestion: {
           items: (query) => {
-            return channelMembersRef.current
-              .filter((user) => user.full_name.toLowerCase().startsWith(query.query.toLowerCase()))
-              .slice(0, 10)
+            return channelMembersRef.current.filter((user) =>
+              user.full_name.toLowerCase().startsWith(query.query.toLowerCase())
+            )
           },
           // char: '@',
           render: () => {
