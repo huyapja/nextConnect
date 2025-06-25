@@ -5,6 +5,7 @@ import {
   FiVideo, FiMic, FiMicOff, FiHeadphones 
 } from 'react-icons/fi'
 import { useTheme } from '@/ThemeProvider'
+import { toast } from 'sonner'
 
 // Import utilities and hooks
 import { getIconColor, getBackgroundColor } from './utils/themeUtils'
@@ -331,7 +332,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
         }
         
         // Show rejection message briefly
-        alert('Người dùng đã từ chối chuyển sang video call')
+        toast.error('Người dùng đã từ chối chuyển sang video call')
       }
     }
   })
@@ -683,6 +684,57 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
     })
   }
 
+  // Function để kiểm tra thiết bị mic/camera trước khi gọi
+  const checkDeviceAvailability = async (isVideoCall: boolean): Promise<boolean> => {
+    try {
+      // Kiểm tra quyền truy cập thiết bị
+      const constraints = isVideoCall 
+        ? { audio: true, video: true }
+        : { audio: true, video: false }
+      
+      // Test getUserMedia để xem có thể truy cập thiết bị không
+      const stream = await navigator.mediaDevices.getUserMedia(constraints)
+      
+      // Kiểm tra audio tracks
+      const audioTracks = stream.getAudioTracks()
+      if (audioTracks.length === 0) {
+        toast.error('Thiết bị của bạn thiếu Micro để sử dụng chức năng này')
+        stream.getTracks().forEach(track => track.stop())
+        return false
+      }
+      
+      // Kiểm tra video tracks nếu là video call
+      if (isVideoCall) {
+        const videoTracks = stream.getVideoTracks()
+        if (videoTracks.length === 0) {
+          toast.error('Thiết bị của bạn thiếu Camera để sử dụng chức năng video call')
+          stream.getTracks().forEach(track => track.stop())
+          return false
+        }
+      }
+      
+      // Dọn dẹp stream test
+      stream.getTracks().forEach(track => track.stop())
+      return true
+      
+    } catch (error: any) {
+      console.error('❌ Device access error:', error)
+      
+      // Xử lý các loại lỗi cụ thể
+      if (error.name === 'NotAllowedError') {
+        toast.error('Vui lòng cấp quyền truy cập Micro và Camera để sử dụng chức năng gọi')
+      } else if (error.name === 'NotFoundError') {
+        toast.error('Thiết bị của bạn thiếu Micro để sử dụng chức năng này')
+      } else if (error.name === 'NotReadableError') {
+        toast.error('Thiết bị Micro/Camera đang được sử dụng bởi ứng dụng khác')
+      } else {
+        toast.error('Không thể truy cập thiết bị Micro/Camera. Vui lòng kiểm tra thiết bị của bạn')
+      }
+      
+      return false
+    }
+  }
+
   const makeCall = async (isVideoCall: boolean = true) => {
     // Initialize audio context immediately on user interaction
     initAudioContext()
@@ -695,6 +747,13 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
         StringeeCall2: !!window.StringeeCall2
       })
       return
+    }
+
+    // ✅ Kiểm tra thiết bị mic/camera trước khi gọi
+    const deviceAvailable = await checkDeviceAvailability(isVideoCall)
+    if (!deviceAvailable) {
+      console.log('❌ Device check failed - canceling call')
+      return // Dừng thực hiện cuộc gọi nếu thiếu thiết bị
     }
     
     // Check if client is connected and authenticated
@@ -898,11 +957,18 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
     setShowDetailedStats(false)
   }, [stopAllAudio])
 
-  const answerCall = () => {
+  const answerCall = async () => {
     if (!incoming) return
     
     // Initialize audio context immediately on user interaction
     initAudioContext()
+    
+    // ✅ Kiểm tra thiết bị mic/camera trước khi trả lời cuộc gọi
+    const deviceAvailable = await checkDeviceAvailability(isVideoCall)
+    if (!deviceAvailable) {
+      console.log('❌ Device check failed - cannot answer call')
+      return // Dừng trả lời cuộc gọi nếu thiếu thiết bị
+    }
     
     // AGGRESSIVE audio stop BEFORE answering
     stopAllAudio()
@@ -1129,6 +1195,13 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
       return
     }
 
+    // ✅ Kiểm tra camera trước khi upgrade sang video call
+    const deviceAvailable = await checkDeviceAvailability(true) // true = video call
+    if (!deviceAvailable) {
+      console.log('❌ Camera check failed - cannot upgrade to video')
+      return // Dừng upgrade nếu thiếu camera
+    }
+
     // If no currentSessionId, try to create one based on call info
     let sessionId = currentSessionId
     if (!sessionId && call?.callId) {
@@ -1180,6 +1253,13 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
   const acceptVideoUpgrade = async () => {
     if (!videoUpgradeRequest || !call) return
     
+    // ✅ Kiểm tra camera trước khi chấp nhận video upgrade
+    const deviceAvailable = await checkDeviceAvailability(true) // true = video call
+    if (!deviceAvailable) {
+      console.log('❌ Camera check failed - cannot accept video upgrade')
+      return // Dừng chấp nhận video upgrade nếu thiếu camera
+    }
+    
     try {
       // Request camera permission first
       let videoStream: MediaStream | null = null
@@ -1189,7 +1269,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
           audio: true 
         })
       } catch (cameraError) {
-        alert('Không thể truy cập camera. Vui lòng cho phép truy cập camera để sử dụng video call.')
+        toast.error('Không thể truy cập camera. Vui lòng cho phép truy cập camera để sử dụng video call.')
         return
       }
       
@@ -1215,7 +1295,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
       setVideoUpgradeRequest(null)
       
     } catch (error) {
-      alert('Có lỗi khi chuyển sang video call. Vui lòng thử lại.')
+      toast.error('Có lỗi khi chuyển sang video call. Vui lòng thử lại.')
     }
   }
 
