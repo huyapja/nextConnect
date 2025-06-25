@@ -125,7 +125,7 @@ const ChatbotAIContainer: React.FC<Props> = ({
     if (sessions?.length <= 1) onSelectSession('')
     setDeleteDialogOpen(false)
     setSessionToDelete(null)
-    navigate(`/${workspaceID}/chatbot`)
+    navigate(`/${workspaceID}/`)
   }
 
   const openDeleteDialog = (id: string) => {
