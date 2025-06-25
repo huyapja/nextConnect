@@ -1,26 +1,12 @@
-import { truncateText } from '@/utils/textUtils/truncateText'
 import { useIsMobile, useIsTablet } from '@/hooks/useMediaQuery'
+import { useEnrichedLabelChannels } from '@/utils/channel/ChannelAtom'
+import { truncateText } from '@/utils/textUtils/truncateText'
 import { useMemo, useState } from 'react'
 import { HiChevronDown, HiChevronRight } from 'react-icons/hi'
 import { MdLabelOutline } from 'react-icons/md'
 import LabelItemList from './LabelItemList'
 import LabelItemMenu from './LabelItemMenu'
-<<<<<<< HEAD
-import { ChannelWithGroupType, sortedChannelsAtom, useEnrichedLabelChannels, useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
-import { useAtomValue } from 'jotai'
-import { labelListAtom } from './conversations/atoms/labelAtom'
-import { useUnreadCount } from '@/utils/layout/sidebar'
 
-interface LabelItemProps {
-  label: string
-  name: string
-  channels: any[]
-}
-
-=======
-import { useEnrichedLabelChannels } from '@/utils/channel/ChannelAtom'
-
->>>>>>> upstream/hotfix-production
 const LabelItem: React.FC<{ label: string; name: string }> = ({ label, name }) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const labelChannels = useEnrichedLabelChannels(name)
@@ -37,7 +23,11 @@ const LabelItem: React.FC<{ label: string; name: string }> = ({ label, name }) =
       <div className='relative'>
         <div onClick={toggle} className='px-3 py-2 rounded-md hover:bg-gray-3 transition-colors cursor-pointer'>
           <div className='flex items-center gap-2 text-sm text-gray-12'>
-            {isExpanded ? <HiChevronDown className='w-4 h-4 text-gray-11 shrink-0' /> : <HiChevronRight className='w-4 h-4 text-gray-11 shrink-0' />}
+            {isExpanded ? (
+              <HiChevronDown className='w-4 h-4 text-gray-11 shrink-0' />
+            ) : (
+              <HiChevronRight className='w-4 h-4 text-gray-11 shrink-0' />
+            )}
             <MdLabelOutline className='w-4 h-4 text-gray-11 shrink-0' />
             <span className='truncate'>{truncateText(label, maxLength)}</span>
             {!isExpanded && totalCount > 0 && (
@@ -67,7 +57,7 @@ const LabelItem: React.FC<{ label: string; name: string }> = ({ label, name }) =
             <LabelItemList
               key={channel.name}
               channelID={channel.name}
-              channelName={channel.channel_name}
+              channelName={channel.channel_name as string}
               labelID={name}
               isDirectMessage={channel.is_direct_message === 1}
               unreadCount={channel.unread_count}
@@ -78,6 +68,5 @@ const LabelItem: React.FC<{ label: string; name: string }> = ({ label, name }) =
     </div>
   )
 }
-
 
 export default LabelItem
