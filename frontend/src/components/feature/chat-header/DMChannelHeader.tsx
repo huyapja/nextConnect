@@ -5,15 +5,16 @@ import { useGetUser } from '@/hooks/useGetUser'
 import { useIsUserActive } from '@/hooks/useIsUserActive'
 import { useIsDesktop, useIsTablet } from '@/hooks/useMediaQuery'
 import { UserContext } from '@/utils/auth/UserProvider'
+import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
 import { DMChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { replaceCurrentUserFromDMChannelName } from '@/utils/operations'
 import { Badge, Flex, Heading } from '@radix-ui/themes'
 import { Key, useContext, useMemo } from 'react'
 import { BiChevronLeft } from 'react-icons/bi'
 import { Link } from 'react-router-dom'
-import ChannelHeaderMenu from './ChannelHeaderMenu'
 import ChannelLabelBadge from '../channels/ChannelLabelBadge'
-import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
+import { ViewPinnedMessagesButton } from '../pinned-messages/ViewPinnedMessagesButton'
+import ChannelHeaderMenu from './ChannelHeaderMenu'
 
 interface DMChannelHeaderProps {
   channelData: DMChannelListItem
@@ -79,7 +80,7 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
                 <ChannelLabelBadge
                   key={label.label_id}
                   channelID={channelData.name}
-                  labelID={label.label_id}
+                  labelID={label.label_id as string}
                   labelName={label.label}
                 />
               ))}
@@ -111,6 +112,8 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
             )}
           </div>
         </Heading>
+
+        <ViewPinnedMessagesButton pinnedMessagesString={channelData.pinned_messages_string ?? ''} />
       </Flex>
 
       <Flex className='mr-3' gap='4' align='center'>
