@@ -192,8 +192,7 @@ export const LeftRightLayout = ({
                     : !isDesktop && isHovered
                       ? 'bg-gray-2 dark:bg-gray-3'
                       : '',
-                  isThinking && 'animate-pulse',
-                  isPending && 'animate-pulse'
+                  isThinking && 'animate-pulse'
                 )}
               >
                 {!is_continuation && !alignToRight ? (

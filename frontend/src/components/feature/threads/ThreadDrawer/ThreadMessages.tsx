@@ -1,10 +1,10 @@
-import { Stack } from '@/components/layout/Stack'
+import { Stack, HStack } from '@/components/layout/Stack'
 import useFetchChannelMembers from '@/hooks/fetchers/useFetchChannelMembers'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useUserData } from '@/hooks/useUserData'
 import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
 import { UserContext } from '@/utils/auth/UserProvider'
-import { Box, Flex, IconButton } from '@radix-ui/themes'
+import { Box, Flex, IconButton, Checkbox } from '@radix-ui/themes'
 import { useSWRConfig } from 'frappe-react-sdk'
 import { MutableRefObject, useCallback, useContext, useMemo, useRef, useState } from 'react'
 import { BiX } from 'react-icons/bi'
@@ -23,27 +23,26 @@ import { JoinChannelBox } from '../../chat/chat-footer/JoinChannelBox'
 import { CustomFile, FileDrop } from '../../file-upload/FileDrop'
 import { FileListItem } from '../../file-upload/FileListItem'
 import ThreadFirstMessage from './ThreadFirstMessage'
+import { Label } from '@/components/common/Form'
 
 export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) => {
   const threadID = threadMessage.name
   const channelID = threadMessage.channel_id
   const { currentUser } = useContext(UserContext)
+  const { name: user } = useUserData()
+
+  const virtuosoRef = useRef<VirtuosoHandle>(null)
+  const chatStreamRef = useRef<{ onUpArrow: () => void } | null>(null)
+  const tiptapRef = useRef<{ focusEditor: () => void } | null>(null)
 
   const { channelMembers } = useFetchChannelMembers(channelID ?? '')
+  const { channelMembers: threadMembers } = useFetchChannelMembers(threadID ?? '')
 
   const { onUserType, onStopTyping } = useTyping(threadID ?? '')
 
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null)
-
-  const handleReplyAction = (message: Message) => {
-    setSelectedMessage(message)
-  }
-
-  const clearSelectedMessage = () => {
-    setSelectedMessage(null)
-  }
-
-  const virtuosoRef = useRef<VirtuosoHandle>(null)
+  const handleReplyAction = (message: Message) => setSelectedMessage(message)
+  const clearSelectedMessage = () => setSelectedMessage(null)
 
   const { mutate } = useSWRConfig()
 
@@ -51,21 +50,15 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
     mutate(
       { path: `get_messages_for_channel_${threadID}` },
       (data?: GetMessagesResponse) => {
-        if (data && data?.message.has_new_messages) {
-          return data
-        }
+        if (data && data?.message.has_new_messages) return data
 
         const existingMessages = data?.message.messages ?? []
-
         const newMessages = [...existingMessages]
 
-        messages?.forEach((message) => {
-          // Check if the message is already present in the messages array
+        messages.forEach((message) => {
           const messageIndex = existingMessages.findIndex((m) => m.name === message.name)
 
           if (messageIndex !== -1) {
-            // If the message is already present, update the message
-            // @ts-ignore
             newMessages[messageIndex] = {
               ...message,
               _liked_by: '',
@@ -73,8 +66,6 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
               is_continuation: 0
             }
           } else {
-            // If the message is not present, add the message to the array
-            // @ts-ignore
             newMessages.push({
               ...message,
               _liked_by: '',
@@ -96,33 +87,43 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
       },
       { revalidate: false }
     )
+
     onStopTyping()
-    // Clear the selected message
     clearSelectedMessage()
   }
 
-  const { fileInputRef, files, setFiles, removeFile, uploadFiles, addFile, fileUploadProgress } = useFileUpload(
-    threadID ?? ''
+  const {
+    fileInputRef,
+    files,
+    setFiles,
+    removeFile,
+    uploadFiles,
+    uploadOneFile,
+    addFile,
+    fileUploadProgress,
+    compressImages,
+    setCompressImages
+  } = useFileUpload(threadID ?? '')
+
+  const { sendMessage, loading, pendingMessages, sendOnePendingMessage, removePendingMessage } = useSendMessage(
+    threadID ?? '',
+    uploadFiles,
+    uploadOneFile,
+    onMessageSendCompleted,
+    selectedMessage
   )
 
-  const { sendMessage, loading } = useSendMessage(threadID ?? '', uploadFiles, onMessageSendCompleted, selectedMessage)
-
-  const chatStreamRef = useRef<any>(null)
-
   const onUpArrowPressed = useCallback(() => {
-    // Call the up arrow function inside the ChatStream component
     chatStreamRef.current?.onUpArrow()
   }, [])
 
-  const tiptapRef = useRef<any>(null)
-
   const isMobile = useIsMobile()
 
-  // When the edit modal is closed, we need to focus the editor again
-  // Don't do this on mobile since that would open the keyboard
   const onModalClose = useCallback(() => {
     if (!isMobile) {
-      tiptapRef.current?.focusEditor()
+      setTimeout(() => {
+        tiptapRef.current?.focusEditor()
+      }, 50)
     }
   }, [isMobile])
 
@@ -136,7 +137,7 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
           message={selectedMessage}
           currentUser={currentUser}
         >
-          <IconButton color='gray' size='1' className='z-50' variant='soft' onClick={clearSelectedMessage}>
+          <IconButton color='gray' size='1' variant='soft' onClick={clearSelectedMessage}>
             <BiX size='20' />
           </IconButton>
         </ReplyMessageBox>
@@ -145,42 +146,47 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
     return null
   }
 
-  const { name: user } = useUserData()
-  const { channelMembers: threadMembers } = useFetchChannelMembers(threadID ?? '')
-
-  const isUserInChannel = useMemo(() => {
-    if (user && threadMembers) {
-      return user in threadMembers
+  const { canUserSendMessage, shouldShowJoinBox } = useMemo(() => {
+    if (!user || !threadMembers) {
+      return { canUserSendMessage: false, shouldShowJoinBox: false }
     }
-    return false
+
+    const isUserInChannel = user in threadMembers
+
+    if (isUserInChannel) {
+      return { canUserSendMessage: true, shouldShowJoinBox: false }
+    }
+
+    return { canUserSendMessage: false, shouldShowJoinBox: true }
   }, [user, threadMembers])
 
   return (
-    <Flex direction='column' justify={'between'} gap='0' className='h-full p-4'>
+    <ThreadMessagesContainer>
       <FileDrop
         files={files}
+        ref={fileInputRef}
+        onFileChange={setFiles}
         areaHeight='h-[calc(100vh-72px)]'
         height='100%'
         width={'w-[calc((100vw-var(--sidebar-width)-var(--space-8)-var(--space-5))/2)]'}
-        ref={fileInputRef}
-        onFileChange={setFiles}
         maxFiles={10}
         maxFileSize={10000000}
       >
         <ThreadFirstMessage message={threadMessage} />
         <ChatStream
           channelID={threadID}
+          onModalClose={onModalClose}
+          replyToMessage={handleReplyAction}
           virtuosoRef={virtuosoRef as MutableRefObject<VirtuosoHandle>}
           ref={chatStreamRef as any}
-          replyToMessage={handleReplyAction}
+          pendingMessages={pendingMessages}
+          sendOnePendingMessage={sendOnePendingMessage}
+          removePendingMessage={removePendingMessage}
           showThreadButton={false}
-          onModalClose={onModalClose}
         />
         <AIEvent channelID={threadID ?? ''} />
 
-        {!isUserInChannel && <JoinChannelBox user={user} />}
-
-        {isUserInChannel && (
+        {canUserSendMessage && (
           <Stack>
             <TypingIndicator channel={threadID ?? ''} />
             <TiptapThread
@@ -192,9 +198,9 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
               }}
               ref={tiptapRef}
               onUpArrow={onUpArrowPressed}
-              onUserType={onUserType}
-              channelMembers={channelMembers}
               clearReplyMessage={clearSelectedMessage}
+              channelMembers={channelMembers}
+              onUserType={onUserType}
               replyMessage={selectedMessage}
               sessionStorageKey={`tiptap-${threadID}`}
               onMessageSend={sendMessage}
@@ -203,8 +209,8 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
                 <Flex direction='column' justify='center' hidden={!selectedMessage && !files?.length}>
                   {selectedMessage && <PreviousMessagePreview selectedMessage={selectedMessage} />}
                   {files && files?.length > 0 && (
-                    <Flex gap='2' width='100%' align='end' px='2' p='2' wrap='wrap'>
-                      {files?.map((f: CustomFile) => (
+                    <Flex gap='2' width='100%' align='stretch' px='2' p='2' wrap='wrap'>
+                      {files.map((f: CustomFile) => (
                         <Box className='grow-0' key={f.fileID}>
                           <FileListItem
                             file={f}
@@ -215,12 +221,40 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
                       ))}
                     </Flex>
                   )}
+                  {files?.length !== 0 && (
+                    <CompressImageCheckbox compressImages={compressImages} setCompressImages={setCompressImages} />
+                  )}
                 </Flex>
               }
             />
           </Stack>
         )}
+
+        {shouldShowJoinBox && <JoinChannelBox user={user} />}
       </FileDrop>
-    </Flex>
+    </ThreadMessagesContainer>
   )
+}
+
+const CompressImageCheckbox = ({
+  compressImages,
+  setCompressImages
+}: {
+  compressImages: boolean
+  setCompressImages: (compressImages: boolean) => void
+}) => {
+  return (
+    <div className='px-3'>
+      <Label size='2' weight='regular'>
+        <HStack align='center' gap='2'>
+          <Checkbox checked={compressImages} onCheckedChange={() => setCompressImages(!compressImages)} />
+          Compress Images
+        </HStack>
+      </Label>
+    </div>
+  )
+}
+
+const ThreadMessagesContainer = ({ children }: { children: React.ReactNode }) => {
+  return <div className='flex flex-col overflow-hidden px-2 pt-16 justify-end h-full'>{children}</div>
 }

@@ -5,15 +5,15 @@ import { useGetUser } from '@/hooks/useGetUser'
 import { useIsUserActive } from '@/hooks/useIsUserActive'
 import { useIsDesktop, useIsTablet } from '@/hooks/useMediaQuery'
 import { UserContext } from '@/utils/auth/UserProvider'
+import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
 import { DMChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { replaceCurrentUserFromDMChannelName } from '@/utils/operations'
 import { Badge, Flex, Heading } from '@radix-ui/themes'
-import { useContext } from 'react'
+import { Key, useContext, useMemo } from 'react'
 import { BiChevronLeft } from 'react-icons/bi'
 import { Link } from 'react-router-dom'
-import ChannelHeaderMenu from './ChannelHeaderMenu'
 import ChannelLabelBadge from '../channels/ChannelLabelBadge'
-import VideoCall from '../call-stringee/CallStringee'
+import ChannelHeaderMenu from './ChannelHeaderMenu'
 
 interface DMChannelHeaderProps {
   channelData: DMChannelListItem
@@ -34,6 +34,14 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
   const userName = peerUser?.full_name ?? replaceCurrentUserFromDMChannelName(channelData.channel_name, currentUser)
 
   const lastWorkspace = localStorage.getItem('ravenLastWorkspace')
+
+  const enrichedChannels = useEnrichedSortedChannels()
+  const enrichedChannel = useMemo(
+    () => enrichedChannels.find((ch) => ch.name === channelData.name),
+    [enrichedChannels, channelData.name]
+  )
+
+  const userLabels = enrichedChannel?.user_labels || []
 
   return (
     <PageHeader>
@@ -67,11 +75,11 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
 
             {!isTablet &&
               Array.isArray(channelData.user_labels) &&
-              channelData.user_labels.map((label) => (
+              userLabels.map((label: { label_id: Key | null | undefined; label: string }) => (
                 <ChannelLabelBadge
                   key={label.label_id}
                   channelID={channelData.name}
-                  labelID={label.label_id}
+                  labelID={label.label_id as string}
                   labelName={label.label}
                 />
               ))}
@@ -107,7 +115,6 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
 
       <Flex className='mr-3' gap='4' align='center'>
         <ChannelHeaderMenu channelData={channelData} />
-        {peerUserId && <VideoCall toUserId={peerUserId} channelId={channelData.name}/>}
       </Flex>
     </PageHeader>
   )

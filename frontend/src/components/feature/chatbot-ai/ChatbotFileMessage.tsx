@@ -90,21 +90,7 @@ const ChatbotFileMessage = ({ fileUrl, fileName }: Props) => {
         </Flex>
 
         <Flex align='center' gap='2'>
-          {ext === 'pdf' ? (
-            <PDFPreviewButton fileUrl={fileUrl} fileName={fileName} />
-          ) : (
-            <Tooltip content='Xem tệp'>
-              <IconButton
-                size='1'
-                title='Xem tệp'
-                variant='soft'
-                color='gray'
-                onClick={() => window.open(fileUrl, '_blank')}
-              >
-                <BiShow />
-              </IconButton>
-            </Tooltip>
-          )}
+          {ext === 'pdf' && <PDFPreviewButton fileUrl={fileUrl} fileName={fileName} />}
 
           <Tooltip content='Tải xuống'>
             <IconButton asChild size='1' title='Tải xuống' variant='soft' color='gray'>

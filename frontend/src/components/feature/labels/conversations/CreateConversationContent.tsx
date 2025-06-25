@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 
 import { sortedChannelsAtom, useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
 import { useFrappePostCall } from 'frappe-react-sdk'
-import { refreshLabelListAtom } from './atoms/labelAtom'
+import { labelListAtom, refreshLabelListAtom } from './atoms/labelAtom'
 
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import clsx from 'clsx'
@@ -34,6 +34,7 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
 
   const { call, loading } = useFrappePostCall('raven.api.user_channel_label.add_label_to_multiple_channels')
   const { addLabelToChannel } = useUpdateChannelLabels()
+  const setLabelList = useSetAtom(labelListAtom)
 
   const setRefreshKey = useSetAtom(refreshLabelListAtom)
 
@@ -102,18 +103,38 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
         channel_ids: JSON.stringify(channel_ids)
       })
 
-      // ✅ Cập nhật local sortedChannelsAtom
-      channel_ids?.forEach((channelID) => {
+      // ✅ Update local sortedChannelsAtom + overrideLabelsAtom
+      channel_ids.forEach((channelID) => {
         addLabelToChannel(channelID, { label_id: name, label })
       })
 
-      // ✅ Cập nhật key để trigger re-render các nơi khác
-      setRefreshKey((prev) => prev + 1)
+      // ✅ Update local labelListAtom 1 lần
+      setLabelList((prev) =>
+        prev.map((l) => {
+          if (l.label_id === name) {
+            const updatedChannels = [...l.channels]
+            channel_ids.forEach((channelID) => {
+              const hasChannel = updatedChannels.some((c) => c.channel_id === channelID)
+              if (!hasChannel) {
+                const ch = channels.find((c) => c.name === channelID)
+                updatedChannels.push({
+                  channel_id: channelID,
+                  channel_name: ch?.channel_name || '',
+                  is_direct_message: ch?.is_direct_message === 1
+                })
+              }
+            })
+            return {
+              ...l,
+              channels: updatedChannels
+            }
+          }
+          return l
+        })
+      )
 
-      // mutate('channel_list')
-
-      setIsOpen(false)
       toast.success('Gán nhãn thành công')
+      setIsOpen(false)
     } catch (err) {
       console.error('Error adding label:', err)
       const errorMessage = (err as any)?.message?.message || 'Đã có lỗi xảy ra'

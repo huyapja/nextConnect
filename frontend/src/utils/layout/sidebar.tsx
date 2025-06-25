@@ -94,7 +94,11 @@ export const SidebarModeProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const setTitle = (newTitle: TitleType) => {
-    localStorage.setItem(LOCAL_STORAGE_SIDEBAR_TITLE, JSON.stringify(newTitle))
+    if (newTitle === 'Nhãn') {
+      localStorage.removeItem(LOCAL_STORAGE_SIDEBAR_TITLE)
+    } else {
+      localStorage.setItem(LOCAL_STORAGE_SIDEBAR_TITLE, JSON.stringify(newTitle))
+    }
     setTitleRaw(newTitle)
   }
 
