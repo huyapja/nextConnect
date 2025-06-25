@@ -1,7 +1,7 @@
 import { UserContext } from '@/utils/auth/UserProvider'
 import { useChannelList, useUpdateLastMessageDetails } from '@/utils/channel/ChannelListProvider'
 import { useFrappeDocumentEventListener, useFrappeEventListener } from 'frappe-react-sdk'
-import { useContext, useEffect } from 'react'
+import { useContext } from 'react'
 
 export const useWebSocketEvents = (
   channelID: string,
@@ -16,12 +16,6 @@ export const useWebSocketEvents = (
   const { currentUser } = useContext(UserContext)
   const { updateLastMessageForChannel } = useUpdateLastMessageDetails()
   const { channels, dm_channels } = useChannelList()
-
-  useEffect(() => {
-    if (channelID) {
-      mutate(undefined, { revalidate: true })
-    }
-  }, [channelID])
 
   useFrappeDocumentEventListener('Raven Channel', channelID ?? '', () => {
     console.debug(`Raven Channel event received for channel: ${channelID}`)
