@@ -30,21 +30,14 @@ export const SidebarBody = () => {
   // if (!isLoaded) return <BeatLoader text='Đang tải danh sách tin nhắn...' />
 
   return (
-    // <ScrollArea type='hover' scrollbars='vertical' className='h-[calc(100vh-4rem)] sidebar-scroll'>
-    //   <Flex direction='column' gap='2' className='overflow-hidden pb-12 sm:pb-0' px='2'>
-    //     <Flex direction='column' gap='1' className='pb-0.5'></Flex>
-    //     {/* <CircleUserList /> */}
-    //     {isTablet && <IsTabletSidebarNav />}
-    //     {/* <PinnedChannels unread_count={unread_count?.message} /> */}
-    //     <DirectMessageList />
-    //   </Flex>
-    // </ScrollArea>
-    <Flex direction='column' gap='2' className='overflow-hidden pb-12 sm:pb-0'>
-      <Flex direction='column' gap='1' className='pb-0.5'></Flex>
-      {/* <CircleUserList /> */}
-      {isTablet && <IsTabletSidebarNav />}
-      {/* <PinnedChannels unread_count={unread_count?.message} /> */}
-      <DirectMessageList />
-    </Flex>
+    <ScrollArea type='hover' scrollbars='vertical' className='h-[calc(100vh-4rem)] sidebar-scroll'>
+      <Flex direction='column' gap='2' className='overflow-hidden pb-12 sm:pb-0' px='2'>
+        <Flex direction='column' gap='1' className='pb-0.5'></Flex>
+        {/* <CircleUserList /> */}
+        {isTablet && <IsTabletSidebarNav />}
+        {/* <PinnedChannels unread_count={unread_count?.message} /> */}
+        <DirectMessageList />
+      </Flex>
+    </ScrollArea>
   )
 }
