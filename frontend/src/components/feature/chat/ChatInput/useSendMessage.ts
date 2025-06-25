@@ -2,13 +2,13 @@ import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
 import { UserContext } from '@/utils/auth/UserProvider'
 import { useUpdateLastMessageDetails } from '@/utils/channel/ChannelListProvider'
 import { useFrappePostCall } from 'frappe-react-sdk'
-import { useContext, useState, useEffect, useRef } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { Message } from '../../../../../../types/Messaging/Message'
 // import { useOnlineStatus } from '../../network/useNetworkStatus'
+import { get as idbGet, set as idbSet } from 'idb-keyval'
+import { useAtom } from 'jotai'
 import { CustomFile } from '../../file-upload/FileDrop'
 import { isImageFile } from '../ChatMessage/Renderers/FileMessage'
-import { set as idbSet, get as idbGet } from 'idb-keyval'
-import { useAtom } from 'jotai'
 
 export type PendingMessage = {
   id: string

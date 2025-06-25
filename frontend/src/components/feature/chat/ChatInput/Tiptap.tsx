@@ -410,9 +410,14 @@ const Tiptap = forwardRef(
         },
         suggestion: {
           items: (query) => {
-            return channelMembersRef.current.filter((user) =>
+            const members = channelMembersRef.current.filter((user) =>
               user.full_name.toLowerCase().startsWith(query.query.toLowerCase())
             )
+            const isMatchingAll = 'all'.startsWith(query.query.toLowerCase())
+
+            return isMatchingAll
+              ? [{ name: 'all', full_name: 'Báo cho cả nhóm', is_member: true }, ...members]
+              : members
           },
           // char: '@',
           render: () => {

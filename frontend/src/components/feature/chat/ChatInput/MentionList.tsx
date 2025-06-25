@@ -14,7 +14,11 @@ export default forwardRef((props: ReactRendererOptions['props'], ref) => {
   const selectItem = (index: number) => {
     const item = props?.items[index]
 
-    if (item) {
+    if (!item) return
+
+    if (item.name === 'all') {
+      props.command({ id: 'all', label: 'All' })
+    } else {
       props.command({ id: item.name, label: item.full_name })
     }
   }
