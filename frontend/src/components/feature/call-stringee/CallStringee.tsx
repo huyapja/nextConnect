@@ -6,26 +6,13 @@ import {
 } from 'react-icons/fi'
 import { useTheme } from '@/ThemeProvider'
 
-let phoneRingAudio: HTMLAudioElement | null = null
-let ringbackAudio: HTMLAudioElement | null = null
-
-export function getPhoneRingAudio(): HTMLAudioElement {
-  if (!phoneRingAudio) {
-    phoneRingAudio = new Audio('/assets/raven/stringee/phone-ring.wav')
-    phoneRingAudio.volume = 0.7
-    phoneRingAudio.preload = 'auto'
-  }
-  return phoneRingAudio
-}
-
-export function getRingtoneSoundAudio(): HTMLAudioElement {
-  if (!ringbackAudio) {
-    ringbackAudio = new Audio('/assets/raven/stringee/ringtone.mp3')
-    ringbackAudio.volume = 0.7
-    ringbackAudio.preload = 'auto'
-  }
-  return ringbackAudio
-}
+// Import utilities and hooks
+import { getIconColor, getBackgroundColor } from './utils/themeUtils'
+import { formatCallDuration, getDisplayName, getUserAvatar, getAvatarInitials, generateFallbackSessionId } from './utils/callHelpers'
+import { getPhoneRingAudio, getRingtoneSoundAudio, stopAllAudio as stopAllAudioGlobal, initAudioContext } from './utils/stringeeAudio'
+import { useNetworkMonitoring } from './hooks/useNetworkMonitoring'
+import { useCallDuration } from './hooks/useCallDuration'
+import { useCallAudio } from './hooks/useCallAudio'
 
 declare global {
   interface Window {
@@ -50,48 +37,37 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
   const [forceRender, setForceRender] = useState(0)
   const [videoUpgradeRequest, setVideoUpgradeRequest] = useState<{fromUser: string, fromUserName?: string, sessionId: string} | null>(null)
   const [callerUserName, setCallerUserName] = useState<string>('')
-  const [isMuted, setIsMuted] = useState(false)
-  
-  // Thêm state cho call duration
-  const [callDuration, setCallDuration] = useState(0) // seconds
-  const [callStartTime, setCallStartTime] = useState<Date | null>(null)
   
   // State để track xem đã lưu lịch sử cuộc gọi chưa
   const [callHistorySaved, setCallHistorySaved] = useState(false)
   
-  const [networkStats, setNetworkStats] = useState<{
-    ping: number | null
-    bitrate: number | null
-    packetLoss: number | null
-    networkType: string | null
-  }>({
-    ping: null,
-    bitrate: null,
-    packetLoss: null,
-    networkType: null
-  })
-  const [showDetailedStats, setShowDetailedStats] = useState(false)
+  // Video refs
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const remoteAudioRef = useRef<HTMLAudioElement>(null)
-  const phoneRingRef = useRef<HTMLAudioElement | null>(null)
-  const ringbackAudioRef = useRef<HTMLAudioElement | null>(null)
-  const localStreamRef = useRef<MediaStream | null>(null)
-  const cleanupFunctionsRef = useRef<(() => void)[]>([])
-  const audioPermissionRequestedRef = useRef<boolean>(false)
-  const statsIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  
-  // Thêm ref cho call duration timer
-  const callDurationIntervalRef = useRef<NodeJS.Timeout | null>(null)
   
   // Thêm ref cho call timeout (30s)
   const callTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   // Thêm state để force restart progress ring animation
   const [progressKey, setProgressKey] = useState(0)
+
+  // Use custom hooks
+  const { networkStats, showDetailedStats, setShowDetailedStats, startNetworkMonitoring, stopNetworkMonitoring } = useNetworkMonitoring()
+  const { callDuration, callStartTime } = useCallDuration(callStatus, call, incoming)
+  const { 
+    isMuted, 
+    localStreamRef, 
+    phoneRingRef, 
+    ringbackAudioRef, 
+    toggleMute, 
+    playRingtone, 
+    playRingback, 
+    stopAllAudioWithRefs, 
+    performAudioCleanup, 
+    initAudio 
+  } = useCallAudio(call, incoming)
   
-
-
   // Get user info
   const { data: userData } = useFrappeGetDoc('Raven User', toUserId)
 
@@ -102,11 +78,11 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
   // Hook để gọi API lưu lịch sử cuộc gọi
   const { call: saveCallHistory } = useFrappePostCall('raven.api.raven_message.send_call_history_message')
 
-  // Add proper Frappe API hooks để thay thế fetch calls
-  const { call: createCallSession } = useFrappePostCall('raven.api.stringee_token.create_call_session')
-  const { call: updateCallStatus } = useFrappePostCall('raven.api.stringee_token.update_call_status')
-  const { call: sendVideoUpgradeRequest } = useFrappePostCall('raven.api.stringee_token.send_video_upgrade_request')
-  const { call: respondVideoUpgrade } = useFrappePostCall('raven.api.stringee_token.respond_video_upgrade')
+  // Add proper Frappe API hooks để thay thế fetch calls với error handling
+  const { call: createCallSession, error: createCallError } = useFrappePostCall('raven.api.stringee_token.create_call_session')
+  const { call: updateCallStatus, error: updateCallError } = useFrappePostCall('raven.api.stringee_token.update_call_status')
+  const { call: sendVideoUpgradeRequest, error: videoUpgradeError } = useFrappePostCall('raven.api.stringee_token.send_video_upgrade_request')
+  const { call: respondVideoUpgrade, error: respondVideoError } = useFrappePostCall('raven.api.stringee_token.respond_video_upgrade')
   
   // Get caller info for incoming calls
   const callerUserId = incoming?.fromNumber
@@ -114,311 +90,33 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
     enabled: !!callerUserId
   })
 
-  // Audio context for better audio handling
-  const audioContextRef = useRef<AudioContext | null>(null)
-
-  // Function để format thời gian gọi
-  const formatCallDuration = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60)
-    const remainingSeconds = seconds % 60
-    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
-  }
-
-  // useEffect để đếm thời gian cuộc gọi
-  useEffect(() => {
-    if (callStatus === 'connected' && !callDurationIntervalRef.current) {
-      // Bắt đầu đếm thời gian
-      if (!callStartTime) {
-        setCallStartTime(new Date())
-      }
-      
-      callDurationIntervalRef.current = setInterval(() => {
-        setCallDuration(prev => prev + 1)
-      }, 1000)
-    } else if (callStatus !== 'connected' && callDurationIntervalRef.current) {
-      // Dừng đếm thời gian khi không connected
-      clearInterval(callDurationIntervalRef.current)
-      callDurationIntervalRef.current = null
-    }
-
-    // Cleanup interval khi component unmount
-    return () => {
-      if (callDurationIntervalRef.current) {
-        clearInterval(callDurationIntervalRef.current)
-        callDurationIntervalRef.current = null
-      }
-    }
-  }, [callStatus, callStartTime])
-
-  // Reset call duration khi bắt đầu cuộc gọi mới
+  // Reset call history flag when starting new call
   useEffect(() => {
     if (call || incoming) {
-      setCallDuration(0)
-      setCallStartTime(null)
       setCallHistorySaved(false) // Reset flag lưu lịch sử
     }
   }, [call, incoming])
 
-  // Get colors based on theme
-  const getIconColor = (color: 'green' | 'blue' | 'red' | 'white' | 'gray') => {
-    const isDark = appearance === 'dark' || (appearance === 'inherit' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-    
-    switch (color) {
-      case 'green':
-        return isDark ? '#2ed573' : '#10b981'
-      case 'blue': 
-        return isDark ? '#3b82f6' : '#2563eb'
-      case 'red':
-        return '#ff4757'
-      case 'white':
-        return isDark ? '#ffffff' : '#000000'
-      case 'gray':
-        return isDark ? '#9ca3af' : '#6b7280'
-      default:
-        return isDark ? '#ffffff' : '#000000'
+  // Monitor API errors for debugging
+  useEffect(() => {
+    if (createCallError) {
+      console.error('❌ Create call session error:', createCallError)
     }
-  }
-
-  const getBackgroundColor = (type: 'button' | 'modal') => {
-    const isDark = appearance === 'dark' || (appearance === 'inherit' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-    
-    if (type === 'button') {
-      return isDark ? '#606060' : '#e5e7eb'
+    if (updateCallError) {
+      console.error('❌ Update call status error:', updateCallError)
     }
-    return isDark ? '#1a1a1a' : '#ffffff'
-  }
-
-  // Network monitoring functions
-  const measurePing = async (): Promise<number | null> => {
-    try {
-      const start = performance.now()
-      const response = await fetch('/api/method/ping', { 
-        method: 'HEAD',
-        cache: 'no-cache'
-      })
-      const end = performance.now()
-      
-      if (response.ok) {
-        return Math.round(end - start)
-      }
-      
-      // Fallback: ping to current domain
-      const fallbackStart = performance.now()
-      await fetch(window.location.origin + '/ping', { 
-        method: 'HEAD',
-        cache: 'no-cache'
-      }).catch(() => {}) // Ignore errors
-      const fallbackEnd = performance.now()
-      
-      return Math.round(fallbackEnd - fallbackStart)
-    } catch (error) {
-      return null
+    if (videoUpgradeError) {
+      console.error('❌ Video upgrade request error:', videoUpgradeError)
     }
-  }
-
-  const getNetworkType = (): string => {
-    // @ts-ignore - Navigator.connection is experimental
-    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection
-    
-    if (connection) {
-      if (connection.effectiveType) {
-        const typeMap: { [key: string]: string } = {
-          'slow-2g': '2G (Chậm)',
-          '2g': '2G',
-          '3g': '3G', 
-          '4g': '4G/LTE'
-        }
-        return typeMap[connection.effectiveType] || connection.effectiveType
-      }
-      
-      if (connection.type) {
-        const typeMap: { [key: string]: string } = {
-          'wifi': 'WiFi',
-          'cellular': 'Di động',
-          'ethernet': 'Ethernet',
-          'bluetooth': 'Bluetooth'
-        }
-        return typeMap[connection.type] || connection.type
-      }
+    if (respondVideoError) {
+      console.error('❌ Respond video upgrade error:', respondVideoError)
     }
-    
-    return 'Không xác định'
-  }
+  }, [createCallError, updateCallError, videoUpgradeError, respondVideoError])
 
-  const getWebRTCStats = async (callObj: any): Promise<{bitrate: number | null, packetLoss: number | null}> => {
-    try {
-      if (!callObj || !callObj.localStream) {
-        return { bitrate: null, packetLoss: null }
-      }
-
-      // Try to get peer connection from Stringee call
-      const peerConnection = callObj.peerConnection || callObj._peerConnection
-      
-      if (!peerConnection || !peerConnection.getStats) {
-        return { bitrate: null, packetLoss: null }
-      }
-
-      const stats = await peerConnection.getStats()
-      let bitrate: number | null = null
-      let packetLoss: number | null = null
-
-      stats.forEach((report: any) => {
-        if (report.type === 'outbound-rtp' && report.kind === 'audio') {
-          if (report.bytesSent && report.timestamp) {
-            // Calculate bitrate (rough estimation)
-            bitrate = Math.round((report.bytesSent * 8) / 1000) // kbps
-          }
-        }
-        
-        if (report.type === 'inbound-rtp') {
-          if (report.packetsLost !== undefined && report.packetsReceived !== undefined) {
-            const total = report.packetsLost + report.packetsReceived
-            if (total > 0) {
-              packetLoss = Math.round((report.packetsLost / total) * 100 * 100) / 100 // percentage
-            }
-          }
-        }
-      })
-
-      return { bitrate, packetLoss }
-    } catch (error) {
-      return { bitrate: null, packetLoss: null }
-    }
-  }
-
-  const startNetworkMonitoring = () => {
-    if (statsIntervalRef.current) {
-      clearInterval(statsIntervalRef.current)
-    }
-
-    const updateStats = async () => {
-      try {
-        const ping = await measurePing()
-        const networkType = getNetworkType()
-        const { bitrate, packetLoss } = await getWebRTCStats(call)
-
-        setNetworkStats({
-          ping,
-          bitrate,
-          packetLoss,
-          networkType
-        })
-      } catch (error) {
-        // Failed to update network stats
-      }
-    }
-
-    // Update immediately
-    updateStats()
-    
-    // Update every 3 seconds
-    statsIntervalRef.current = setInterval(updateStats, 3000)
-  }
-
-  const stopNetworkMonitoring = () => {
-    if (statsIntervalRef.current) {
-      clearInterval(statsIntervalRef.current)
-      statsIntervalRef.current = null
-    }
-    
-    setNetworkStats({
-      ping: null,
-      bitrate: null,
-      packetLoss: null,
-      networkType: null
-    })
-  }
-
-  // Get display name for user
-  const getDisplayName = () => {
-    if (incoming) {
-      // For incoming calls, show caller info
-      if (callerUserName) {
-        return callerUserName
-      }
-      if (callerData?.full_name) {
-        return callerData.full_name
-      }
-      if (callerData?.first_name) {
-        return callerData.first_name
-      }
-      return callerUserId || 'Unknown Caller'
-    } else {
-      // For outgoing calls, show callee info
-      if (userData?.full_name) {
-        return userData.full_name
-      }
-      if (userData?.first_name) {
-        return userData.first_name
-      }
-      return toUserId
-    }
-  }
-
-  // Get user avatar
-  const getUserAvatar = () => {
-    if (incoming) {
-      // For incoming calls, show caller avatar
-      return callerData?.user_image || null
-    } else {
-      // For outgoing calls, show callee avatar
-      return userData?.user_image || null
-    }
-  }
-
-  // Get avatar initials as fallback
-  const getAvatarInitials = () => {
-    const name = getDisplayName()
-    if (name && name !== toUserId && name !== 'Unknown Caller') {
-      const words = name.split(' ')
-      if (words.length >= 2) {
-        return (words[0][0] + words[1][0]).toUpperCase()
-      }
-      return name[0].toUpperCase()
-    }
-    return (incoming ? (callerUserId?.[0] || 'U') : toUserId[0]).toUpperCase()
-  }
-
-  // Initialize audio context
-  const initAudioContext = async () => {
-    if (!audioContextRef.current) {
-      try {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
-      } catch (error) {
-        // Failed to create audio context
-      }
-    }
-    
-    if (audioContextRef.current?.state === 'suspended') {
-      try {
-        await audioContextRef.current.resume()
-      } catch (error) {
-        // Failed to resume audio context
-      }
-    }
-
-    // Request microphone permission proactively (only once)
-    if (!audioPermissionRequestedRef.current && (call || incoming)) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-        stream.getTracks().forEach(track => track.stop()) // Just for permission
-        audioPermissionRequestedRef.current = true
-      } catch (error) {
-        // Microphone permission not granted yet
-      }
-    }
-  }
-
-  // Toggle mute/unmute
-  const toggleMute = () => {
-    if (localStreamRef.current) {
-      const audioTracks = localStreamRef.current.getAudioTracks()
-      audioTracks.forEach(track => {
-        track.enabled = !track.enabled
-      })
-      setIsMuted(!isMuted)
-    }
-  }
+  // Get helper values using utility functions
+  const displayName = getDisplayName(incoming, callerUserName, callerData, callerUserId, userData, toUserId)
+  const userAvatar = getUserAvatar(incoming, callerData, userData)
+  const avatarInitials = getAvatarInitials(displayName, toUserId, incoming, callerUserId)
 
   // Function để lưu lịch sử cuộc gọi
   const saveCallHistoryToChat = async (callType: 'audio' | 'video', callStatus: 'completed' | 'missed' | 'rejected' | 'ended', duration?: number) => {
@@ -440,65 +138,6 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
 
 
 
-
-  // Handle visibility change to resume audio (only during active calls)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      // Only process if there's an active call
-      if (!document.hidden && (call || incoming)) {
-        initAudioContext()
-        
-        // Resume all audio elements
-        document.querySelectorAll('audio, video').forEach((media) => {
-          const mediaElement = media as HTMLMediaElement
-          if (mediaElement.paused && mediaElement.readyState >= 2) {
-            mediaElement.play().catch(() => {})
-          }
-        })
-      }
-    }
-
-    const handleFocus = () => {
-      // Only process if there's an active call
-      if (call || incoming) {
-        initAudioContext()
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('focus', handleFocus)
-
-    // Add to cleanup functions
-    const cleanup = () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleFocus)
-    }
-    cleanupFunctionsRef.current.push(cleanup)
-
-    return cleanup
-  }, [call, incoming])
-
-  // Force audio context when call modal opens
-  useEffect(() => {
-    if (call || incoming) {
-      initAudioContext()
-      
-      // Additional aggressive audio resuming with cleanup
-      const timeout1 = setTimeout(() => initAudioContext(), 100)
-      const timeout2 = setTimeout(() => initAudioContext(), 500) 
-      const timeout3 = setTimeout(() => initAudioContext(), 1000)
-      
-      // Add timeouts to cleanup
-      const cleanup = () => {
-        clearTimeout(timeout1)
-        clearTimeout(timeout2)
-        clearTimeout(timeout3)
-      }
-      cleanupFunctionsRef.current.push(cleanup)
-      
-      return cleanup
-    }
-      }, [call, incoming, currentSessionId])
 
   // Cleanup on component unmount
   useEffect(() => {
@@ -537,9 +176,9 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
       document.head.appendChild(script)
     }
     
-    // Initialize audio context on first user interaction
+          // Initialize audio context on first user interaction
     const handleFirstInteraction = () => {
-      initAudioContext()
+      initAudio()
       document.removeEventListener('click', handleFirstInteraction)
       document.removeEventListener('keydown', handleFirstInteraction)
       document.removeEventListener('touchstart', handleFirstInteraction)
@@ -581,7 +220,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
         
         // Start network monitoring when call is connected
         setTimeout(() => {
-          startNetworkMonitoring()
+          startNetworkMonitoring(call)
         }, 1000)
       }
       
@@ -592,21 +231,8 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
         // AGGRESSIVE audio stop immediately - caller hangup
         stopAllAudio()
         
-        // Additional immediate audio cleanup
-        if (phoneRingRef.current) {
-          phoneRingRef.current.pause()
-          phoneRingRef.current.currentTime = 0
-          phoneRingRef.current.volume = 0
-          phoneRingRef.current.src = ''
-          phoneRingRef.current.loop = false
-        }
-        
-        if (phoneRingAudio) {
-          phoneRingAudio.pause()
-          phoneRingAudio.currentTime = 0
-          phoneRingAudio.volume = 0
-          phoneRingAudio.loop = false
-        }
+        // Additional immediate audio cleanup using hook
+        stopAllAudioWithRefs()
         
         // Force remove ring audio from DOM
         document.querySelectorAll('audio').forEach(audio => {
@@ -736,8 +362,29 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
       phoneRingRef.current = getPhoneRingAudio()
       phoneRingRef.current.loop = true
 
-      stringeeClient.on('connect', () => {})
-      stringeeClient.on('authen', (res: any) => {})
+      stringeeClient.on('connect', () => {
+        console.log('Stringee connected')
+      })
+      
+      stringeeClient.on('disconnect', () => {
+        console.log('Stringee disconnected')
+      })
+      
+      stringeeClient.on('authen', (res: any) => {
+        console.log('Stringee authentication:', res)
+        if (res.r !== 0) {
+          console.error('Stringee authentication failed:', res)
+        }
+      })
+      
+      stringeeClient.on('otherdeviceauthen', (data: any) => {
+        console.log('Other device authentication:', data)
+      })
+      
+      stringeeClient.on('requestnewtoken', () => {
+        console.log('Stringee token expired, need refresh')
+        // Token expired, you might want to refresh here
+      })
 
       stringeeClient.on('incomingcall2', (incomingCall: any) => {
         // Detect call type from incoming call - use stored session info if available
@@ -796,6 +443,14 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
   }, [sdkLoaded, data, client])
 
   const setupCallEvents = (callObj: any) => {
+    console.log('🔧 Setting up call events for call:', callObj?.callId || 'unknown')
+    
+    // Add error handling for call events
+    callObj.on('error', (error: any) => {
+      console.error('❌ Stringee call error:', error)
+      // Don't auto-hangup on error, let user decide
+    })
+    
     callObj.on('addremotestream', (stream: MediaStream) => {
       // KHÔNG tự động set connected - chỉ xử lý stream
       // setIsCallConnected sẽ được set khi user nhấn Accept hoặc trong signalingstate
@@ -934,20 +589,8 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
             phoneRingRef.current.src = ''
           }
           
-          // Force stop global audio
-          if (phoneRingAudio) {
-            phoneRingAudio.pause()
-            phoneRingAudio.currentTime = 0
-            phoneRingAudio.loop = false
-            phoneRingAudio.volume = 0
-          }
-          
-          if (ringbackAudio) {
-            ringbackAudio.pause()
-            ringbackAudio.currentTime = 0
-            ringbackAudio.loop = false
-            ringbackAudio.volume = 0
-          }
+                  // Force stop global audio using utility function
+        stopAllAudioGlobal()
           
           // Force stop and remove all ringtones from DOM
           document.querySelectorAll('audio').forEach(audio => {
@@ -974,7 +617,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
           }
           
           // Start network monitoring when call is connected
-          startNetworkMonitoring()
+          startNetworkMonitoring(call)
         } else {
           console.log('⏳ Call already connected, skipping duplicate signal')
         }
@@ -1045,7 +688,22 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
     initAudioContext()
     
     if (!client || !data?.message.user_id || !toUserId || !window.StringeeCall2) {
+      console.error('❌ Cannot make call - missing requirements:', {
+        client: !!client,
+        userId: !!data?.message.user_id,
+        toUserId: !!toUserId,
+        StringeeCall2: !!window.StringeeCall2
+      })
       return
+    }
+    
+    // Check if client is connected and authenticated
+    if (!client.connected || !client.authenticated) {
+      console.warn('⚠️ Stringee client not ready:', {
+        connected: client.connected,
+        authenticated: client.authenticated
+      })
+      // Still proceed but log the warning
     }
 
     try {
@@ -1056,14 +714,17 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
         call_type: isVideoCall ? 'video' : 'audio'
       })
       
+      console.log('📞 Create call session result:', result)
+      
       if (result && result.session_id) {
         setCurrentSessionId(result.session_id)
       } else {
-        // Create fallback session ID if API failed
+        console.warn('⚠️ No session_id in API response, using fallback')
         const fallbackSessionId = `outgoing_${data.message.user_id}_${toUserId}_${Date.now()}`
         setCurrentSessionId(fallbackSessionId)
       }
     } catch (error) {
+      console.error('❌ Failed to create call session:', error)
       // Create fallback session ID on error
       const fallbackSessionId = `outgoing_${data.message.user_id}_${toUserId}_${Date.now()}`
       setCurrentSessionId(fallbackSessionId)
@@ -1076,7 +737,16 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
     setProgressKey(prev => prev + 1)
     
     // Create call with explicit video parameter
+    console.log('📞 Creating StringeeCall2 with params:', {
+      client: !!client,
+      from: data.message.user_id,
+      to: toUserId,
+      isVideo: isVideoCall
+    })
+    
     const newCall = new window.StringeeCall2(client, data.message.user_id, toUserId, isVideoCall)
+    
+    console.log('📞 StringeeCall2 created with ID:', newCall?.callId || 'unknown')
     
     setCall(newCall)
     setupCallEvents(newCall)
@@ -1154,20 +824,8 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
       ringbackAudioRef.current.volume = 0
     }
     
-    // Stop global audio
-    if (phoneRingAudio) {
-      phoneRingAudio.pause()
-      phoneRingAudio.currentTime = 0
-      phoneRingAudio.loop = false
-      phoneRingAudio.volume = 0
-    }
-    
-    if (ringbackAudio) {
-      ringbackAudio.pause()
-      ringbackAudio.currentTime = 0
-      ringbackAudio.loop = false
-      ringbackAudio.volume = 0
-    }
+    // Stop global audio using utility function
+    stopAllAudioGlobal()
     
     // Force stop ALL audio elements in DOM
     document.querySelectorAll('audio').forEach((audio, index) => {
@@ -1218,24 +876,14 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
     setIncoming(null)
     setCallStatus(null)
     setCurrentSessionId(null)
-    setIsMuted(false)
     setIsCallConnected(false)
     setHasRemoteVideo(false)
     setHasRemoteAudio(false)
     setVideoUpgradeRequest(null)
     setCallerUserName('')
     
-    // Reset permission flags
-    audioPermissionRequestedRef.current = false
-    
     // Stop network monitoring
     stopNetworkMonitoring()
-    
-    // Stop call duration timer
-    if (callDurationIntervalRef.current) {
-      clearInterval(callDurationIntervalRef.current)
-      callDurationIntervalRef.current = null
-    }
     
     // Stop call timeout timer
     if (callTimeoutRef.current) {
@@ -1243,23 +891,11 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
       callTimeoutRef.current = null
     }
     
-    // Reset call duration states
-    setCallDuration(0)
-    setCallStartTime(null)
-    setCallHistorySaved(false) // Reset flag lưu lịch sử
+    // Reset call history flag
+    setCallHistorySaved(false)
     
     // Reset detailed stats view
     setShowDetailedStats(false)
-    
-    // Run custom cleanup functions
-    cleanupFunctionsRef.current.forEach(cleanup => {
-      try {
-        cleanup()
-      } catch (error) {
-        // Cleanup function error
-      }
-    })
-    cleanupFunctionsRef.current = []
   }, [stopAllAudio])
 
   const answerCall = () => {
@@ -1280,13 +916,8 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
       phoneRingRef.current.loop = false
     }
     
-    // Force stop global phone ring audio
-    if (phoneRingAudio) {
-      phoneRingAudio.pause()
-      phoneRingAudio.currentTime = 0
-      phoneRingAudio.volume = 0
-      phoneRingAudio.loop = false
-    }
+            // Stop all audio using hook function
+        stopAllAudioWithRefs()
     
     // Stop any remaining ring tones in DOM immediately
     document.querySelectorAll('audio').forEach(audio => {
@@ -1321,8 +952,11 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
           session_id: currentSessionId,
           status: 'connected',
           answered_at: new Date().toISOString()
+        }).then(() => {
+          console.log('✅ Call answered notification sent successfully')
         }).catch(error => {
-          console.error('Failed to send call answered notification:', error)
+          console.error('❌ Failed to send call answered notification:', error)
+          // Continue anyway - don't block the call flow
         })
       }
       
@@ -1382,13 +1016,16 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
     // Gọi API để cập nhật trạng thái và gửi realtime TRƯỚC khi hangup
     if (currentSessionId) {
       try {
+        console.log('📞 Updating call status to ended for session:', currentSessionId)
         await updateCallStatus({
           session_id: currentSessionId,
           status: 'ended',
           end_time: new Date().toISOString()
         })
+        console.log('✅ Call status updated to ended successfully')
       } catch (error) {
-        // Failed to update call status
+        console.error('❌ Failed to update call status to ended:', error)
+        // Continue with hangup even if API fails
       }
     }
     
@@ -1450,12 +1087,8 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
       phoneRingRef.current.loop = false
     }
     
-    if (phoneRingAudio) {
-      phoneRingAudio.pause()
-      phoneRingAudio.currentTime = 0
-      phoneRingAudio.volume = 0
-      phoneRingAudio.loop = false
-    }
+    // phoneRingAudio handled by hook
+    stopAllAudioGlobal()
     
     // Force remove ring audio from DOM
     document.querySelectorAll('audio').forEach(audio => {
@@ -1517,11 +1150,19 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
       }
       
       // Send video upgrade request to the other user using Frappe hook
+      console.log('📹 Sending video upgrade request:', {
+        session_id: sessionId,
+        from_user: data.message.user_id,
+        to_user: toUserId
+      })
+      
       await sendVideoUpgradeRequest({
         session_id: sessionId,
         from_user: data.message.user_id,
         to_user: toUserId
       })
+      
+      console.log('✅ Video upgrade request sent successfully')
       
     } catch (error) {
       // Try to upgrade locally even if API fails
@@ -1649,14 +1290,14 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
             height: '36px',
             borderRadius: '50%',
             border: 'none',
-            background: getBackgroundColor('button'),
-            color: getIconColor('green'),
+            background: getBackgroundColor('button', appearance),
+            color: getIconColor('green', appearance),
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '16px',
-            boxShadow: `0 2px 8px ${getIconColor('gray')}33`,
+            boxShadow: `0 2px 8px ${getIconColor('gray', appearance)}33`,
             transition: 'all 0.2s ease'
           }}
           title="Audio Call"
@@ -1678,14 +1319,14 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
             height: '36px',
             borderRadius: '50%',
             border: 'none',
-            background: getBackgroundColor('button'),
-            color: getIconColor('blue'),
+            background: getBackgroundColor('button', appearance),
+            color: getIconColor('blue', appearance),
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '16px',
-            boxShadow: `0 2px 8px ${getIconColor('gray')}33`,
+            boxShadow: `0 2px 8px ${getIconColor('gray', appearance)}33`,
             transition: 'all 0.2s ease'
           }}
           title="Video Call"
@@ -1725,7 +1366,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
           <div           style={{
             width: '420px',
             height: '650px',
-            backgroundColor: getBackgroundColor('modal'),
+            backgroundColor: getBackgroundColor('modal', appearance),
             borderRadius: '20px',
             overflow: 'hidden',
             position: 'relative',
@@ -1802,7 +1443,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                   background: appearance === 'light'
                     ? 'linear-gradient(135deg, rgba(248, 249, 250, 0.95) 0%, rgba(233, 236, 239, 0.95) 100%)'
                     : 'linear-gradient(135deg, rgba(42, 42, 42, 0.95) 0%, rgba(26, 26, 26, 0.95) 100%)',
-                  color: getIconColor('white')
+                  color: getIconColor('white', appearance)
                 }}>
                                      {/* Avatar với animation cho active call */}
                    <div style={{
@@ -1841,7 +1482,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                            cy="70"
                            r="60"
                            fill="transparent"
-                           stroke={getIconColor('blue')}
+                           stroke={getIconColor('blue', appearance)}
                            strokeWidth="3"
                            className="progress-ring-circle"
                            style={{
@@ -1856,18 +1497,18 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                        width: '120px',
                        height: '120px',
                        borderRadius: '50%',
-                       backgroundColor: getUserAvatar() ? 'transparent' : (callStatus === 'connected' && !isVideoCall 
-                         ? getIconColor('green') 
-                         : getBackgroundColor('button')),
+                       backgroundColor: userAvatar ? 'transparent' : (callStatus === 'connected' && !isVideoCall 
+                         ? getIconColor('green', appearance) 
+                         : getBackgroundColor('button', appearance)),
                        display: 'flex',
                        alignItems: 'center',
                        justifyContent: 'center',
-                       fontSize: getUserAvatar() ? '16px' : '48px',
+                       fontSize: userAvatar ? '16px' : '48px',
                        border: callStatus === 'connected' && !isVideoCall 
-                         ? `4px solid ${getIconColor('green')}` 
-                         : `4px solid ${getIconColor('gray')}`,
+                         ? `4px solid ${getIconColor('green', appearance)}` 
+                         : `4px solid ${getIconColor('gray', appearance)}`,
                        boxShadow: callStatus === 'connected' && !isVideoCall
-                         ? `0 8px 32px ${getIconColor('green')}66, 0 0 0 8px ${getIconColor('green')}1a`
+                         ? `0 8px 32px ${getIconColor('green', appearance)}66, 0 0 0 8px ${getIconColor('green', appearance)}1a`
                          : appearance === 'light' 
                            ? '0 8px 32px rgba(0, 0, 0, 0.1)'
                            : '0 8px 32px rgba(0, 0, 0, 0.4)',
@@ -1875,14 +1516,14 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                          ? 'pulse 2s infinite' 
                          : 'none',
                        transition: 'all 0.3s ease',
-                       backgroundImage: getUserAvatar() ? `url(${getUserAvatar()})` : 'none',
+                       backgroundImage: userAvatar ? `url(${userAvatar})` : 'none',
                        backgroundSize: 'cover',
                        backgroundPosition: 'center',
                        position: 'relative',
                        overflow: 'hidden',
                        zIndex: 1
                      }}>
-                       {!getUserAvatar() && (
+                       {!userAvatar && (
                          // Fallback to initials when no avatar
                          <div style={{
                            display: 'flex',
@@ -1892,9 +1533,9 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                            height: '100%',
                            fontSize: '36px',
                            fontWeight: '600',
-                           color: getIconColor('white')
+                           color: getIconColor('white', appearance)
                          }}>
-                           {getAvatarInitials()}
+                           {avatarInitials}
                          </div>
                        )}
                        
@@ -1907,17 +1548,17 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                      margin: '0 0 12px', 
                      fontSize: '28px', 
                      fontWeight: '600',
-                     color: getIconColor('white'),
+                     color: getIconColor('white', appearance),
                      textShadow: appearance === 'light' ? 'none' : '0 2px 4px rgba(0, 0, 0, 0.3)'
                    }}>
-                     {getDisplayName()}
+                     {displayName}
                    </h2>
                   
                                      {/* Status */}
                    <p style={{ 
                      margin: 0, 
                      fontSize: '18px', 
-                     color: getIconColor('gray'),
+                     color: getIconColor('gray', appearance),
                      fontWeight: '400'
                    }}>
                      {callStatus === 'ended' 
@@ -1945,21 +1586,21 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                      marginTop: '16px',
                      padding: '8px 20px',
                      backgroundColor: callStatus === 'connected' && !isVideoCall
-                       ? `${getIconColor('green')}33` 
+                       ? `${getIconColor('green', appearance)}33` 
                        : isVideoCall 
-                         ? `${getIconColor('blue')}33`
-                         : `${getIconColor('gray')}33`,
+                         ? `${getIconColor('blue', appearance)}33`
+                         : `${getIconColor('gray', appearance)}33`,
                      borderRadius: '20px',
                      fontSize: '14px',
                      color: callStatus === 'connected' && !isVideoCall
-                       ? getIconColor('green')
+                       ? getIconColor('green', appearance)
                        : isVideoCall
-                         ? getIconColor('blue')
-                         : getIconColor('gray'),
+                         ? getIconColor('blue', appearance)
+                         : getIconColor('gray', appearance),
                      border: callStatus === 'connected' && !isVideoCall
-                       ? `1px solid ${getIconColor('green')}66`
+                       ? `1px solid ${getIconColor('green', appearance)}66`
                        : isVideoCall
-                         ? `1px solid ${getIconColor('blue')}66`
+                         ? `1px solid ${getIconColor('blue', appearance)}66`
                          : 'none',
                      whiteSpace: 'nowrap',
                      minWidth: 'max-content'
@@ -1979,7 +1620,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                      <div style={{
                        marginTop: '12px',
                        fontSize: callStatus === 'ended' ? '20px' : '16px',
-                       color: callStatus === 'ended' ? getIconColor('white') : getIconColor('green'),
+                       color: callStatus === 'ended' ? getIconColor('white', appearance) : getIconColor('green', appearance),
                        fontWeight: '600',
                        display: 'flex',
                        alignItems: 'center',
@@ -1991,7 +1632,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                            width: '8px',
                            height: '8px',
                            borderRadius: '50%',
-                           backgroundColor: getIconColor('green'),
+                           backgroundColor: getIconColor('green', appearance),
                            animation: 'pulse 1s infinite'
                          }}></div>
                        )}
@@ -2015,7 +1656,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                        style={{
                          marginTop: '8px',
                          fontSize: '14px',
-                         color: getIconColor('gray'),
+                         color: getIconColor('gray', appearance),
                          fontWeight: '400',
                          display: 'flex',
                          alignItems: 'center',
@@ -2037,7 +1678,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                      >
                        <span>📡</span>
                        <span style={{ 
-                         color: networkStats.ping < 100 ? getIconColor('green') : networkStats.ping < 300 ? '#fbbf24' : '#ef4444',
+                         color: networkStats.ping < 100 ? getIconColor('green', appearance) : networkStats.ping < 300 ? '#fbbf24' : '#ef4444',
                          fontWeight: '500'
                        }}>
                          {networkStats.ping < 100 ? 'Mạng tốt' : networkStats.ping < 300 ? 'Mạng trung bình' : 'Mạng yếu'}
@@ -2166,7 +1807,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                       height: '64px',
                       borderRadius: '50%',
                       border: 'none',
-                      backgroundColor: getIconColor('red'),
+                      backgroundColor: getIconColor('red', appearance),
                       color: 'white',
                       cursor: 'pointer',
                       display: 'flex',
@@ -2194,7 +1835,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                       height: '64px',
                       borderRadius: '50%',
                       border: 'none',
-                      backgroundColor: getIconColor('green'),
+                      backgroundColor: getIconColor('green', appearance),
                       color: 'white',
                       cursor: 'pointer',
                       display: 'flex',
@@ -2228,8 +1869,8 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                          height: '54px',
                          borderRadius: '50%',
                          border: 'none',
-                         backgroundColor: isMuted ? getIconColor('red') : getBackgroundColor('button'),
-                         color: isMuted ? 'white' : getIconColor('white'),
+                         backgroundColor: isMuted ? getIconColor('red', appearance) : getBackgroundColor('button', appearance),
+                         color: isMuted ? 'white' : getIconColor('white', appearance),
                          cursor: 'pointer',
                          display: 'flex',
                          alignItems: 'center',
@@ -2237,7 +1878,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                          fontSize: '20px',
                          boxShadow: isMuted 
                            ? '0 3px 12px rgba(255, 107, 107, 0.4)' 
-                           : `0 3px 12px ${getIconColor('gray')}33`,
+                           : `0 3px 12px ${getIconColor('gray', appearance)}33`,
                          transition: 'all 0.2s ease'
                        }}
                        onMouseOver={(e) => {
@@ -2262,14 +1903,14 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                         height: '54px',
                         borderRadius: '50%',
                         border: 'none',
-                        backgroundColor: getBackgroundColor('button'),
-                        color: getIconColor('blue'),
+                        backgroundColor: getBackgroundColor('button', appearance),
+                        color: getIconColor('blue', appearance),
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontSize: '20px',
-                        boxShadow: `0 3px 12px ${getIconColor('gray')}33`,
+                        boxShadow: `0 3px 12px ${getIconColor('gray', appearance)}33`,
                         transition: 'all 0.2s ease'
                       }}
                       onMouseOver={(e) => {
@@ -2293,10 +1934,10 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                       borderRadius: '50%',
                       border: 'none',
                       backgroundColor: (callStatus === 'ended' || callStatus === 'rejected') 
-                        ? getBackgroundColor('button') 
-                        : getIconColor('red'),
+                        ? getBackgroundColor('button', appearance) 
+                        : getIconColor('red', appearance),
                       color: (callStatus === 'ended' || callStatus === 'rejected') 
-                        ? getIconColor('white') 
+                        ? getIconColor('white', appearance) 
                         : 'white',
                       cursor: 'pointer',
                       display: 'flex',
@@ -2304,7 +1945,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                       justifyContent: 'center',
                       fontSize: '24px',
                       boxShadow: (callStatus === 'ended' || callStatus === 'rejected')
-                        ? `0 4px 16px ${getIconColor('gray')}33`
+                        ? `0 4px 16px ${getIconColor('gray', appearance)}33`
                         : '0 4px 16px rgba(255, 71, 87, 0.3)',
                       transition: 'all 0.2s ease'
                     }}
@@ -2349,7 +1990,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
           justifyContent: 'center'
         }}>
           <div style={{
-            backgroundColor: getBackgroundColor('modal'),
+            backgroundColor: getBackgroundColor('modal', appearance),
             borderRadius: '20px',
             padding: '30px',
             maxWidth: '400px',
@@ -2362,12 +2003,12 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
             <div style={{
               fontSize: '48px',
               marginBottom: '20px',
-              color: getIconColor('blue')
+              color: getIconColor('blue', appearance)
             }}>
               <FiVideo size={48} />
             </div>
             <h3 style={{
-              color: getIconColor('white'),
+              color: getIconColor('white', appearance),
               fontSize: '22px',
               margin: '0 0 12px',
               fontWeight: '600'
@@ -2375,12 +2016,12 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
               Yêu cầu bật camera
             </h3>
                          <p style={{
-               color: getIconColor('gray'),
+               color: getIconColor('gray', appearance),
                fontSize: '16px',
                margin: '0 0 30px',
                lineHeight: '1.4'
              }}>
-               <strong style={{ color: getIconColor('white') }}>{videoUpgradeRequest.fromUserName || callerUserName || videoUpgradeRequest.fromUser}</strong> muốn chuyển sang chế độ Gọi video. Bạn có đồng ý không?
+               <strong style={{ color: getIconColor('white', appearance) }}>{videoUpgradeRequest.fromUserName || callerUserName || videoUpgradeRequest.fromUser}</strong> muốn chuyển sang chế độ Gọi video. Bạn có đồng ý không?
              </p>
             <div style={{
               display: 'flex',
@@ -2393,8 +2034,8 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                   padding: '12px 24px',
                   borderRadius: '25px',
                   border: 'none',
-                  backgroundColor: getBackgroundColor('button'),
-                  color: getIconColor('white'),
+                  backgroundColor: getBackgroundColor('button', appearance),
+                  color: getIconColor('white', appearance),
                   fontSize: '16px',
                   fontWeight: '500',
                   cursor: 'pointer',
@@ -2416,7 +2057,7 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
                   padding: '12px 24px',
                   borderRadius: '25px',
                   border: 'none',
-                  backgroundColor: getIconColor('green'),
+                  backgroundColor: getIconColor('green', appearance),
                   color: 'white',
                   fontSize: '16px',
                   fontWeight: '500',
