@@ -1,11 +1,16 @@
 import { Loader } from '@/components/common/Loader'
 import { HStack } from '@/components/layout/Stack'
-import { Flex, FlexProps, IconButton, Inset, Popover, Separator } from '@radix-ui/themes'
+import { useBoolean } from '@/hooks/useBoolean'
+import { DIALOG_CONTENT_CLASS } from '@/utils/layout/dialog'
+import { Dialog, Flex, FlexProps, IconButton, Inset, Popover, Separator } from '@radix-ui/themes'
 import { IconButtonProps } from '@radix-ui/themes/dist/cjs/components/icon-button'
 import { useCurrentEditor } from '@tiptap/react'
 import clsx from 'clsx'
 import { Suspense, lazy } from 'react'
 import { BiAt, BiPaperclip, BiSmile, BiSolidSend } from 'react-icons/bi'
+import { MdOutlineBarChart } from 'react-icons/md'
+import CreatePollContent from '../../polls/CreatePoll'
+import AISavedPromptsButton from './AISavedPromptsButton'
 import DocumentLinkButton from './DocumentLinkButton'
 import { ToolbarFileProps } from './Tiptap'
 import { DEFAULT_BUTTON_STYLE, ICON_PROPS } from './ToolPanel'
@@ -41,11 +46,11 @@ export const RightToolbarButtons = ({ fileProps, channelID, isEdit, ...sendProps
         <MentionButtons />
       </Flex>
       <Separator orientation='vertical' />
-      {/* <Flex gap='3' align='center'>
+      <Flex gap='3' align='center'>
         <AISavedPromptsButton />
         {channelID && <CreatePollButton channelID={channelID} />}
-      </Flex> */}
-      {/* <Separator orientation='vertical' /> */}
+      </Flex>
+      <Separator orientation='vertical' />
       <Flex gap='3' align='center'>
         <EmojiPickerButton />
         {/* <GIFPickerButton /> */}
@@ -287,31 +292,33 @@ export const SendButton = ({ sendMessage, messageSending, setContent, boxProps, 
   )
 }
 
-// const CreatePollButton = ({ channelID }: { channelID: string }) => {
-//   const [isOpen, , setIsOpen] = useBoolean(false)
-//   const { editor } = useCurrentEditor()
+const CreatePollButton = ({ channelID }: { channelID: string }) => {
+  const [isOpen, , setIsOpen] = useBoolean(false)
+  const { editor } = useCurrentEditor()
 
-//   return (
-//     <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
-//       <Dialog.Trigger>
-//         <IconButton
-//           size='1'
-//           variant='ghost'
-//           className={DEFAULT_BUTTON_STYLE}
-//           disabled={editor?.isEditable === false}
-//           title='Create Poll'
-//           aria-label={'create poll'}
-//         >
-//           <MdOutlineBarChart />
-//         </IconButton>
-//       </Dialog.Trigger>
-//       <Dialog.Content className={DIALOG_CONTENT_CLASS}>
-//         <Dialog.Title>Create Poll</Dialog.Title>
-//         <Dialog.Description size='2'>Create a quick poll to get everyone's thoughts on a topic.</Dialog.Description>
-//         <Suspense fallback={<Loader />}>
-//           <CreatePollContent channelID={channelID} setIsOpen={setIsOpen} />
-//         </Suspense>
-//       </Dialog.Content>
-//     </Dialog.Root>
-//   )
-// }
+  return (
+    <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog.Trigger>
+        <IconButton
+          size='1'
+          variant='ghost'
+          className={DEFAULT_BUTTON_STYLE}
+          disabled={editor?.isEditable === false}
+          title='Tạo bình chọn'
+          aria-label='tạo bình chọn'
+        >
+          <MdOutlineBarChart />
+        </IconButton>
+      </Dialog.Trigger>
+      <Dialog.Content className={DIALOG_CONTENT_CLASS}>
+        <Dialog.Title>Tạo cuộc bình chọn</Dialog.Title>
+        <Dialog.Description size='2'>
+          Tạo một cuộc bình chọn nhanh để lấy ý kiến của mọi người về một chủ đề.
+        </Dialog.Description>
+        <Suspense fallback={<Loader />}>
+          <CreatePollContent channelID={channelID} setIsOpen={setIsOpen} />
+        </Suspense>
+      </Dialog.Content>
+    </Dialog.Root>
+  )
+}
