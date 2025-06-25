@@ -11,6 +11,7 @@ import { ThemeProvider } from './ThemeProvider'
 import AppUpdateProvider from './utils/AppUpdateProvider'
 import { UserProvider } from './utils/auth/UserProvider'
 import { CallProvider } from './components/feature/call/CallProvider'
+import { GlobalStringeeProvider } from './components/feature/call-stringee/GlobalStringeeProvider'
 
 /** Following keys will not be cached in app cache */
 // const NO_CACHE_KEYS = [
@@ -67,8 +68,9 @@ function App() {
     >
       <UserProvider>
         <CallProvider>
-          <Toaster position='top-right' richColors />
-          <ThemeProvider
+          <GlobalStringeeProvider>
+            <Toaster position='top-right' richColors />
+            <ThemeProvider
             appearance={appearance}
             // grayColor='slate'
             accentColor='iris'
@@ -80,6 +82,7 @@ function App() {
             </Suspense>
             <AppUpdateProvider />
           </ThemeProvider>
+          </GlobalStringeeProvider>
         </CallProvider>
       </UserProvider>
     </FrappeProvider>

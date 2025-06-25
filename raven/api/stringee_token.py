@@ -407,3 +407,107 @@ def stringee_answer_url():
 			"maxConnectTime": 0,
 			"peerToPeerCall": True
 		}] 
+
+@frappe.whitelist(methods=["POST"])
+def check_user_busy_status(user_id):
+	"""
+	Kiểm tra xem user có đang trong cuộc gọi không
+	"""
+	try:
+		# Kiểm tra quyền - chỉ người dùng hiện tại có thể check
+		current_user = frappe.session.user
+		
+		print(f"📞 [API] Checking busy status for user: {user_id} (requested by: {current_user})")
+		
+		# Tìm các cuộc gọi đang active của user
+		active_calls = frappe.db.sql("""
+			SELECT session_id, caller_id, callee_id, status, call_type
+			FROM `tabRaven Call Session`
+			WHERE (caller_id = %(user_id)s OR callee_id = %(user_id)s)
+			AND status IN ('initiated', 'answered', 'connected')
+			AND TIMESTAMPDIFF(MINUTE, creation, NOW()) < 30
+			ORDER BY creation DESC
+		""", {"user_id": user_id}, as_dict=True)
+		
+		print(f"📞 [API] Found {len(active_calls)} active call sessions for user {user_id}")
+		
+		is_busy = len(active_calls) > 0
+		
+		if is_busy:
+			# Lấy thông tin cuộc gọi gần nhất
+			latest_call = active_calls[0]
+			print(f"📞 [API] User {user_id} is BUSY with call: {latest_call}")
+			
+			return {
+				"is_busy": True,
+				"current_call": {
+					"session_id": latest_call.session_id,
+					"status": latest_call.status,
+					"call_type": latest_call.call_type,
+					"with_user": latest_call.caller_id if latest_call.callee_id == user_id else latest_call.callee_id
+				}
+			}
+		else:
+			print(f"📞 [API] User {user_id} is AVAILABLE")
+			return {
+				"is_busy": False,
+				"current_call": None
+			}
+			
+	except Exception as e:
+		print(f"📞 [API] Error checking busy status: {str(e)}")
+		frappe.log_error(f"Lỗi khi kiểm tra busy status: {str(e)}")
+		# Trả về available nếu có lỗi để không block cuộc gọi
+		return {
+			"is_busy": False,
+			"current_call": None,
+			"error": str(e)
+		}
+
+@frappe.whitelist(methods=["POST"])
+def send_video_status(session_id, from_user, to_user, video_enabled):
+	"""
+	Gửi trạng thái video (bật/tắt) cho người dùng khác
+	"""
+	try:
+		# Kiểm tra quyền
+		current_user = frappe.session.user
+		if current_user != from_user:
+			frappe.throw(_("Bạn không có quyền gửi trạng thái video này"))
+		
+		# Parse video_enabled if it's a string
+		if isinstance(video_enabled, str):
+			video_enabled = video_enabled.lower() == 'true'
+		
+		print(f"📹 [API] Sending video status from {from_user} to {to_user}: {video_enabled}")
+		
+		# Gửi thông báo realtime cho người nhận
+		frappe.publish_realtime(
+			event="video_status_update",
+			message={
+				"session_id": session_id,
+				"from_user": from_user,
+				"video_enabled": video_enabled
+			},
+			user=to_user
+		)
+		
+		# Also send to user room for better delivery
+		frappe.publish_realtime(
+			event="video_status_update",
+			message={
+				"session_id": session_id,
+				"from_user": from_user,
+				"video_enabled": video_enabled
+			},
+			room=f"user_{to_user}"
+		)
+		
+		print(f"📹 [API] Video status sent successfully")
+		
+		return {"success": True, "video_enabled": video_enabled}
+		
+	except Exception as e:
+		print(f"📹 [API] Error sending video status: {str(e)}")
+		frappe.log_error(f"Lỗi khi gửi video status: {str(e)}")
+		frappe.throw(_("Không thể gửi trạng thái video"))
