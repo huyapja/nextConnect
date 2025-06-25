@@ -72,6 +72,7 @@ type TiptapEditorProps = {
   channelID?: string
   onUserType?: () => void
   onUpArrow?: () => void
+  channelType?: string
 }
 
 export const UserMention = Mention.extend({
@@ -127,7 +128,8 @@ const Tiptap = forwardRef(
       messageSending,
       sessionStorageKey = 'tiptap-editor',
       disableSessionStorage = false,
-      defaultText = ''
+      defaultText = '',
+      channelType
     }: TiptapEditorProps,
     ref
   ) => {
@@ -410,6 +412,11 @@ const Tiptap = forwardRef(
         },
         suggestion: {
           items: (query) => {
+            if (channelType !== 'channel') {
+              return channelMembersRef.current.filter((user) =>
+                user.full_name.toLowerCase().startsWith(query.query.toLowerCase())
+              )
+            }
             const members = channelMembersRef.current.filter((user) =>
               user.full_name.toLowerCase().startsWith(query.query.toLowerCase())
             )
