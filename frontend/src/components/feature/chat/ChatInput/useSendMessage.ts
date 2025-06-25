@@ -245,7 +245,16 @@ export const useSendMessage = (
         if (file) {
           const result = await uploadOneFile(file, selectedMessage)
           if (result.message) {
-            onMessageSent([result.message])
+            // Gửi xuống cuối bằng cách thêm resend_at
+            const resendAt = Date.now()
+
+            onMessageSent([
+              {
+                ...result.message,
+                resend_at: resendAt
+              } as any
+            ])
+
             updateSidebarMessage(result.message)
             removePendingMessage(id)
           } else {
@@ -254,8 +263,6 @@ export const useSendMessage = (
         } else {
           console.warn('Cannot retry file: missing file in RAM and IndexedDB')
         }
-      } else {
-        console.warn('Cannot retry file: unknown type')
       }
     } catch (err) {
       console.error('sendOnePendingMessage error', err)
