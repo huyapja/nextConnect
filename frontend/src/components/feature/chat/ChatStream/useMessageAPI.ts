@@ -33,6 +33,9 @@ export const useMessageAPI = (
     },
     {
       revalidateOnFocus: isMobile ? true : false,
+      revalidateOnMount: true,
+      dedupingInterval: 0,
+      keepPreviousData: false,
       onSuccess: (data) => {
         if (!highlightedMessage) {
           if (!data.message.has_new_messages) {

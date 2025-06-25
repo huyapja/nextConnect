@@ -22,8 +22,10 @@ const CreatePollDrawer = ({
     <Drawer open={isOpen} onClose={onClose}>
       <DrawerContent>
         <div className='pb-16 min-h-64 px-1 overflow-auto'>
-          <Dialog.Title>Create Poll</Dialog.Title>
-          <Dialog.Description size='2'>Create a quick poll to get everyone's thoughts on a topic.</Dialog.Description>
+          <Dialog.Title>Tạo cuộc bình chọn</Dialog.Title>
+          <Dialog.Description size='2'>
+            Tạo một cuộc bình chọn nhanh để lấy ý kiến của mọi người về một chủ đề.
+          </Dialog.Description>
           <Suspense fallback={<Loader />}>
             <CreatePollContent setIsOpen={setIsOpen} channelID={channelID} />
           </Suspense>

@@ -36,8 +36,7 @@ const ThreadsCustom = () => {
       <Box className={clsx('w-full', threadID ? 'hidden sm:block' : 'block')}>
         {/* Show only regular threads now since this needs pagination */}
         <Tabs.Root defaultValue='Participating'>
-          <Tabs.List>
-          </Tabs.List>
+          <Tabs.List></Tabs.List>
           <Tabs.Content value='Participating'>
             <ParticipatingThreads />
           </Tabs.Content>
