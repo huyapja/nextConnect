@@ -354,28 +354,34 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
     }, [messages, userID, editActions.setEditMessage])
 
     const combinedMessages = useMemo(() => {
-      const baseMessages = messages ?? []
-      const pending = pendingMessages ?? []
+      const baseMessages = (messages ?? []).map((m) => ({
+        ...m,
+        // Nếu có resend_at → dùng để sort
+        sort_time: m.resend_at ? m.resend_at : new Date(m.modified || m.creation || 0).getTime()
+      }))
 
-      return [
-        ...baseMessages,
-        ...pending.map((m) => {
-          const ext = m.fileMeta?.name ? getFileExtension(m.fileMeta.name) : ''
-          const fixedType = m.message_type === 'File' && isImageFile(ext) ? 'Image' : m.message_type
+      const pending = (pendingMessages ?? []).map((m) => {
+        const ext = m.fileMeta?.name ? getFileExtension(m.fileMeta.name) : ''
+        const fixedType = m.message_type === 'File' && isImageFile(ext) ? 'Image' : m.message_type
 
-          return {
-            name: m.id,
-            message_type: fixedType,
-            content: m.content,
-            owner: userID,
-            is_pending: true,
-            is_error: m.status === 'error',
-            file: m.file,
-            fileMeta: m.fileMeta,
-            modified: m.createdAt ? new Date(m.createdAt).toISOString() : new Date(0).toISOString()
-          }
-        })
-      ]
+        return {
+          name: m.id,
+          message_type: fixedType,
+          content: m.content,
+          owner: userID,
+          is_pending: true,
+          is_error: m.status === 'error',
+          file: m.file,
+          fileMeta: m.fileMeta,
+          modified: m.createdAt ? new Date(m.createdAt).toISOString() : new Date(0).toISOString(),
+          sort_time: m.createdAt || 0
+        }
+      })
+
+      const all = [...baseMessages, ...pending]
+
+      // Sort theo sort_time
+      return all.sort((a, b) => a.sort_time - b.sort_time)
     }, [messages, pendingMessages, userID])
 
     const itemRenderer = useCallback(
