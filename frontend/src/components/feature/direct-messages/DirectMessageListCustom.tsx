@@ -189,6 +189,8 @@ export const DirectMessageItemElement = ({ channel }: { channel: UnifiedChannel 
   const shouldRender = isGroupChannel || (isDM && peerUserId && peerUser?.enabled)
   if (!shouldRender) return null
 
+  const { title, labelID } = useSidebarMode()
+
   return (
     <div
       onClick={handleNavigate}
@@ -232,7 +234,7 @@ export const DirectMessageItemElement = ({ channel }: { channel: UnifiedChannel 
         </Text>
       </Flex>
 
-      {channel.last_message_details && (
+      {channel.last_message_details && !(title === 'Nhãn' || labelID) && (
         <Tooltip content={isChannelDone ? 'Đánh dấu chưa xong' : 'Đánh dấu đã xong'} side='bottom'>
           <button
             onClick={(e) => {
@@ -240,7 +242,6 @@ export const DirectMessageItemElement = ({ channel }: { channel: UnifiedChannel 
               if (isDesktop) {
                 e.stopPropagation()
               }
-              // eslint-disable-next-line @typescript-eslint/no-unused-expressions
               isChannelDone ? markAsNotDone(channel.name) : markAsDone(channel.name)
             }}
             className='absolute z-99 right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 rounded-full bg-gray-200 hover:bg-gray-300 h-[20px] w-[20px] flex items-center justify-center cursor-pointer'

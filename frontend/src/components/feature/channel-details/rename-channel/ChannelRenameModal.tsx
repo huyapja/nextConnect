@@ -5,7 +5,7 @@ import { useIsDesktop } from '@/hooks/useMediaQuery'
 import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { ChannelIcon } from '@/utils/layout/channelIcon'
 import { Box, Button, Dialog, Flex, Text, TextField } from '@radix-ui/themes'
-import { useFrappeUpdateDoc, useSWR, useSWRConfig } from 'frappe-react-sdk'
+import { useFrappeUpdateDoc, useSWRConfig } from 'frappe-react-sdk'
 import { ChangeEvent, useCallback } from 'react'
 import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -40,14 +40,14 @@ export const RenameChannelModalContent = ({
   } = methods
   const { updateDoc, loading: updatingDoc, error } = useFrappeUpdateDoc()
 
-  const {mutate} = useSWRConfig()
+  const { mutate } = useSWRConfig()
 
   const onSubmit = async (data: RenameChannelForm) => {
     return updateDoc('Raven Channel', channelID ?? null, {
       channel_name: data.channel_name
     }).then(() => {
       toast.success('Channel name updated')
-      mutate("channel_list")
+      mutate('channel_list')
       onClose()
     })
   }
@@ -79,7 +79,7 @@ export const RenameChannelModalContent = ({
                 required: 'Vui lòng nhập tên kênh',
                 maxLength: {
                   value: 50,
-                  message: 'Tên kênh không được vượt quá 50 ký tự.'
+                  message: 'Tên kênh không được dài quá 50 ký tự.'
                 },
                 minLength: {
                   value: 3,
@@ -91,7 +91,7 @@ export const RenameChannelModalContent = ({
                   maxLength={50}
                   required
                   autoFocus={isDesktop}
-                  placeholder='vd: dam-cuoi-loi, giai-cuu-joffrey'
+                  placeholder='ví dụ: cuoi-hoi, team-thao-luan'
                   color={error ? 'red' : undefined}
                   {...field}
                   aria-invalid={error ? 'true' : 'false'}
@@ -118,7 +118,7 @@ export const RenameChannelModalContent = ({
           </Dialog.Close>
           <Button type='submit' disabled={updatingDoc}>
             {updatingDoc && <Loader className='text-white' />}
-            {updatingDoc ? 'Đang lưu' : 'Lưu'}
+            {updatingDoc ? 'Đang lưu...' : 'Lưu'}
           </Button>
         </Flex>
       </form>
