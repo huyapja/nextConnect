@@ -362,4 +362,48 @@ def respond_video_upgrade(session_id, accepted):
 	except Exception as e:
 		print(f"📹 [API] Error in respond_video_upgrade: {str(e)}")
 		frappe.log_error(f"Lỗi khi phản hồi video upgrade: {str(e)}")
-		frappe.throw(_("Không thể phản hồi yêu cầu nâng cấp video")) 
+		frappe.throw(_("Không thể phản hồi yêu cầu nâng cấp video"))
+
+@frappe.whitelist(methods=["GET"])
+def stringee_answer_url():
+	"""
+	Answer URL endpoint cho Stringee
+	Trả về JSON config cho Stringee khi có cuộc gọi đến
+	"""
+	try:
+		# Lấy query parameters
+		record = frappe.form_dict.get("record", "false")
+		app_to_phone = frappe.form_dict.get("appToPhone", "false")
+		
+		# Trả về JSON config theo format Stringee yêu cầu
+		response = [{
+			"action": "connect",
+			"from": {
+				"type": "internal", 
+				"number": "",
+				"alias": ""
+			},
+			"to": {
+				"type": "internal",
+				"number": "", 
+				"alias": ""
+			},
+			"customData": "",
+			"timeout": 60,
+			"maxConnectTime": 0,
+			"peerToPeerCall": True
+		}]
+		
+		return response
+		
+	except Exception as e:
+		frappe.log_error(f"Lỗi trong stringee answer URL: {str(e)}")
+		return [{
+			"action": "connect",
+			"from": {"type": "internal", "number": "", "alias": ""},
+			"to": {"type": "internal", "number": "", "alias": ""},
+			"customData": "",
+			"timeout": 60,
+			"maxConnectTime": 0,
+			"peerToPeerCall": True
+		}] 

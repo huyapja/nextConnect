@@ -101,6 +101,12 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
   
   // Hook để gọi API lưu lịch sử cuộc gọi
   const { call: saveCallHistory } = useFrappePostCall('raven.api.raven_message.send_call_history_message')
+
+  // Add proper Frappe API hooks để thay thế fetch calls
+  const { call: createCallSession } = useFrappePostCall('raven.api.stringee_token.create_call_session')
+  const { call: updateCallStatus } = useFrappePostCall('raven.api.stringee_token.update_call_status')
+  const { call: sendVideoUpgradeRequest } = useFrappePostCall('raven.api.stringee_token.send_video_upgrade_request')
+  const { call: respondVideoUpgrade } = useFrappePostCall('raven.api.stringee_token.respond_video_upgrade')
   
   // Get caller info for incoming calls
   const callerUserId = incoming?.fromNumber
@@ -1043,25 +1049,15 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
     }
 
     try {
-      // Tạo call session  
-      const response = await fetch('/api/method/raven.api.stringee_token.create_call_session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Frappe-CSRF-Token': (window as any).frappe?.csrf_token || '',
-        },
-        body: JSON.stringify({
-          caller_id: data.message.user_id,
-          callee_id: toUserId,
-          call_type: isVideoCall ? 'video' : 'audio'
-        })
+      // Tạo call session using Frappe hook
+      const result = await createCallSession({
+        caller_id: data.message.user_id,
+        callee_id: toUserId,
+        call_type: isVideoCall ? 'video' : 'audio'
       })
       
-      const result = await response.json()
-      
-      if (result.message && result.message.session_id) {
-        setCurrentSessionId(result.message.session_id)
+      if (result && result.session_id) {
+        setCurrentSessionId(result.session_id)
       } else {
         // Create fallback session ID if API failed
         const fallbackSessionId = `outgoing_${data.message.user_id}_${toUserId}_${Date.now()}`
@@ -1321,17 +1317,10 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
       
       // 🔄 Gửi realtime event để thông báo cho bên gọi biết cuộc gọi đã được chấp nhận
       if (currentSessionId && data?.message?.user_id) {
-        fetch('/api/method/raven.api.stringee_token.update_call_status', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Frappe-CSRF-Token': (window as any).frappe?.csrf_token || '',
-          },
-          body: JSON.stringify({
-            session_id: currentSessionId,
-            status: 'connected',
-            answered_at: new Date().toISOString()
-          })
+        updateCallStatus({
+          session_id: currentSessionId,
+          status: 'connected',
+          answered_at: new Date().toISOString()
         }).catch(error => {
           console.error('Failed to send call answered notification:', error)
         })
@@ -1393,20 +1382,11 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
     // Gọi API để cập nhật trạng thái và gửi realtime TRƯỚC khi hangup
     if (currentSessionId) {
       try {
-        const response = await fetch('/api/method/raven.api.stringee_token.update_call_status', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Frappe-CSRF-Token': (window as any).frappe?.csrf_token || '',
-          },
-          body: JSON.stringify({
-            session_id: currentSessionId,
-            status: 'ended',
-            end_time: new Date().toISOString()
-          })
+        await updateCallStatus({
+          session_id: currentSessionId,
+          status: 'ended',
+          end_time: new Date().toISOString()
         })
-        
-        const result = await response.json()
       } catch (error) {
         // Failed to update call status
       }
@@ -1536,21 +1516,12 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
         setIsVideoCall(true)
       }
       
-      // Send video upgrade request to the other user
-      const response = await fetch('/api/method/raven.api.stringee_token.send_video_upgrade_request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Frappe-CSRF-Token': (window as any).frappe?.csrf_token || '',
-        },
-        body: JSON.stringify({
-          session_id: sessionId,
-          from_user: data.message.user_id,
-          to_user: toUserId
-        })
+      // Send video upgrade request to the other user using Frappe hook
+      await sendVideoUpgradeRequest({
+        session_id: sessionId,
+        from_user: data.message.user_id,
+        to_user: toUserId
       })
-      
-      const result = await response.json()
       
     } catch (error) {
       // Try to upgrade locally even if API fails
@@ -1581,24 +1552,11 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
         return
       }
       
-      // Send acceptance response
-      const response = await fetch('/api/method/raven.api.stringee_token.respond_video_upgrade', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Frappe-CSRF-Token': (window as any).frappe?.csrf_token || '',
-        },
-        body: JSON.stringify({
-          session_id: videoUpgradeRequest.sessionId,
-          accepted: true
-        })
+      // Send acceptance response using Frappe hook
+      await respondVideoUpgrade({
+        session_id: videoUpgradeRequest.sessionId,
+        accepted: true
       })
-      
-      const result = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`)
-      }
       
       // Upgrade the call with new video stream
       if (typeof call.upgradeToVideoCall === 'function') {
@@ -1624,24 +1582,11 @@ export default function StringeeCallComponent({ toUserId, channelId }: { toUserI
     if (!videoUpgradeRequest) return
     
     try {
-      // Send rejection response
-      const response = await fetch('/api/method/raven.api.stringee_token.respond_video_upgrade', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Frappe-CSRF-Token': (window as any).frappe?.csrf_token || '',
-        },
-        body: JSON.stringify({
-          session_id: videoUpgradeRequest.sessionId,
-          accepted: false
-        })
+      // Send rejection response using Frappe hook
+      await respondVideoUpgrade({
+        session_id: videoUpgradeRequest.sessionId,
+        accepted: false
       })
-      
-      const result = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`)
-      }
       
       setVideoUpgradeRequest(null)
       
