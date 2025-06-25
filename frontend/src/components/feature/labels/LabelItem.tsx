@@ -5,6 +5,7 @@ import { HiChevronDown, HiChevronRight } from 'react-icons/hi'
 import { MdLabelOutline } from 'react-icons/md'
 import LabelItemList from './LabelItemList'
 import LabelItemMenu from './LabelItemMenu'
+<<<<<<< HEAD
 import { ChannelWithGroupType, sortedChannelsAtom, useEnrichedLabelChannels, useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
 import { useAtomValue } from 'jotai'
 import { labelListAtom } from './conversations/atoms/labelAtom'
@@ -16,6 +17,10 @@ interface LabelItemProps {
   channels: any[]
 }
 
+=======
+import { useEnrichedLabelChannels } from '@/utils/channel/ChannelAtom'
+
+>>>>>>> upstream/hotfix-production
 const LabelItem: React.FC<{ label: string; name: string }> = ({ label, name }) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const labelChannels = useEnrichedLabelChannels(name)

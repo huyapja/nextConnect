@@ -1,11 +1,10 @@
-import clsx from 'clsx'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useMemo } from 'react'
-import { MdLabelOutline } from 'react-icons/md'
 import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
-import { truncateText } from '@/utils/textUtils/truncateText'
 import { useSidebarMode } from '@/utils/layout/sidebar'
-import { labelListAtom, refreshLabelListAtom, useLabelList } from './conversations/atoms/labelAtom'
+import { truncateText } from '@/utils/textUtils/truncateText'
+import clsx from 'clsx'
+import { useMemo } from 'react'
+import { MdLabelOutline } from 'react-icons/md'
+import { useLabelList } from './conversations/atoms/labelAtom'
 
 type Props = {
   visible: boolean

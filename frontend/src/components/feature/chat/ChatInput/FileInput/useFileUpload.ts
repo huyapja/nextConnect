@@ -1,5 +1,4 @@
 import { CustomFile } from '@/components/feature/file-upload/FileDrop'
-import { getErrorMessage } from '@/components/layout/AlertBanner/ErrorBanner'
 import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
 import { FrappeConfig, FrappeContext } from 'frappe-react-sdk'
 import { useContext, useRef, useState } from 'react'

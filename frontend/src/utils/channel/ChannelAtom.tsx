@@ -24,6 +24,7 @@ export const setSortedChannelsAtom = atom(
   null,
   (get, set, next: ChannelWithGroupType[] | ((prev: ChannelWithGroupType[]) => ChannelWithGroupType[])) => {
     const prev = get(sortedChannelsAtom)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     const resolved = typeof next === 'function' ? (next as Function)(prev) : next
     set(sortedChannelsAtom, resolved)
   }
@@ -146,10 +147,7 @@ export const useUpdateChannelLabels = () => {
   const setSortedChannels = useSetAtom(sortedChannelsAtom)
   const setOverrideLabels = useSetAtom(overrideLabelsAtom)
 
-  const updateChannelLabels = (
-    channelID: string,
-    updateFn: (prevLabels: LabelType[]) => LabelType[]
-  ) => {
+  const updateChannelLabels = (channelID: string, updateFn: (prevLabels: LabelType[]) => LabelType[]) => {
     setSortedChannels((prev) =>
       prev?.map((channel) =>
         channel.name === channelID

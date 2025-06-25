@@ -1,22 +1,21 @@
-import { useState, useContext } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { Box, Flex, Text, ContextMenu, Dialog, Button } from '@radix-ui/themes'
+import { Box, Button, ContextMenu, Dialog, Flex, Text } from '@radix-ui/themes'
 import clsx from 'clsx'
+import { useContext, useState } from 'react'
 import { FaUsers } from 'react-icons/fa6'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { UserAvatar } from '@/components/common/UserAvatar'
-import { useGetUser } from '@/hooks/useGetUser'
-import { UserContext } from '@/utils/auth/UserProvider'
-import { replaceCurrentUserFromDMChannelName } from '@/utils/operations'
-import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
-import { toast } from 'sonner'
-import { useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
 import { useChannelActions } from '@/hooks/useChannelActions'
-import { useSWRConfig } from 'frappe-react-sdk'
+import { useGetUser } from '@/hooks/useGetUser'
 import { useIsMobile, useIsTablet } from '@/hooks/useMediaQuery'
+import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
+import { UserContext } from '@/utils/auth/UserProvider'
+import { useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
+import { replaceCurrentUserFromDMChannelName } from '@/utils/operations'
 import { truncateText } from '@/utils/textUtils/truncateText'
 import { useSetAtom } from 'jotai'
-import { labelListAtom, refreshLabelListAtom } from './conversations/atoms/labelAtom'
+import { toast } from 'sonner'
+import { labelListAtom } from './conversations/atoms/labelAtom'
 
 type Props = {
   channelID: string
@@ -27,20 +26,11 @@ type Props = {
   onRemoveLocally?: (channelID: string) => void
 }
 
-const LabelItemList = ({
-  channelID,
-  channelName,
-  labelID,
-  isDirectMessage,
-  unreadCount = 0,
-  onRemoveLocally
-}: Props) => {
+const LabelItemList = ({ channelID, channelName, labelID, isDirectMessage, unreadCount = 0 }: Props) => {
   const [showModal, setShowModal] = useState(false)
   const { currentUser } = useContext(UserContext)
   const { workspaceID, channelID: channelIDParams } = useParams()
   const isDM = isDirectMessage === true
-
-  const { mutate } = useSWRConfig()
 
   const peer_user_id = isDM ? replaceCurrentUserFromDMChannelName(channelName, currentUser) : ''
   const user = useGetUser(peer_user_id)
@@ -49,10 +39,8 @@ const LabelItemList = ({
   const displayName = isDM ? user?.full_name : channelName
   const isActive = channelIDParams === channelID
 
-  const setRefreshKey = useSetAtom(refreshLabelListAtom)
-
   const { removeChannel, loading: isLoading } = useRemoveChannelFromLabel()
-  const { removeLabelFromChannel, updateChannelLabels } = useUpdateChannelLabels()
+  const { removeLabelFromChannel } = useUpdateChannelLabels()
 
   const { clearManualMark } = useChannelActions()
 
@@ -67,35 +55,33 @@ const LabelItemList = ({
 
   const setLabelList = useSetAtom(labelListAtom)
 
-
   const handleRemove = async () => {
-  try {
-    await removeChannel(labelID, channelID)
+    try {
+      await removeChannel(labelID, channelID)
 
-    // ✅ Update local sortedChannelsAtom + overrideLabelsAtom
-    removeLabelFromChannel(channelID, labelID)
+      // ✅ Update local sortedChannelsAtom + overrideLabelsAtom
+      removeLabelFromChannel(channelID, labelID)
 
-    // ✅ Update local labelListAtom
-    setLabelList((prev) =>
-      prev.map((l) => {
-        if (l.label_id === labelID) {
-          return {
-            ...l,
-            channels: l.channels.filter((c) => c.channel_id !== channelID)
+      // ✅ Update local labelListAtom
+      setLabelList((prev) =>
+        prev.map((l) => {
+          if (l.label_id === labelID) {
+            return {
+              ...l,
+              channels: l.channels.filter((c) => c.channel_id !== channelID)
+            }
           }
-        }
-        return l
-      })
-    )
+          return l
+        })
+      )
 
-    toast.success(`Đã xoá thành công`)
-    setShowModal(false)
-  } catch (err) {
-    console.error('Xoá thất bại:', err)
-    toast.error('Xoá channel khỏi nhãn thất bại')
+      toast.success(`Đã xoá thành công`)
+      setShowModal(false)
+    } catch (err) {
+      console.error('Xoá thất bại:', err)
+      toast.error('Xoá channel khỏi nhãn thất bại')
+    }
   }
-}
-
 
   const isTablet = useIsTablet()
   const isMobile = useIsMobile()

@@ -9,7 +9,7 @@ import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { FiPlus } from 'react-icons/fi'
 import { IoMdClose } from 'react-icons/io'
 import { toast } from 'sonner'
-import { labelListAtom, refreshLabelListAtom } from './conversations/atoms/labelAtom'
+import { labelListAtom } from './conversations/atoms/labelAtom'
 
 interface CreateLabelForm {
   label: string
@@ -117,18 +117,14 @@ export const CreateLabelContent = ({ setIsOpen }: { isOpen: boolean; setIsOpen: 
   const onSubmit = async (data: CreateLabelForm) => {
     try {
       const res = await call({ label: data.label.trim() })
-
-      console.log(res);
-      
-
       const label_id = res?.message?.label_id
       const label_name = data.label.trim()
 
       if (res.message.message === 'Label created') {
         // ✅ Add label mới vào labelListAtom
         setLabelList((prev) => [
-          { label_id, label: label_name, channels: [] }, // channels rỗng
-          ...prev
+          ...prev,
+          { label_id, label: label_name, channels: [] } // channels rỗng
         ])
 
         toast.success('Đã tạo nhãn')

@@ -1,7 +1,7 @@
 import BeatLoader from '@/components/layout/Loaders/BeatLoader'
 import { Flex, Text } from '@radix-ui/themes'
 import { LuAtSign } from 'react-icons/lu'
-import {  useLabelList } from './conversations/atoms/labelAtom'
+import { useLabelList } from './conversations/atoms/labelAtom'
 import LabelItem from './LabelItem'
 
 interface Label {

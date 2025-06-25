@@ -1,16 +1,16 @@
-import { FileMessage } from '../../../../../../../types/Messaging/Message'
-import { getFileExtension, getFileName, isVideoFile } from '../../../../../utils/operations'
+import { useIsDesktop } from '@/hooks/useMediaQuery'
+import { DateMonthAtHourMinuteAmPm } from '@/utils/dateConversions'
+import { DIALOG_CONTENT_CLASS } from '@/utils/layout/dialog'
+import { FileExtensionIcon } from '@/utils/layout/FileExtIcon'
 import { UserFields } from '@/utils/users/UserListProvider'
 import { Box, BoxProps, Button, Dialog, Flex, IconButton, Link, Text } from '@radix-ui/themes'
-import { BiDownload, BiLink, BiShow } from 'react-icons/bi'
-import { DIALOG_CONTENT_CLASS } from '@/utils/layout/dialog'
-import { DateMonthAtHourMinuteAmPm } from '@/utils/dateConversions'
 import { clsx } from 'clsx'
-import { FileExtensionIcon } from '@/utils/layout/FileExtIcon'
-import { memo, useEffect, useState } from 'react'
-import { toast } from 'sonner'
-import { useIsDesktop } from '@/hooks/useMediaQuery'
 import { useAtomValue } from 'jotai'
+import { memo, useEffect, useState } from 'react'
+import { BiDownload, BiLink, BiShow } from 'react-icons/bi'
+import { toast } from 'sonner'
+import { FileMessage } from '../../../../../../../types/Messaging/Message'
+import { getFileExtension, getFileName, isVideoFile } from '../../../../../utils/operations'
 import { messageProcessingIdsAtom } from '../../ChatInput/useSendMessage'
 
 type FileMessageBlockProps = BoxProps & {
@@ -168,7 +168,9 @@ export const FileMessageBlock = memo(
 
     const processingIds = useAtomValue(messageProcessingIdsAtom)
     const isProcessing = processingIds.includes(message.id)
-  
+
+    console.log(processingIds)
+
     useEffect(() => {
       if (message?.file && typeof message.file !== 'string') {
         const file = message.file as Blob | File
@@ -219,10 +221,22 @@ export const FileMessageBlock = memo(
               borderRadius: '6px'
             }}
           >
-            <Button disabled={isProcessing} size='1' variant='soft' color='gray' onClick={() => onRetry?.(message.name ?? message.id)}>
+            <Button
+              disabled={isProcessing}
+              size='1'
+              variant='soft'
+              color='gray'
+              onClick={() => onRetry?.(message.name ?? message.id)}
+            >
               Gửi lại
             </Button>
-            <Button disabled={isProcessing} size='1' variant='soft' color='red' onClick={() => onRemove?.(message.name ?? message.id)}>
+            <Button
+              disabled={isProcessing}
+              size='1'
+              variant='soft'
+              color='red'
+              onClick={() => onRemove?.(message.name ?? message.id)}
+            >
               Xoá
             </Button>
           </Box>
@@ -340,10 +354,22 @@ export const FileMessageBlock = memo(
 
         {showRetryButton ? (
           <Flex align='center' gap='2'>
-            <Button  disabled={isProcessing} size='1' variant='soft' color='gray' onClick={() => onRetry?.(message.name ?? message.id)}>
+            <Button
+              disabled={isProcessing}
+              size='1'
+              variant='soft'
+              color='gray'
+              onClick={() => onRetry?.(message.name ?? message.id)}
+            >
               Gửi lại
             </Button>
-            <Button  disabled={isProcessing} size='1' variant='soft' color='red' onClick={() => onRemove?.(message.name ?? message.id)}>
+            <Button
+              disabled={isProcessing}
+              size='1'
+              variant='soft'
+              color='red'
+              onClick={() => onRemove?.(message.name ?? message.id)}
+            >
               Xoá
             </Button>
           </Flex>

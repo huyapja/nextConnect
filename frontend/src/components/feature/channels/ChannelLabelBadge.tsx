@@ -1,17 +1,15 @@
-import { useState } from 'react'
-import { Badge, Dialog, Flex, Text, Button } from '@radix-ui/themes'
-import { useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
-import { useSWRConfig } from 'swr'
-import { toast } from 'sonner'
-import { useSetAtom } from 'jotai'
 import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
-import { labelListAtom, refreshLabelListAtom } from '../labels/conversations/atoms/labelAtom'
+import { useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
+import { Badge, Button, Dialog, Flex, Text } from '@radix-ui/themes'
+import { useSetAtom } from 'jotai'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { labelListAtom } from '../labels/conversations/atoms/labelAtom'
 
 const ChannelLabelBadge = ({
   channelID,
   labelID,
-  labelName,
-  onRemoveLocally
+  labelName
 }: {
   channelID: string
   labelID: string
@@ -19,7 +17,7 @@ const ChannelLabelBadge = ({
   onRemoveLocally?: (channelID: string) => void
 }) => {
   const { removeChannel, loading: isLoading } = useRemoveChannelFromLabel()
-  const { updateChannelLabels } = useUpdateChannelLabels()
+  const { removeLabelFromChannel } = useUpdateChannelLabels()
 
   const [isHovered, setIsHovered] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -35,10 +33,10 @@ const ChannelLabelBadge = ({
     try {
       await removeChannel(labelID, channelID)
 
-      // ✅ Update local sortedChannelsAtom
-      updateChannelLabels(channelID, (prevLabels) => prevLabels.filter((l) => l.label_id !== labelID))
+      // ✅ Xoá local overrideLabels + sortedChannelsAtom
+      removeLabelFromChannel(channelID, labelID)
 
-      // ✅ Update local labelListAtom
+      // ✅ Xoá local labelListAtom
       setLabelList((prev) =>
         prev.map((l) => {
           if (l.label_id === labelID) {
@@ -51,14 +49,8 @@ const ChannelLabelBadge = ({
         })
       )
 
-      // ❌ Không cần setRefreshKey nữa
-      // setRefreshKey((prev) => prev + 1)
-
       toast.success(`Đã xoá thành công`)
       setShowModal(false)
-
-      // mutate('channel_list') → nếu bạn muốn sync lại sidebar channel thì giữ lại
-      // mutate('channel_list')
     } catch (err) {
       console.error('Xoá thất bại:', err)
       toast.error('Xoá channel khỏi nhãn thất bại')
