@@ -8,6 +8,7 @@ import { Message } from '../../../../../../types/Messaging/Message'
 import { CustomFile } from '../../file-upload/FileDrop'
 import { isImageFile } from '../ChatMessage/Renderers/FileMessage'
 import { set as idbSet, get as idbGet } from 'idb-keyval'
+import { useAtom } from 'jotai'
 
 export type PendingMessage = {
   id: string
@@ -18,6 +19,10 @@ export type PendingMessage = {
   file?: CustomFile
   fileMeta?: { name: string; size: number; type: string }
 }
+
+import { atom } from 'jotai'
+
+export const messageProcessingIdsAtom = atom<string[]>([])
 
 export const useSendMessage = (
   channelID: string,
@@ -38,13 +43,14 @@ export const useSendMessage = (
 
   const [pendingMessages, setPendingMessages] = useState<Record<string, PendingMessage[]>>({})
   const pendingQueueRef = useRef<Record<string, PendingMessage[]>>({})
+  const [processingIds, setProcessingIds] = useAtom(messageProcessingIdsAtom)
+  const isProcessing = (id: string) => processingIds.includes(id)
 
   const createClientId = () => `${Date.now()}-${Math.random()}`
 
   const persistPendingMessages = async (updated: Record<string, PendingMessage[]>) => {
     const current = updated[channelID] || []
 
-    // Chỉ lưu metadata (không lưu file vào STORAGE_KEY)
     const safeToSave = current.map((m) => {
       if (m.message_type === 'File' || m.message_type === 'Image') {
         const { id, content, status, createdAt, message_type, fileMeta } = m
@@ -55,10 +61,14 @@ export const useSendMessage = (
 
     await idbSet(STORAGE_KEY, safeToSave)
 
-    // Lưu từng file riêng biệt
     for (const m of current) {
       if ((m.message_type === 'File' || m.message_type === 'Image') && m.file) {
-        await idbSet(`file-${m.id}`, m.file)
+        const maxSize = 5 * 1024 * 1024
+        if (m.file.size <= maxSize) {
+          await idbSet(`file-${m.id}`, m.file)
+        } else {
+          console.warn(`Skip saving large file: ${m.file.name} (${m.file.size} bytes)`)
+        }
       }
     }
   }
@@ -102,7 +112,7 @@ export const useSendMessage = (
       send_silently: sendSilently
     })
 
-    const { message, client_id: returnedClientId } = res.message
+    const { message, client_id: returnedClientId } = res.message as any
 
     const msgWithClientId = { ...message, client_id: returnedClientId }
 
@@ -113,9 +123,8 @@ export const useSendMessage = (
   }
 
   const sendTextMessage = async (content: string, json?: any, sendSilently = false) => {
-    // Tìm xem đã có pending message nào trùng content chưa
     const pendingTextMsg = (pendingMessages[channelID] || []).find(
-      (m) => m.message_type === 'Text' && m.content === content
+      (m) => m.message_type === 'Text' && m.content?.trim() === content?.trim()
     )
 
     const client_id = pendingTextMsg ? pendingTextMsg.id : createClientId()
@@ -130,6 +139,17 @@ export const useSendMessage = (
       if (message) {
         updateSidebarMessage(message)
         onMessageSent([message])
+
+        // ✅ Remove pendingMessage nào có file trùng
+        updatePendingState((msgs) =>
+          msgs.filter(
+            (m) =>
+              !(
+                (m.message_type === 'File' || m.message_type === 'Image') &&
+                m.fileMeta?.name?.trim().toLowerCase() === message.content?.trim().toLowerCase()
+              )
+          )
+        )
       } else {
         updatePendingState((msgs) => [
           ...msgs,
@@ -137,7 +157,7 @@ export const useSendMessage = (
             id: client_id,
             status: 'pending',
             createdAt: Date.now(),
-            message_type: isImageFile(file.name) ? 'Image' : 'File', // <--- Sửa ở đây
+            message_type: isImageFile(file.name) ? 'Image' : 'File',
             file,
             fileMeta: { name: file.name, size: file.size, type: file.type }
           }
@@ -197,38 +217,27 @@ export const useSendMessage = (
     const queue = [...(pendingQueueRef.current[channelID] || [])]
 
     for (const msg of queue) {
-      try {
-        if (msg.message_type === 'Text') {
-          await sendOneMessage(msg.content || '', msg.id)
-        } else if (msg.message_type === 'File' && msg.file) {
-          const result = await uploadOneFile(msg.file, selectedMessage)
-          if (result.message) {
-            onMessageSent([result.message])
-            updateSidebarMessage(result.message)
-            removePendingMessage(msg.id)
-          } else {
-            updatePendingState((msgs) => msgs.map((m) => (m.id === msg.id ? { ...m, status: 'error' } : m)))
-          }
-        } else {
-          console.warn('Cannot retry file: missing file object in memory')
-        }
-      } catch (err) {
-        console.error('retryPendingMessages error', err)
-      }
+      await sendOnePendingMessage(msg.id)
     }
   }
 
   const sendOnePendingMessage = async (id: string) => {
-    const msg = (pendingMessages[channelID] || []).find((m) => m.id === id)
-    if (!msg) return
+    if (isProcessing(id)) {
+      console.warn(`Message ${id} is already processing, skip.`)
+      return
+    }
+
+    setProcessingIds((prev) => [...prev, id])
 
     try {
+      const msg = (pendingMessages[channelID] || []).find((m) => m.id === id)
+      if (!msg) return
+
       if (msg.message_type === 'Text') {
         await sendOneMessage(msg.content || '', msg.id)
       } else if (msg.message_type === 'File' || msg.message_type === 'Image') {
         let file = msg.file
 
-        // Nếu không có file trong RAM → load từ idb
         if (!file) {
           file = await idbGet(`file-${msg.id}`)
         }
@@ -246,15 +255,28 @@ export const useSendMessage = (
           console.warn('Cannot retry file: missing file in RAM and IndexedDB')
         }
       } else {
-        console.warn('Cannot retry file: missing file object in memory')
+        console.warn('Cannot retry file: unknown type')
       }
     } catch (err) {
       console.error('sendOnePendingMessage error', err)
+    } finally {
+      setProcessingIds((prev) => prev.filter((x) => x !== id))
     }
   }
 
   const removePendingMessage = (id: string) => {
-    updatePendingState((msgs) => msgs.filter((m) => m.id !== id))
+    if (isProcessing(id)) {
+      console.warn(`Message ${id} is already processing, skip remove.`)
+      return
+    }
+
+    setProcessingIds((prev) => [...prev, id])
+
+    try {
+      updatePendingState((msgs) => msgs.filter((m) => m.id !== id))
+    } finally {
+      setProcessingIds((prev) => prev.filter((x) => x !== id))
+    }
   }
 
   useEffect(() => {
@@ -262,9 +284,6 @@ export const useSendMessage = (
       const now = Date.now()
       updatePendingState((msgs) =>
         msgs.map((m) => {
-          if (m.status === 'pending') {
-            console.log('checking pending', m.id, now - m.createdAt)
-          }
           if (m.status === 'pending' && now - m.createdAt > 10000) {
             return { ...m, status: 'error' }
           }

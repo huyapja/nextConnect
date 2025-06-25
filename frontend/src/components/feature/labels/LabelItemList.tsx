@@ -12,11 +12,10 @@ import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
 import { toast } from 'sonner'
 import { useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
 import { useChannelActions } from '@/hooks/useChannelActions'
-import { useSWRConfig } from 'frappe-react-sdk'
 import { useIsMobile, useIsTablet } from '@/hooks/useMediaQuery'
 import { truncateText } from '@/utils/textUtils/truncateText'
 import { useSetAtom } from 'jotai'
-import { refreshLabelListAtom } from './conversations/atoms/labelAtom'
+import { labelListAtom } from './conversations/atoms/labelAtom'
 
 type Props = {
   channelID: string
@@ -27,20 +26,11 @@ type Props = {
   onRemoveLocally?: (channelID: string) => void
 }
 
-const LabelItemList = ({
-  channelID,
-  channelName,
-  labelID,
-  isDirectMessage,
-  unreadCount = 0,
-  onRemoveLocally
-}: Props) => {
+const LabelItemList = ({ channelID, channelName, labelID, isDirectMessage, unreadCount = 0 }: Props) => {
   const [showModal, setShowModal] = useState(false)
   const { currentUser } = useContext(UserContext)
   const { workspaceID, channelID: channelIDParams } = useParams()
   const isDM = isDirectMessage === true
-
-  const { mutate } = useSWRConfig()
 
   const peer_user_id = isDM ? replaceCurrentUserFromDMChannelName(channelName, currentUser) : ''
   const user = useGetUser(peer_user_id)
@@ -49,10 +39,9 @@ const LabelItemList = ({
   const displayName = isDM ? user?.full_name : channelName
   const isActive = channelIDParams === channelID
 
-  const setRefreshKey = useSetAtom(refreshLabelListAtom)
-
   const { removeChannel, loading: isLoading } = useRemoveChannelFromLabel()
-  const { updateChannelLabels } = useUpdateChannelLabels()
+  const { removeLabelFromChannel } = useUpdateChannelLabels()
+
   const { clearManualMark } = useChannelActions()
 
   const handleClick = () => {
@@ -64,16 +53,30 @@ const LabelItemList = ({
     }
   }
 
+  const setLabelList = useSetAtom(labelListAtom)
+
   const handleRemove = async () => {
     try {
       await removeChannel(labelID, channelID)
-      onRemoveLocally?.(channelID)
-      updateChannelLabels(channelID, (prevLabels) => prevLabels.filter((l) => l.label_id !== labelID))
-      setRefreshKey((prev) => prev + 1)
 
-      toast.success(`Đã xóa thành công`)
+      // ✅ Update local sortedChannelsAtom + overrideLabelsAtom
+      removeLabelFromChannel(channelID, labelID)
+
+      // ✅ Update local labelListAtom
+      setLabelList((prev) =>
+        prev.map((l) => {
+          if (l.label_id === labelID) {
+            return {
+              ...l,
+              channels: l.channels.filter((c) => c.channel_id !== channelID)
+            }
+          }
+          return l
+        })
+      )
+
+      toast.success(`Đã xoá thành công`)
       setShowModal(false)
-      mutate('channel_list')
     } catch (err) {
       console.error('Xoá thất bại:', err)
       toast.error('Xoá channel khỏi nhãn thất bại')

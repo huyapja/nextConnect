@@ -77,7 +77,7 @@ export const useSendMessageThread = (
       send_silently: sendSilently
     })
 
-    const { message, client_id: returnedClientId } = res.message
+    const { message, client_id: returnedClientId } = res.message as any
 
     const msgWithClientId = { ...message, client_id: returnedClientId }
 
