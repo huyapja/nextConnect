@@ -14,6 +14,7 @@ import { BiChevronLeft } from 'react-icons/bi'
 import { Link } from 'react-router-dom'
 import VideoCall from '../call-stringee/CallStringee'
 import ChannelLabelBadge from '../channels/ChannelLabelBadge'
+import { ViewPinnedMessagesButton } from '../pinned-messages/ViewPinnedMessagesButton'
 import ChannelHeaderMenu from './ChannelHeaderMenu'
 
 interface DMChannelHeaderProps {
@@ -112,6 +113,8 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
             )}
           </div>
         </Heading>
+
+        <ViewPinnedMessagesButton pinnedMessagesString={channelData.pinned_messages_string ?? ''} />
       </Flex>
 
       <Flex className='mr-3' gap='4' align='center'>
