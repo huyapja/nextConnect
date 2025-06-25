@@ -318,7 +318,7 @@ export const MessageItem = React.memo(
                         : '',
                     // Đổi màu nền khi mở emoji picker
                     isEmojiPickerOpen ? 'bg-gray-2 dark:bg-gray-3' : '',
-                    isThinking && 'animate-pulse',
+                    isThinking && 'animate-pulse'
                   )}
                 >
                   {/* Nội dung chính của tin nhắn */}
