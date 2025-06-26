@@ -7,7 +7,7 @@ import { IoMdClose } from 'react-icons/io'
 import { toast } from 'sonner'
 
 import { sortedChannelsAtom, useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
-import { useFrappePostCall } from 'frappe-react-sdk'
+import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
 import { labelListAtom, refreshLabelListAtom } from './atoms/labelAtom'
 
 import { useIsMobile } from '@/hooks/useMediaQuery'
@@ -93,6 +93,8 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
     })
   }, [channels, search, userMap])
 
+  const { mutate } = useSWRConfig()
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const channel_ids = Array.from(selected)
@@ -132,7 +134,7 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
           return l
         })
       )
-
+      mutate('channel_list')
       toast.success('Gán nhãn thành công')
       setIsOpen(false)
     } catch (err) {

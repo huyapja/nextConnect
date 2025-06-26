@@ -2,7 +2,7 @@ import { Label } from '@/components/common/Form'
 import { Drawer, DrawerContent, DrawerTrigger } from '@/components/layout/Drawer'
 import { useIsDesktop } from '@/hooks/useMediaQuery'
 import { Box, Button, Dialog, Flex, IconButton, TextField } from '@radix-ui/themes'
-import { useFrappePostCall } from 'frappe-react-sdk'
+import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
 import { useAtom, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
 import { Controller, FormProvider, useForm } from 'react-hook-form'
@@ -138,6 +138,8 @@ export const CreateLabelContent = () => {
   const setLabelList = useSetAtom(labelListAtom)
   const { addLabelToChannel } = useUpdateChannelLabels()
 
+  const {mutate} = useSWRConfig()
+
   const onSubmit = async (data: CreateLabelForm) => {
     try {
       const label_name = data.label.trim()
@@ -157,9 +159,6 @@ export const CreateLabelContent = () => {
 
       const label_id = res?.message?.label_id
 
-      console.log(res);
-      
-
       if (label_id) {
         if (modalState.selectedChannel) {
           await addLabelToChannel(modalState.selectedChannel, {
@@ -167,7 +166,7 @@ export const CreateLabelContent = () => {
             label: label_name
           })
         }
-
+        mutate("channel_list")
         setLabelList((prev) => [...prev, { label_id, label: label_name, channels: [] }])
         toast.success('Đã tạo nhãn')
         reset()
