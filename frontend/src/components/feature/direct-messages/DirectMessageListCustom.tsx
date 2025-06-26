@@ -12,7 +12,7 @@ import { useChannelActions } from '@/hooks/useChannelActions'
 import { useChannelDone } from '@/hooks/useChannelDone'
 import { useIsDesktop, useIsLaptop, useIsTablet } from '@/hooks/useMediaQuery'
 import { manuallyMarkedAtom } from '@/utils/atoms/manuallyMarkedAtom'
-import { sortedChannelsAtom, useEnrichedSortedChannels, useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
+import { LabelType, sortedChannelsAtom, useEnrichedSortedChannels, useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
 import { useFormattedLastMessageParts } from '@/utils/channel/useFormatLastMessage'
 import { ChannelIcon } from '@/utils/layout/channelIcon'
 import { useSidebarMode } from '@/utils/layout/sidebar'
@@ -28,7 +28,12 @@ import LabelByUserList from '../labels/LabelByUserList'
 import ThreadsCustom from '../threads/ThreadsCustom'
 import { MessageSaved } from './DirectMessageSaved'
 import clsx from 'clsx'
-import { labelListAtom, useLabelListValue, useRefreshLabelList } from '../labels/conversations/atoms/labelAtom'
+import {
+  labelListAtom,
+  useLabelList,
+  useLabelListValue,
+  useRefreshLabelList
+} from '../labels/conversations/atoms/labelAtom'
 import { MdLabelOutline } from 'react-icons/md'
 import { GoPlus } from 'react-icons/go'
 import { RxTriangleRight } from 'react-icons/rx'
@@ -38,7 +43,6 @@ import { toast } from 'sonner'
 import { useFrappePostCall } from 'frappe-react-sdk'
 
 type UnifiedChannel = ChannelWithUnreadCount | DMChannelWithUnreadCount | any
-
 
 export const DirectMessageList = () => {
   const { labelID } = useSidebarMode()
@@ -114,32 +118,23 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
   const selectedChannelRef = useRef<UnifiedChannel | null>(null)
   const [selectedChannel, setSelectedChannel] = useState<UnifiedChannel | null>(null)
 
-  const setLabelList = useSetAtom(labelListAtom)
-  const channels = useAtomValue(sortedChannelsAtom)
+
   const { removeChannel } = useRemoveChannelFromLabel()
   const { addLabelToChannel, removeLabelFromChannel } = useUpdateChannelLabels()
   const { call: callCreateOrAssignLabel } = useFrappePostCall(
     'raven.api.user_channel_label.add_label_to_multiple_channels'
   )
-  const refreshLabelList = useRefreshLabelList()
 
   const { isPinned, togglePin, markAsUnread, isManuallyMarked } = useChannelActions()
+  const refreshLabelList = useRefreshLabelList()
 
   const handleToggleLabel = async (label: LabelType, isAssigned: boolean) => {
     const channelID = dm_channel.name
     const labelID = label.label_id
-
     try {
       if (isAssigned) {
         await removeChannel(labelID, channelID)
         removeLabelFromChannel(channelID, labelID)
-
-        // cập nhật labelListAtom
-        setLabelList((prev) =>
-          prev.map((l) =>
-            l.label_id === labelID ? { ...l, channels: l.channels.filter((c) => c.channel_id !== channelID) } : l
-          )
-        )
 
         toast.success(`Đã xoá nhãn "${label.label}" khỏi kênh`)
       } else {
@@ -150,25 +145,6 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
 
         if (res?.message?.status === 'success') {
           addLabelToChannel(channelID, { label_id: labelID, label: label.label })
-
-          // cập nhật labelListAtom
-          setLabelList((prev) =>
-            prev.map((l) => {
-              if (l.label_id !== labelID) return l
-              const updatedChannels = [...l.channels]
-              const exists = updatedChannels.some((c) => c.channel_id === channelID)
-              if (!exists) {
-                const ch = channels.find((c) => c.name === channelID)
-                updatedChannels.push({
-                  channel_id: channelID,
-                  channel_name: ch?.channel_name || '',
-                  is_direct_message: ch?.is_direct_message === 1
-                })
-              }
-              return { ...l, channels: updatedChannels }
-            })
-          )
-
           toast.success(`Đã gán nhãn "${label.label}" cho kênh`)
         } else {
           toast.error('Không thể gán nhãn')

@@ -37,13 +37,13 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
 
   const lastWorkspace = localStorage.getItem('ravenLastWorkspace')
 
-  const channels = useAtomValue(sortedChannelsAtom)
-  const currentChannel = useMemo(
-    () => channels.find((ch) => ch.name === channelData.name),
-    [channels, channelData.name]
-  )
+const enrichedChannels = useEnrichedSortedChannels()
+const currentChannel = useMemo(
+  () => enrichedChannels.find((ch) => ch.name === channelData.name),
+  [enrichedChannels, channelData.name]
+)
 
-  const userLabels = currentChannel?.user_labels || []
+const userLabels = currentChannel?.user_labels || []
 
   return (
     <PageHeader>

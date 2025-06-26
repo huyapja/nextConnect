@@ -52,7 +52,7 @@ const ChannelLabelBadge = ({
 
       toast.success(`Đã xoá thành công`)
       setShowModal(false)
-      refreshLabelList()
+      // refreshLabelList()
     } catch (err) {
       console.error('Xoá thất bại:', err)
       toast.error('Xoá channel khỏi nhãn thất bại')

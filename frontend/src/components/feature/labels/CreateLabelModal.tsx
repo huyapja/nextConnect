@@ -157,6 +157,9 @@ export const CreateLabelContent = () => {
 
       const label_id = res?.message?.label_id
 
+      console.log(res);
+      
+
       if (label_id) {
         if (modalState.selectedChannel) {
           await addLabelToChannel(modalState.selectedChannel, {

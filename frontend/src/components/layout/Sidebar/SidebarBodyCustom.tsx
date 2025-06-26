@@ -8,14 +8,19 @@ import { useContext, useEffect } from 'react'
 import { DirectMessageList } from '../../feature/direct-messages/DirectMessageListCustom'
 import IsTabletSidebarNav from './IsTabletSidebarNav'
 import { useSidebarMode } from '@/utils/layout/sidebar'
+import { useLabelList } from '@/components/feature/labels/conversations/atoms/labelAtom'
+import { FC } from 'react'
+
 // import BeatLoader from '../Loaders/BeatLoader'
 
-export const SidebarBody = () => {
+export const SidebarBody: FC = () => {
   const { channels, dm_channels } = useContext(ChannelListContext) as ChannelListContextType
 
   const setSortedChannels = useSetAtom(setSortedChannelsAtom)
 
   const currentChannelIsDone = useAtomValue(channelIsDoneAtom)
+
+  const { refreshLabelList } = useLabelList()
 
   useEffect(() => {
     if (channels?.length === 0 && dm_channels?.length === 0) return
@@ -23,6 +28,10 @@ export const SidebarBody = () => {
     const sorted = prepareSortedChannels(channels, dm_channels, currentChannelIsDone)
     setSortedChannels(sorted)
   }, [channels, dm_channels, setSortedChannels, currentChannelIsDone])
+
+  useEffect(() => {
+    refreshLabelList()
+  }, [])
 
   const isTablet = useIsTablet()
 
