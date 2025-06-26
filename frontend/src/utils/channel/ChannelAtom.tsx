@@ -178,6 +178,7 @@ export const useUpdateChannelLabels = () => {
 
   const removeLabelFromChannel = (channelID: string | '*', labelID: string) => {
     if (channelID === '*') {
+      // ✅ Xoá label khỏi tất cả các channel
       setSortedChannels((prev) =>
         prev?.map((channel) => {
           if (!Array.isArray(channel.user_labels)) return channel
@@ -189,26 +190,33 @@ export const useUpdateChannelLabels = () => {
         })
       )
 
+      // ✅ Update overrideLabelsAtom
       setOverrideLabels((prev) => {
         const newMap = new Map(prev)
-        newMap.forEach((labels, channelID) => {
-          newMap.set(
-            channelID,
-            labels.filter((l) => l.label_id !== labelID)
-          )
+        newMap.forEach((labels, chID) => {
+          const filtered = labels.filter((l) => l.label_id !== labelID)
+          if (filtered.length > 0) {
+            newMap.set(chID, filtered)
+          } else {
+            newMap.delete(chID)
+          }
         })
         return newMap
       })
     } else {
+      // ✅ Update sortedChannelsAtom
       updateChannelLabels(channelID, (prev) => prev.filter((l) => l.label_id !== labelID))
 
+      // ✅ Update overrideLabelsAtom
       setOverrideLabels((prev) => {
         const newMap = new Map(prev)
         const current = newMap.get(channelID) || []
-        newMap.set(
-          channelID,
-          current.filter((l) => l.label_id !== labelID)
-        )
+        const filtered = current.filter((l) => l.label_id !== labelID)
+        if (filtered.length > 0) {
+          newMap.set(channelID, filtered)
+        } else {
+          newMap.delete(channelID)
+        }
         return newMap
       })
     }

@@ -4,7 +4,7 @@ import { MdLabelOutline } from 'react-icons/md'
 import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
 import { truncateText } from '@/utils/textUtils/truncateText'
 import { useSidebarMode } from '@/utils/layout/sidebar'
-import { useLabelList } from './conversations/atoms/labelAtom'
+import { useLabelListValue } from './conversations/atoms/labelAtom'
 
 type Props = {
   visible: boolean
@@ -12,7 +12,7 @@ type Props = {
 }
 
 export default function LabelList({ visible, onClickLabel }: Props) {
-  const { labelList } = useLabelList()
+  const labelList = useLabelListValue()
   const { title, setLabelID } = useSidebarMode()
 
   const enrichedChannels = useEnrichedSortedChannels()

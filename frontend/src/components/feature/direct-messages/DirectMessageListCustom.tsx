@@ -3,7 +3,7 @@ import { UserAvatar } from '@/components/common/UserAvatar'
 import { useGetUser } from '@/hooks/useGetUser'
 import { useIsUserActive } from '@/hooks/useIsUserActive'
 import { Box, ContextMenu, Flex, Text, Tooltip } from '@radix-ui/themes'
-import { useCallback, useContext, useMemo } from 'react'
+import { useCallback, useContext, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { UserContext } from '../../../utils/auth/UserProvider'
 
@@ -12,12 +12,12 @@ import { useChannelActions } from '@/hooks/useChannelActions'
 import { useChannelDone } from '@/hooks/useChannelDone'
 import { useIsDesktop, useIsLaptop, useIsTablet } from '@/hooks/useMediaQuery'
 import { manuallyMarkedAtom } from '@/utils/atoms/manuallyMarkedAtom'
-import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
+import { sortedChannelsAtom, useEnrichedSortedChannels, useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
 import { useFormattedLastMessageParts } from '@/utils/channel/useFormatLastMessage'
 import { ChannelIcon } from '@/utils/layout/channelIcon'
 import { useSidebarMode } from '@/utils/layout/sidebar'
 import { truncateText } from '@/utils/textUtils/truncateText'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { HiCheck } from 'react-icons/hi'
 import { SidebarBadge, SidebarGroup, SidebarIcon } from '../../layout/Sidebar/SidebarComp'
 import { DoneChannelList } from '../channels/DoneChannelList'
@@ -28,12 +28,19 @@ import LabelByUserList from '../labels/LabelByUserList'
 import ThreadsCustom from '../threads/ThreadsCustom'
 import { MessageSaved } from './DirectMessageSaved'
 import clsx from 'clsx'
+import { labelListAtom, useLabelListValue } from '../labels/conversations/atoms/labelAtom'
+import { MdLabelOutline } from 'react-icons/md'
+import { GoPlus } from 'react-icons/go'
+import { RxTriangleRight } from 'react-icons/rx'
+import { CreateLabelButton, createLabelModalAtom } from '../labels/CreateLabelModal'
+import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
+import { toast } from 'sonner'
+import { useFrappePostCall } from 'frappe-react-sdk'
 
 type UnifiedChannel = ChannelWithUnreadCount | DMChannelWithUnreadCount | any
 
 export const DirectMessageList = () => {
   const { labelID } = useSidebarMode()
-
   const enriched = useEnrichedSortedChannels(labelID ? undefined : 0)
 
   return (
@@ -47,7 +54,6 @@ export const DirectMessageList = () => {
 
 export const DirectMessageItemList = ({ channel_list }: any) => {
   const { title, labelID } = useSidebarMode()
-
   // Ưu tiên các component đặc biệt trước
   if (title === 'Đã gắn cờ') return <MessageSaved />
   if (title === 'Nhắc đến') return <MentionList />
@@ -92,25 +98,47 @@ export const DirectMessageItemList = ({ channel_list }: any) => {
 
   const filteredChannels = getFilteredChannels()
 
-  if (filteredChannels.length === 0 && title !== 'Trò chuyện') {
-    return <div className='text-gray-500 text-sm italic p-4 text-center'>Không có kết quả</div>
+  if (filteredChannels.length === 0) {
+    return <div className='text-gray-500 text-sm italic p-4 text-center'>Không có cuộc trò chuyện nào</div>
   }
 
-  return <>{filteredChannels?.map((channel) => <DirectMessageItem key={channel.name} dm_channel={channel} />)}</>
+  return filteredChannels?.map((channel) => <DirectMessageItem key={channel.name} dm_channel={channel} />)
 }
 
 export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnreadCount }) => {
   const { isPinned, togglePin, markAsUnread, isManuallyMarked } = useChannelActions()
+  const labelList = useLabelListValue()
+  const setShowCreateLabel = useSetAtom(createLabelModalAtom)
+  const [selectedChannel, setSelectedChannel] = useState<UnifiedChannel | null>(null)
+  const selectedChannelRef = useRef<UnifiedChannel | null>(null)
+  const { call: callCreateOrAssignLabel } = useFrappePostCall(
+    'raven.api.user_channel_label.add_label_to_multiple_channels'
+  )
+
+  const setSortedChannels = useSetAtom(sortedChannelsAtom)
+
+  const { removeChannel } = useRemoveChannelFromLabel()
+  const { addLabelToChannel, removeLabelFromChannel } = useUpdateChannelLabels()
+  const setLabelList = useSetAtom(labelListAtom)
 
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger>
         <div className='select-none'>
-          <DirectMessageItemElement channel={dm_channel} />
+          <DirectMessageItemElement
+            onContextMenu={() => {
+              selectedChannelRef.current = dm_channel
+              setSelectedChannel(dm_channel)
+            }}
+            channel={dm_channel}
+          />
         </div>
       </ContextMenu.Trigger>
       <ContextMenu.Content className='z-50 bg-white dark:bg-gray-800 border dark:border-gray-600 shadow rounded p-1 text-black dark:text-white'>
-        <ContextMenu.Item onClick={() => markAsUnread(dm_channel)} className='dark:hover:bg-gray-700 px-2 py-1 rounded'>
+        <ContextMenu.Item
+          onClick={() => markAsUnread(dm_channel)}
+          className='dark:hover:bg-gray-700 px-2 py-1 rounded cursor-pointer'
+        >
           {dm_channel.unread_count > 0 || isManuallyMarked(dm_channel.name) ? 'Đánh dấu đã đọc' : 'Đánh dấu chưa đọc'}
         </ContextMenu.Item>
         <ContextMenu.Item
@@ -119,6 +147,153 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
         >
           {isPinned(dm_channel.name) ? 'Bỏ ghim tin nhắn' : 'Ghim tin nhắn lên đầu'}
         </ContextMenu.Item>
+        {labelList.length === 0 ? (
+          <ContextMenu.Item
+            onClick={() => {
+              setShowCreateLabel({
+                addUserToLabel: true,
+                isOpen: true,
+                selectedChannel: selectedChannelRef.current?.name
+              })
+            }}
+            className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center gap-2'
+          >
+            <MdLabelOutline size={14} />
+            <span>Tạo nhãn</span>
+            <span className='ml-auto flex items-center justify-center'>
+              <GoPlus size={14} />
+            </span>
+          </ContextMenu.Item>
+        ) : (
+          <ContextMenu.Sub>
+            <ContextMenu.SubTrigger className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center gap-2'>
+              <MdLabelOutline size={14} />
+              <span>Nhãn</span>
+            </ContextMenu.SubTrigger>
+
+            <ContextMenu.SubContent side='right' align='start' className='dark:bg-gray-800 rounded px-1 py-1 w-48 z-50'>
+              {labelList.map((label) => {
+                const isAssigned = selectedChannelRef.current?.user_labels?.some((l) => l.label_id === label.label_id)
+
+                return (
+                  <ContextMenu.Item
+                    key={label.label_id}
+                    onSelect={(e) => e.preventDefault()} // ✅ Ngăn đóng menu
+                    onClick={async () => {
+                      const channelID = selectedChannelRef.current?.name
+                      const labelID = label.label_id
+
+                      if (!channelID || !labelID) return
+
+                      if (isAssigned) {
+                        try {
+                          await removeChannel(labelID, channelID)
+
+                          // ✅ Xoá local overrideLabels + sortedChannelsAtom
+                          removeLabelFromChannel(channelID, labelID)
+
+                          // ✅ Xoá local labelListAtom
+                          setLabelList((prev) =>
+                            prev.map((l) => {
+                              if (l.label_id === labelID) {
+                                return {
+                                  ...l,
+                                  channels: l.channels.filter((c) => c.channel_id !== channelID)
+                                }
+                              }
+                              return l
+                            })
+                          )
+                          if (selectedChannelRef.current) {
+                            selectedChannelRef.current.user_labels =
+                              selectedChannelRef.current.user_labels?.filter((l) => l.label_id !== labelID) || []
+                          }
+                          toast.success(`Đã xoá nhãn "${label.label}" khỏi kênh`)
+                        } catch (err) {
+                          console.error('Xoá nhãn thất bại:', err)
+                          toast.error('Không thể xoá nhãn khỏi kênh')
+                        }
+                      } else {
+                        try {
+                          // Gán nhãn
+                          const res = await callCreateOrAssignLabel({
+                            label_id: label.label_id,
+                            channel_ids: JSON.stringify([channelID])
+                          })
+                          // Nếu API thành công
+                          if (res?.message?.status === 'success') {
+                            addLabelToChannel(channelID, { label_id: labelID, label: label.label })
+
+                            // ✅ Cập nhật user_labels của channel local
+                            if (selectedChannelRef.current) {
+                              selectedChannelRef.current.user_labels = [
+                                ...(selectedChannelRef.current.user_labels || []),
+                                { label_id: labelID, label: label.label }
+                              ]
+                            }
+
+                            // ✅ Cập nhật labelListAtom
+                            setLabelList((prev) =>
+                              prev.map((l) => {
+                                if (l.label_id === labelID) {
+                                  const updatedChannels = [...l.channels]
+                                  const alreadyExists = updatedChannels.some((c) => c.channel_id === channelID)
+                                  if (!alreadyExists) {
+                                    const channels = useAtomValue(sortedChannelsAtom)
+
+                                    const ch = channels.find((c) => c.name === channelID)
+                                    updatedChannels.push({
+                                      channel_id: channelID,
+                                      channel_name: ch?.channel_name || '',
+                                      is_direct_message: ch?.is_direct_message === 1
+                                    })
+                                  }
+                                  return { ...l, channels: updatedChannels }
+                                }
+                                return l
+                              })
+                            )
+
+                            toast.success(`Đã gán nhãn "${label.label}" cho kênh`)
+                          } else {
+                            toast.error('Không thể gán nhãn')
+                          }
+                        } catch (err) {
+                          console.error('Gán nhãn thất bại:', err)
+                          toast.error('Không thể gán nhãn')
+                        }
+                      }
+                    }}
+                    className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center gap-2 justify-between'
+                  >
+                    <div className='flex items-center gap-2'>
+                      <MdLabelOutline size={14} />
+                      <span>{label.label}</span>
+                    </div>
+
+                    {isAssigned && <HiCheck size={14} className='text-green-500' />}
+                  </ContextMenu.Item>
+                )
+              })}
+
+              <ContextMenu.Separator className='h-px bg-gray-600 my-2' />
+
+              <ContextMenu.Item
+                onClick={() => {
+                  setShowCreateLabel({
+                    addUserToLabel: true,
+                    isOpen: true,
+                    selectedChannel: selectedChannelRef.current?.name
+                  })
+                }}
+                className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center gap-2'
+              >
+                <GoPlus size={14} />
+                <span>Nhãn mới</span>
+              </ContextMenu.Item>
+            </ContextMenu.SubContent>
+          </ContextMenu.Sub>
+        )}
       </ContextMenu.Content>
     </ContextMenu.Root>
   )
@@ -128,10 +303,15 @@ const isDMChannel = (c: UnifiedChannel): c is DMChannelWithUnreadCount => {
   return 'peer_user_id' in c && typeof c.peer_user_id === 'string'
 }
 
-export const DirectMessageItemElement = ({ channel }: { channel: UnifiedChannel }) => {
+export const DirectMessageItemElement = ({
+  channel,
+  onContextMenu
+}: {
+  channel: UnifiedChannel
+  onContextMenu?: (channel: UnifiedChannel) => void
+}) => {
   const isLaptop = useIsLaptop()
   const isTablet = useIsTablet()
-  const isDesktop = useIsDesktop()
   const { currentUser } = useContext(UserContext)
   const navigate = useNavigate()
   const { workspaceID, channelID } = useParams<{ workspaceID: string; channelID: string }>()
@@ -194,6 +374,9 @@ export const DirectMessageItemElement = ({ channel }: { channel: UnifiedChannel 
   return (
     <div
       onClick={handleNavigate}
+      onContextMenu={() => {
+        onContextMenu?.(channel)
+      }}
       className={clsx(
         'group relative cursor-pointer flex items-center p-1 mb-2',
         !isTablet && 'overflow-y-hidden',

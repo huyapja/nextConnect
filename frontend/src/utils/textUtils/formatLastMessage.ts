@@ -14,6 +14,8 @@ const isAudioFile = (filename: string = ''): boolean => /\.(mp3|wav|ogg|m4a|aac)
 const stripHtmlTags = (html: string): string => html.replace(/<\/?[^>]+(>|$)/g, '')
 
 export interface Channel {
+  name: any
+  peer_user_id: any
   is_direct_message: boolean
   last_message_details: any
 }
