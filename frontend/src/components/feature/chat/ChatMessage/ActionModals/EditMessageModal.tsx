@@ -20,7 +20,17 @@ export const EditMessageModal = ({ onClose, message }: EditMessageModalProps) =>
   }, [reset])
 
   const onSubmit = async (html: string, json: any) => {
-    return updateDoc('Raven Message', message.name, { text: html, json }).then((d) => {
+    const createdTime = new Date(message.creation).getTime()
+    const now = Date.now()
+    const diffSeconds = (now - createdTime) / 1000
+
+    if (diffSeconds > 3 * 60 * 60) {
+      onClose(true)
+      toast.error('Đã quá thời gian chỉnh sửa tin nhắn')
+      return
+    }
+
+    return updateDoc('Raven Message', message.name, { text: html, json }).then(() => {
       onClose(true)
       toast.info('Message updated')
     })

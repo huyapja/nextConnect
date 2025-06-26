@@ -1,7 +1,6 @@
 import { Box, Button, Dialog, Flex, IconButton, Link, Text, Tooltip } from '@radix-ui/themes'
 import { clsx } from 'clsx'
-import { useCallback } from 'react'
-import { BiDownload, BiLink, BiShow } from 'react-icons/bi'
+import { BiDownload, BiShow } from 'react-icons/bi'
 import { FiFile, FiFileText, FiImage, FiMusic, FiVideo } from 'react-icons/fi'
 
 type Props = {
@@ -75,11 +74,6 @@ const ChatbotFileMessage = ({ fileUrl, fileName }: Props) => {
   const ext = fileName.split('.').pop()?.toLowerCase() || ''
   const icon = getFileIcon(ext)
 
-  const handleCopyLink = useCallback(() => {
-    const link = fileUrl.startsWith('http') ? fileUrl : window.location.origin + fileUrl
-    navigator.clipboard.writeText(link)
-  }, [fileUrl])
-
   return (
     <Box>
       <Flex
@@ -96,27 +90,7 @@ const ChatbotFileMessage = ({ fileUrl, fileName }: Props) => {
         </Flex>
 
         <Flex align='center' gap='2'>
-          {ext === 'pdf' ? (
-            <PDFPreviewButton fileUrl={fileUrl} fileName={fileName} />
-          ) : (
-            <Tooltip content='Xem tệp'>
-              <IconButton
-                size='1'
-                title='Xem tệp'
-                variant='soft'
-                color='gray'
-                onClick={() => window.open(fileUrl, '_blank')}
-              >
-                <BiShow />
-              </IconButton>
-            </Tooltip>
-          )}
-
-          <Tooltip content='Sao chép liên kết'>
-            <IconButton size='1' title='Copy link' variant='soft' color='gray' onClick={handleCopyLink}>
-              <BiLink />
-            </IconButton>
-          </Tooltip>
+          {ext === 'pdf' && <PDFPreviewButton fileUrl={fileUrl} fileName={fileName} />}
 
           <Tooltip content='Tải xuống'>
             <IconButton asChild size='1' title='Tải xuống' variant='soft' color='gray'>

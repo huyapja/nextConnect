@@ -1,6 +1,7 @@
 import { getErrorMessage } from '@/components/layout/AlertBanner/ErrorBanner'
 import { savedMessageStore } from '@/hooks/useSavedMessageStore'
 import { UserContext } from '@/utils/auth/UserProvider'
+import { updateSavedCount } from '@/utils/updateSavedCount'
 import { ContextMenu, Flex } from '@radix-ui/themes'
 import { FrappeConfig, FrappeContext } from 'frappe-react-sdk'
 import { useContext } from 'react'
@@ -44,7 +45,7 @@ export const MessageContextMenu = ({
 
   const isOwner = currentUser === message?.owner && !message?.is_bot_message
 
-  const isReactionsAvailable = Object.keys(JSON.parse(message?.message_reactions ?? '{}')).length !== 0
+  const isReactionsAvailable = Object.keys(JSON.parse(message?.message_reactions ?? '{}'))?.length !== 0
 
   return (
     <ContextMenu.Content>
@@ -68,7 +69,7 @@ export const MessageContextMenu = ({
 
           {message && !message.is_thread && showThreadButton && <CreateThreadContextItem messageID={message.name} />}
 
-          <CopyMessageLink message={message} />
+          {/* <CopyMessageLink message={message} /> */}
 
           <ContextMenu.Separator />
           <ContextMenu.Group>
@@ -199,9 +200,11 @@ const SaveMessageAction = ({ message }: { message: Message }) => {
         if (isSaved) {
           toast('Message unsaved')
           savedMessageStore.removeMessage(message.name)
+          updateSavedCount(-1) // 👈 Giảm 1
         } else {
           savedMessageStore.pushMessage(response.message)
           toast.success('Message saved')
+          updateSavedCount(+1) // 👈 Tăng 1
         }
       })
       .catch((e) => {

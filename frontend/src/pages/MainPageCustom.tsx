@@ -13,9 +13,12 @@ import WorkspacesSidebar from '@/components/layout/Sidebar/WorkspacesSidebar'
 import { HStack } from '@/components/layout/Stack'
 import { useFetchActiveUsersRealtime } from '@/hooks/fetchers/useFetchActiveUsers'
 import { useActiveSocketConnection } from '@/hooks/useActiveSocketConnection'
+import { useChannelDoneListener } from '@/hooks/useChannelDoneListener'
+import { useLastMessageUpdatedListener } from '@/hooks/useLastMessageUpdatedListener'
 import { useIsMobile, useIsTablet } from '@/hooks/useMediaQuery'
 import { useUnreadThreadsCountEventListener } from '@/hooks/useUnreadThreadsCount'
 import { UserContext } from '@/utils/auth/UserProvider'
+import eventBus from '@/utils/event-emitter'
 import { SidebarMode, SidebarModeProvider, useSidebarMode } from '@/utils/layout/sidebar'
 import { showNotification } from '@/utils/pushNotifications'
 import { hasRavenUserRole } from '@/utils/roles'
@@ -24,7 +27,6 @@ import { UserListProvider } from '@/utils/users/UserListProvider'
 import { useFrappeEventListener, useSWRConfig } from 'frappe-react-sdk'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { ChannelListProvider } from '../utils/channel/ChannelListProvider'
-import { useLastMessageUpdatedListener } from '@/hooks/useLastMessageUpdatedListener'
 
 const AddRavenUsersPage = lazy(() => import('@/pages/AddRavenUsersPage'))
 
@@ -55,12 +57,13 @@ const MainPageContent = () => {
   const sidebarRef = useRef<any>(null)
   const { handleSidebarResize, handleSidebarPointerUp } = useSidebarResizeLogic(sidebarRef)
   const { mode, setMode } = useSidebarMode()
-  const [panelSize, setPanelSize] = useState(30)
+  const [, setPanelSize] = useState(30)
   const [initialLayoutLoaded, setInitialLayoutLoaded] = useState(false)
   const [initialLayout, setInitialLayout] = useState<string | null>(null)
 
   useFetchActiveUsersRealtime()
   useActiveSocketConnection()
+  useChannelDoneListener()
 
   useLastMessageUpdatedListener()
 
@@ -75,16 +78,11 @@ const MainPageContent = () => {
     if (event.channel_id) {
       mutate(['thread_reply_count', event.channel_id], { message: event.number_of_replies }, { revalidate: true })
 
-      window.dispatchEvent(
-        new CustomEvent('thread_updated', {
-          detail: {
-            threadId: event.channel_id,
-            sentBy: event.sent_by,
-            lastMessageTimestamp: event.last_message_timestamp,
-            numberOfReplies: event.number_of_replies
-          }
-        })
-      )
+      eventBus.emit('thread:updated', {
+        threadId: event.channel_id,
+        numberOfReplies: event.number_of_replies,
+        lastMessageTimestamp: event.last_message_timestamp
+      })
     }
 
     if (event.sent_by === currentUser || threadID === event.channel_id) return
@@ -160,7 +158,7 @@ const MainPageContent = () => {
                 <Box className='px-2'>
                   <Box className='h-px bg-gray-400 dark:bg-gray-600' />
                 </Box>
-                <SidebarBody size={panelSize} />
+                <SidebarBody />
               </Box>
               <Box className='w-full absolute dark:bg-gray-2'>
                 <Outlet />
@@ -188,7 +186,7 @@ const MainPageContent = () => {
                   <div className='px-2'>
                     <div className='h-px bg-gray-400 dark:bg-gray-600' />
                   </div>
-                  <SidebarBody size={panelSize} />
+                  <SidebarBody />
                 </div>
               </Panel>
 
@@ -244,7 +242,7 @@ const MainPageContent = () => {
                   <div className='px-2'>
                     <div className='h-px bg-gray-4 dark:bg-gray-6' />
                   </div>
-                  <SidebarBody size={panelSize} />
+                  <SidebarBody />
                 </div>
               </Panel>
 

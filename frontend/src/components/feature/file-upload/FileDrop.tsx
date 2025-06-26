@@ -1,4 +1,5 @@
-import { Flex, Text, FlexProps } from '@radix-ui/themes'
+/* eslint-disable no-unsafe-optional-chaining */
+import { Flex, FlexProps, Text } from '@radix-ui/themes'
 import clsx from 'clsx'
 import { forwardRef, useImperativeHandle, useState } from 'react'
 import { Accept, useDropzone } from 'react-dropzone'
@@ -53,7 +54,7 @@ export const FileDrop = forwardRef((props: FileDropProps, ref) => {
     onDrop: (receivedFiles, fileRejections) => {
       onFileChange([
         ...files,
-        ...receivedFiles.map((file) =>
+        ...receivedFiles?.map((file) =>
           Object.assign(file, {
             fileID: file.name + Date.now(),
             uploadProgress: 0
@@ -61,7 +62,7 @@ export const FileDrop = forwardRef((props: FileDropProps, ref) => {
         )
       ])
 
-      if (maxFiles && maxFiles < fileRejections.length) {
+      if (maxFiles && maxFiles < fileRejections?.length) {
         toast.error(`Uh Oh! Maximum ${maxFiles} files can be uploaded. Please try again.`)
       }
     },
@@ -86,7 +87,7 @@ export const FileDrop = forwardRef((props: FileDropProps, ref) => {
     <Flex
       direction='column'
       style={{
-        height: height ?? 'calc(100vh - 80px)'
+        height: height ?? 'calc(100vh - 65px)'
       }}
       width='100%'
       {...getRootProps()}
@@ -94,7 +95,7 @@ export const FileDrop = forwardRef((props: FileDropProps, ref) => {
     >
       {children}
 
-      {(maxFiles === undefined || files.length < maxFiles) && (
+      {(maxFiles === undefined || files?.length < maxFiles) && (
         <Flex
           align='center'
           justify='center'

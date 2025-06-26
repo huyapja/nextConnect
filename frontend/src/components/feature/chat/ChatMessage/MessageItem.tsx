@@ -19,7 +19,7 @@ import { RiPushpinFill, RiRobot2Fill, RiShareForwardFill } from 'react-icons/ri'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useDoubleTap } from 'use-double-tap'
-import { Message, MessageBlock } from '../../../../../../types/Messaging/Message'
+import { Message, MessageBlock, TextMessage } from '../../../../../../types/Messaging/Message'
 import { generateAvatarColor } from '../../selectDropdowns/GenerateAvatarColor'
 import { getStatusText } from '../../userSettings/AvailabilityStatus/SetUserAvailabilityMenu'
 import { LeftRightLayout } from './LeftRightLayout/LeftRightLayout'
@@ -36,6 +36,7 @@ import { ThreadMessage } from './Renderers/ThreadMessage'
 import { TiptapRenderer } from './Renderers/TiptapRenderer/TiptapRenderer'
 import { ReplyMessageBox } from './ReplyMessageBox/ReplyMessageBox'
 import RetractedMessage from './RetractedMessage'
+import { TextMessageBlock } from './Renderers/TextMessage'
 
 interface SeenUser {
   name: string
@@ -57,6 +58,9 @@ interface MessageBlockProps {
   seenUsers: SeenUser[]
   channel: any
   isThinking?: boolean
+  isPending?: boolean
+  removePendingMessage: (id: string) => void
+  sendOnePendingMessage: (id: string) => void
 }
 
 export const MessageItem = React.memo(
@@ -73,7 +77,10 @@ export const MessageItem = React.memo(
     showThreadButton = true,
     seenUsers,
     channel,
-    isThinking = false
+    isThinking = false,
+    isPending,
+    removePendingMessage,
+    sendOnePendingMessage
   }: MessageBlockProps) => {
     const [isEmojiPickerOpen, setEmojiPickerOpen] = useState(false)
     const [selectedText, setSelectedText] = useState('')
@@ -212,6 +219,8 @@ export const MessageItem = React.memo(
       )
     }, [seenUsers, message.creation, currentUser])
 
+    const isSaved = JSON.parse(message._liked_by ? message._liked_by : '[]').includes(currentUser)
+
     return (
       <div ref={messageRef}>
         {CHAT_STYLE === 'Left-Right' ? (
@@ -235,6 +244,9 @@ export const MessageItem = React.memo(
             unseenByOthers={unseenByOthers}
             isThinking={isThinking}
             is_retracted={is_retracted}
+            isPending={isPending}
+            removePendingMessage={removePendingMessage}
+            sendOnePendingMessage={sendOnePendingMessage}
           />
         ) : (
           // Sử dụng layout mặc định nếu không phải 'Left-Right'
@@ -333,13 +345,18 @@ export const MessageItem = React.memo(
                       {/* Hiển thị biểu tượng nếu là tin nhắn được chuyển tiếp */}
                       {message.is_forwarded === 1 && (
                         <Flex className='text-gray-10 text-xs' gap={'1'} align={'center'}>
-                          <RiShareForwardFill size='12' /> forwarded
+                          <RiShareForwardFill size='12' /> Chuyển tiếp
                         </Flex>
                       )}
                       {/* Hiển thị biểu tượng nếu tin nhắn được ghim */}
                       {message.is_pinned === 1 && (
                         <Flex className='text-accent-9 text-xs' gap={'1'} align={'center'}>
-                          <RiPushpinFill size='12' /> Pinned
+                          <RiPushpinFill size='12' /> Ghim
+                        </Flex>
+                      )}
+                      {isSaved && (
+                        <Flex className='text-accent-9 text-xs' gap={'1'} align={'center'}>
+                          <RiPushpinFill size='12' /> Đã gắn cờ
                         </Flex>
                       )}
                       {/* Hiển thị tin nhắn được trả lời nếu có */}
@@ -353,7 +370,13 @@ export const MessageItem = React.memo(
                         />
                       )}
                       {/* Hiển thị nội dung tin nhắn tùy theo loại */}
-                      <MessageContent message={message} user={user} currentUser={currentUser} />
+                      <MessageContent
+                        removePendingMessage={removePendingMessage}
+                        sendOnePendingMessage={sendOnePendingMessage}
+                        message={message}
+                        user={user}
+                        currentUser={currentUser}
+                      />
                       {/* Hiển thị liên kết tài liệu nếu có */}
                       {message.link_doctype && message.link_document && (
                         <Box className={clsx(message.is_continuation ? 'ml-0.5' : '-ml-0.5')}>
@@ -367,24 +390,25 @@ export const MessageItem = React.memo(
                         </Text>
                       )}
                       {/* Hiển thị các reaction của tin nhắn */}
-                      {message_reactions?.length && (
+                      {!isPending && message_reactions?.length && (
                         <MessageReactions message={message} message_reactions={message_reactions} />
                       )}
                       {/* Hiển thị thông tin luồng nếu đây là tin nhắn trong luồng */}
                       {message.is_thread === 1 ? <ThreadMessage thread={message} /> : null}
-
-                      <div className='absolute bottom-0 -right-5'>
-                        <MessageSeenStatus
-                          hasBeenSeen={hasBeenSeen}
-                          channelType={channel?.type}
-                          seenByOthers={seenByOthers}
-                          unseenByOthers={unseenByOthers}
-                          currentUserOwnsMessage={message.owner === currentUser}
-                        />
-                      </div>
+                      {!isPending && (
+                        <div className='absolute bottom-0 -right-5'>
+                          <MessageSeenStatus
+                            hasBeenSeen={hasBeenSeen}
+                            channelType={channel?.type}
+                            seenByOthers={seenByOthers}
+                            unseenByOthers={unseenByOthers}
+                            currentUserOwnsMessage={message.owner === currentUser}
+                          />
+                        </div>
+                      )}
                     </Flex>
                     {/* Hiển thị các hành động nhanh khi hover hoặc mở emoji picker */}
-                    {(isHoveredDebounced || isEmojiPickerOpen) && (
+                    {!isPending && (isHoveredDebounced || isEmojiPickerOpen) && (
                       <QuickActions
                         message={message}
                         onDelete={onDelete}
@@ -701,6 +725,8 @@ type MessageContentProps = BoxProps & {
   currentUser: string | null | undefined // Thống tin người dùng hien tại (tùy chọn)
   message: Message // Đối tượng tin nhắn
   forceHideLinkPreview?: boolean // Có ẩn xem trước liên kết không (tùy chọn, mặc định là false)
+  removePendingMessage: (id: string) => void
+  sendOnePendingMessage: (id: string) => void
 }
 
 /**
@@ -708,37 +734,134 @@ type MessageContentProps = BoxProps & {
  * - Xử lý hiển thị các loại tin nhắn khác nhau: văn bản, hình ảnh, file, khảo sát
  * - Hỗ trợ xem trước liên kết (link preview)
  */
+// export const MessageContent = ({
+//   message,
+//   user,
+//   currentUser,
+//   forceHideLinkPreview = false,
+//   ...props
+// }: MessageContentProps) => {
+//   return (
+//     <Box {...props}>
+//       {/* Hiển thị nội dung văn bản nếu có */}
+//       {message.text ? (
+//         <TiptapRenderer
+//           message={{
+//             ...message, // Giữ nguyên tất cả thuộc tính của tin nhắn
+//             message_type: 'Text' // Đảm bảo loại tin nhắn là Text
+//           }}
+//           user={user} // Thông tin người gửi
+//           currentUser={currentUser} // Thống tin người dùng hien tại
+//           // Quyết định có hiển thị xem trước liên kết không
+//           // Nếu forceHideLinkPreview = true hoặc message.hide_link_preview = true thì ẩn, ngược lại hiển thị
+//           showLinkPreview={forceHideLinkPreview ? false : message.hide_link_preview ? false : true}
+//         />
+//       ) : null}
+
+//       {/* Hiển thị hình ảnh nếu loại tin nhắn là Image */}
+//       {message.message_type === 'Image' && <ImageMessageBlock message={message} user={user} />}
+
+//       {/* Hiển thị file đính kèm nếu loại tin nhắn là File */}
+//       {message.message_type === 'File' && <FileMessageBlock message={message} user={user} />}
+
+//       {/* Hiển thị khảo sát nếu loại tin nhắn là Poll */}
+//       {message.message_type === 'Poll' && <PollMessageBlock message={message} user={user} />}
+//     </Box>
+//   )
+// }
+
+// export const MessageContent = ({
+//   message,
+//   user,
+//   currentUser,
+//   forceHideLinkPreview = false,
+//   ...props
+// }: MessageContentProps) => {
+//   const displayText = message.text || message.content
+
+//   return (
+//     <Box {...props}>
+//       {displayText ? (
+//         <TiptapRenderer
+//           message={{
+//             ...message,
+//             message_type: 'Text',
+//             text: displayText
+//           }}
+//           user={user}
+//           currentUser={currentUser}
+//           showLinkPreview={forceHideLinkPreview ? false : message.hide_link_preview ? false : true}
+//         />
+//       ) : null}
+
+//       {/* {isPending && !displayText && (
+//         <Box className='rounded bg-gray-200 text-gray-500 px-4 py-2 my-1 w-fit min-h-[32px] animate-pulse'>
+//           Đang gửi...
+//         </Box>
+//       )} */}
+
+//       {message.message_type === 'Image' && <ImageMessageBlock message={message} user={user} />}
+
+//       {message.message_type === 'File' && <FileMessageBlock message={message} user={user} />}
+
+//       {message.message_type === 'Poll' && <PollMessageBlock message={message} user={user} />}
+//     </Box>
+//   )
+// }
+
 export const MessageContent = ({
   message,
   user,
   currentUser,
   forceHideLinkPreview = false,
+  removePendingMessage,
+  sendOnePendingMessage,
   ...props
 }: MessageContentProps) => {
+  const displayText =
+    message.message_type === 'File' || message.message_type === 'Image' ? '' : message.text || message.content
+
   return (
     <Box {...props}>
-      {/* Hiển thị nội dung văn bản nếu có */}
-      {message.text ? (
-        <TiptapRenderer
-          message={{
-            ...message, // Giữ nguyên tất cả thuộc tính của tin nhắn
-            message_type: 'Text' // Đảm bảo loại tin nhắn là Text
-          }}
-          user={user} // Thông tin người gửi
-          currentUser={currentUser} // Thống tin người dùng hien tại
-          // Quyết định có hiển thị xem trước liên kết không
-          // Nếu forceHideLinkPreview = true hoặc message.hide_link_preview = true thì ẩn, ngược lại hiển thị
-          showLinkPreview={forceHideLinkPreview ? false : message.hide_link_preview ? false : true}
+      {displayText ? (
+        // <TiptapRenderer
+        //   message={{
+        //     ...message,
+        //     message_type: 'Text',
+        //     text: displayText
+        //   }}
+        //   user={user}
+        //   currentUser={currentUser}
+        //   showLinkPreview={forceHideLinkPreview ? false : message.hide_link_preview ? false : true}
+        //   onRetry={(id) => sendOnePendingMessage(id)}
+        //   onRemove={(id) => removePendingMessage(id)}
+        // />
+        <TextMessageBlock
+          message={message as TextMessage}
+          user={user}
+          onRetry={(id) => sendOnePendingMessage(id)}
+          onRemove={(id) => removePendingMessage(id)}
         />
       ) : null}
 
-      {/* Hiển thị hình ảnh nếu loại tin nhắn là Image */}
-      {message.message_type === 'Image' && <ImageMessageBlock message={message} user={user} />}
+      {message.message_type === 'Image' && (
+        <ImageMessageBlock
+          onRetry={(id) => sendOnePendingMessage(id)}
+          onRemove={(id) => removePendingMessage(id)}
+          message={message}
+          user={user}
+        />
+      )}
 
-      {/* Hiển thị file đính kèm nếu loại tin nhắn là File */}
-      {message.message_type === 'File' && <FileMessageBlock message={message} user={user} />}
+      {message.message_type === 'File' && (
+        <FileMessageBlock
+          onRetry={(id) => sendOnePendingMessage(id)}
+          onRemove={(id) => removePendingMessage(id)}
+          message={message}
+          user={user}
+        />
+      )}
 
-      {/* Hiển thị khảo sát nếu loại tin nhắn là Poll */}
       {message.message_type === 'Poll' && <PollMessageBlock message={message} user={user} />}
     </Box>
   )

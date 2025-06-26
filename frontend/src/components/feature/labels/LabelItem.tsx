@@ -1,59 +1,22 @@
+import { truncateText } from '@/utils/textUtils/truncateText'
+import { useIsMobile, useIsTablet } from '@/hooks/useMediaQuery'
+import { useMemo, useState } from 'react'
+import { HiChevronDown, HiChevronRight } from 'react-icons/hi'
 import { MdLabelOutline } from 'react-icons/md'
-import { HiChevronRight, HiChevronDown } from 'react-icons/hi'
-import LabelItemMenu from './LabelItemMenu'
 import LabelItemList from './LabelItemList'
-import { useState, useMemo } from 'react'
+import LabelItemMenu from './LabelItemMenu'
 import { useEnrichedLabelChannels } from '@/utils/channel/ChannelAtom'
-import useUnreadMessageCount from '@/hooks/useUnreadMessageCount'
 
-interface LabelItemProps {
-  label: string
-  name: string
-  channels: any[]
-}
-
-const LabelItem: React.FC<LabelItemProps> = ({ label, name, channels }) => {
+const LabelItem: React.FC<{ label: string; name: string }> = ({ label, name }) => {
   const [isExpanded, setIsExpanded] = useState(false)
+  const labelChannels = useEnrichedLabelChannels(name)
 
-  const { unread_count } = useUnreadMessageCount()
-
-  // Map từ channel_id → unread_count item
-  const unreadMap = useMemo(() => {
-    const map = new Map<string, { unread_count: number; last_message_content?: string }>()
-    unread_count?.message?.forEach((item) => {
-      map.set(item.name, {
-        unread_count: item.unread_count,
-        last_message_content: item.last_message_content
-      })
-    })
-    return map
-  }, [unread_count])
-
-  // Hợp nhất mảng mới
-  const mergedChannels = useMemo(() => {
-    return channels.map((ch) => {
-      const unreadItem = unreadMap.get(ch.channel_id)
-
-      return {
-        channel_id: ch.channel_id,
-        channel_name: ch.channel_name,
-        is_direct_message: ch.is_direct_message,
-        unread_count: unreadItem?.unread_count ?? 0,
-        last_message_content: unreadItem?.last_message_content ?? ''
-      }
-    })
-  }, [channels, unreadMap])
-
-  // Tổng số unread_count của các channel trong label
-  const totalCount = useMemo(() => {
-    return channels.reduce((sum, ch) => {
-      const unreadItem = unreadMap.get(ch.channel_id)
-      const count = unreadItem?.unread_count ?? 0
-      return sum + count
-    }, 0)
-  }, [channels, unreadMap])
+  const totalCount = useMemo(() => labelChannels.reduce((sum, ch) => sum + (ch.unread_count ?? 0), 0), [labelChannels])
 
   const toggle = () => setIsExpanded((prev) => !prev)
+  const isTablet = useIsTablet()
+  const isMobile = useIsMobile()
+  const maxLength = isTablet || isMobile ? 18 : 20
 
   return (
     <div className='space-y-1'>
@@ -66,30 +29,37 @@ const LabelItem: React.FC<LabelItemProps> = ({ label, name, channels }) => {
               <HiChevronRight className='w-4 h-4 text-gray-11 shrink-0' />
             )}
             <MdLabelOutline className='w-4 h-4 text-gray-11 shrink-0' />
-            <span>{label}</span>
-
-            {/* ✅ Chỉ hiển thị totalUnread nếu chưa expand */}
+            <span className='truncate'>{truncateText(label, maxLength)}</span>
             {!isExpanded && totalCount > 0 && (
               <span className='ml-auto bg-red-500 text-white text-[10px] rounded-full w-[18px] h-[18px] flex items-center justify-center'>
-                {totalCount > 10 ? '9+' : totalCount}
+                {totalCount > 99 ? '99+' : totalCount}
               </span>
             )}
           </div>
         </div>
 
-        {/* ✅ Chỉ hiện menu khi đã expand hoặc không có unread */}
-        {!(totalCount > 0 && !isExpanded) && <LabelItemMenu name={name} label={label} />}
+        {!(totalCount > 0 && !isExpanded) && (
+          <LabelItemMenu
+            channels={labelChannels.map((ch) => ({
+              channel_id: ch.name,
+              channel_name: ch.channel_name,
+              is_direct_message: ch.is_direct_message === 1
+            }))}
+            name={name}
+            label={label}
+          />
+        )}
       </div>
 
-      {isExpanded && mergedChannels.length > 0 && (
+      {isExpanded && labelChannels?.length > 0 && (
         <div className='ml-4 space-y-1'>
-          {mergedChannels.map((channel) => (
+          {labelChannels?.map((channel) => (
             <LabelItemList
-              key={channel.channel_id}
-              channelID={channel.channel_id}
+              key={channel.name}
+              channelID={channel.name}
               channelName={channel.channel_name}
               labelID={name}
-              isDirectMessage={channel.is_direct_message}
+              isDirectMessage={channel.is_direct_message === 1}
               unreadCount={channel.unread_count}
             />
           ))}

@@ -1,21 +1,9 @@
-import { useCurrentEditor } from '@tiptap/react'
-import {
-  BiBold,
-  BiCodeAlt,
-  BiCodeBlock,
-  BiHighlight,
-  BiItalic,
-  BiListOl,
-  BiListUl,
-  BiStrikethrough,
-  BiUnderline,
-  BiSolidQuoteAltRight,
-  BiTime
-} from 'react-icons/bi'
-import { DEFAULT_BUTTON_STYLE, ICON_PROPS } from './ToolPanel'
-import { Box, Flex, IconButton, Separator, Tooltip } from '@radix-ui/themes'
 import { getKeyboardMetaKeyString } from '@/utils/layout/keyboardKey'
+import { Box, Flex, IconButton, Separator, Tooltip } from '@radix-ui/themes'
+import { useCurrentEditor } from '@tiptap/react'
 import { memo } from 'react'
+import { BiBold, BiItalic, BiListOl, BiListUl, BiSolidQuoteAltRight, BiUnderline } from 'react-icons/bi'
+import { DEFAULT_BUTTON_STYLE, ICON_PROPS } from './ToolPanel'
 
 export const TextFormattingMenu = memo(() => {
   const { editor } = useCurrentEditor()
@@ -119,8 +107,8 @@ export const TextFormattingMenu = memo(() => {
           </IconButton>
         </Tooltip>
       </Flex>
-      <Separator orientation='vertical' />
-      <Flex gap='3' align='center'>
+      {/* <Separator orientation='vertical' /> */}
+      {/* <Flex gap='3' align='center'>
         <Tooltip
           content={getKeyboardMetaKeyString() + ' + Shift + H'}
           aria-label={getKeyboardMetaKeyString() + ' + Shift + H'}
@@ -137,103 +125,103 @@ export const TextFormattingMenu = memo(() => {
             <BiHighlight {...ICON_PROPS} />
           </IconButton>
         </Tooltip>
-      </Flex>
-      <TimestampButton />
+      </Flex> */}
+      {/* <TimestampButton /> */}
     </Flex>
   )
 })
 
-const TimestampButton = () => {
-  const { editor } = useCurrentEditor()
+// const TimestampButton = () => {
+//   const { editor } = useCurrentEditor()
 
-  const parseDates = async (content: string): Promise<string> => {
-    let parsedContent = content
+//   const parseDates = async (content: string): Promise<string> => {
+//     let parsedContent = content
 
-    // Lazy import chrono-node
-    const chrono = await import('chrono-node')
+//     // Lazy import chrono-node
+//     const chrono = await import('chrono-node')
 
-    const parsedDates = chrono.parse(parsedContent, undefined, {
-      forwardDate: true
-    })
+//     const parsedDates = chrono.parse(parsedContent, undefined, {
+//       forwardDate: true
+//     })
 
-    // Sort parsedDates in reverse order based on their index. This is to ensure that we replace from the end to preserve the indices of the replaced strings.
-    parsedDates.sort((a, b) => b.index - a.index)
+//     // Sort parsedDates in reverse order based on their index. This is to ensure that we replace from the end to preserve the indices of the replaced strings.
+//     parsedDates.sort((a, b) => b.index - a.index)
 
-    parsedDates.forEach((date) => {
-      // Ignore if neither hour, minute, or date is certain
-      if (!date.start.isCertain('hour') && !date.start.isCertain('minute') && !date.start.isCertain('day')) {
-        return
-      }
+//     parsedDates?.forEach((date) => {
+//       // Ignore if neither hour, minute, or date is certain
+//       if (!date.start.isCertain('hour') && !date.start.isCertain('minute') && !date.start.isCertain('day')) {
+//         return
+//       }
 
-      const hasStartTime = date.start.isCertain('hour') && date.start.isCertain('minute')
+//       const hasStartTime = date.start.isCertain('hour') && date.start.isCertain('minute')
 
-      const startTime: number = date.start.date().getTime()
+//       const startTime: number = date.start.date().getTime()
 
-      const endTime: number | null = date.end?.date().getTime() ?? null
+//       const endTime: number | null = date.end?.date().getTime() ?? null
 
-      const hasEndTime = endTime ? date.end?.isCertain('hour') && date.end?.isCertain('minute') : false
+//       const hasEndTime = endTime ? date.end?.isCertain('hour') && date.end?.isCertain('minute') : false
 
-      // Replace the text with a span containing the timestamp after the given "index")
-      const index = date.index
-      const text = date.text
+//       // Replace the text with a span containing the timestamp after the given "index")
+//       const index = date.index
+//       const text = date.text
 
-      let attributes = ''
-      if (startTime) attributes += `data-timestamp-start="${startTime}"`
+//       let attributes = ''
+//       if (startTime) attributes += `data-timestamp-start="${startTime}"`
 
-      if (endTime) attributes += ` data-timestamp-end="${endTime}"`
+//       if (endTime) attributes += ` data-timestamp-end="${endTime}"`
 
-      if (!hasStartTime) {
-        attributes += ' data-timestamp-start-all-day="true"'
-      }
+//       if (!hasStartTime) {
+//         attributes += ' data-timestamp-start-all-day="true"'
+//       }
 
-      if (!hasEndTime) {
-        attributes += ' data-timestamp-end-all-day="true"'
-      }
+//       if (!hasEndTime) {
+//         attributes += ' data-timestamp-end-all-day="true"'
+//       }
 
-      parsedContent =
-        parsedContent.slice(0, index) +
-        `<span class="timestamp" ${attributes}">${text}</span>` +
-        parsedContent.slice(index + text.length)
-    })
-    return parsedContent
-  }
+//       parsedContent =
+//         parsedContent.slice(0, index) +
+//         `<span class="timestamp" ${attributes}">${text}</span>` +
+//         parsedContent.slice(index + text?.length)
+//     })
+//     return parsedContent
+//   }
 
-  const onClick = async () => {
-    if (editor) {
-      // Check if editor has selected text
-      const { from, to, replaceWith, empty } = editor.state.selection
+//   const onClick = async () => {
+//     if (editor) {
+//       // Check if editor has selected text
+//       const { from, to, replaceWith, empty } = editor.state.selection
 
-      if (empty) {
-        const content = editor.getHTML()
-        const parsedContent = await parseDates(content)
-        editor.chain().focus().setContent(parsedContent).run()
-      } else {
-        const selectedText = editor.view.state.doc.textBetween(from, to, ' ')
-        const parsedContent = await parseDates(selectedText)
+//       if (empty) {
+//         const content = editor.getHTML()
+//         const parsedContent = await parseDates(content)
+//         editor.chain().focus().setContent(parsedContent).run()
+//       } else {
+//         const selectedText = editor.view.state.doc.textBetween(from, to, ' ')
+//         const parsedContent = await parseDates(selectedText)
 
-        // Replace only the selected text with the parsed content
-        editor.chain().focus().deleteSelection().insertContent(parsedContent).run()
-      }
-    }
-  }
+//         // Replace only the selected text with the parsed content
+//         editor.chain().focus().deleteSelection().insertContent(parsedContent).run()
+//       }
+//     }
+//   }
 
-  if (!editor) {
-    return <Box></Box>
-  }
+//   if (!editor) {
+//     return <Box></Box>
+//   }
 
-  return (
-    <Flex gap='3' align='center'>
-      <IconButton
-        aria-label='Parse timestamps from message'
-        onClick={onClick}
-        title='Parse timestamps from message'
-        variant='ghost'
-        size='1'
-        className={DEFAULT_BUTTON_STYLE}
-        disabled={!editor.can().chain().focus().run()}
-      >
-        <BiTime {...ICON_PROPS} />
-      </IconButton>
-    </Flex>
-  )
-}
+//   return (
+//     <Flex gap='3' align='center'>
+//       <IconButton
+//         aria-label='Parse timestamps from message'
+//         onClick={onClick}
+//         title='Parse timestamps from message'
+//         variant='ghost'
+//         size='1'
+//         className={DEFAULT_BUTTON_STYLE}
+//         disabled={!editor.can().chain().focus().run()}
+//       >
+//         <BiTime {...ICON_PROPS} />
+//       </IconButton>
+//     </Flex>
+//   )
+// }

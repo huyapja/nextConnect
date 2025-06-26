@@ -1,7 +1,8 @@
 // atoms/sortedChannelsAtom.ts
 import { atom, useAtomValue, useSetAtom } from 'jotai'
-import { useUnreadCount } from '../layout/sidebar'
 import { useMemo } from 'react'
+import { useUnreadCount } from '../layout/sidebar'
+import { channelIsDoneAtom } from './channelIsDoneAtom'
 
 export type ChannelWithGroupType = {
   name: string
@@ -12,12 +13,13 @@ export type ChannelWithGroupType = {
   [key: string]: any
 }
 
-// Danh sách đầy đủ các channel (cả group và DM)
+export type LabelType = { label_id: string; label: string }
+
+export const overrideLabelsAtom = atom<Map<string, LabelType[]>>(new Map())
+
 export const sortedChannelsAtom = atom<ChannelWithGroupType[]>([])
+export const sortedChannelsLoadingAtom = atom<boolean>(false)
 
-// Không cần doneListAtom vì đã có is_done
-
-// Action để cập nhật sortedChannelsAtom một cách an toàn
 export const setSortedChannelsAtom = atom(
   null,
   (get, set, next: ChannelWithGroupType[] | ((prev: ChannelWithGroupType[]) => ChannelWithGroupType[])) => {
@@ -28,81 +30,126 @@ export const setSortedChannelsAtom = atom(
   }
 )
 
-// Hàm chuẩn bị dữ liệu ban đầu (channel + dm)
-export const prepareSortedChannels = (channels: any[], dm_channels: any[]): ChannelWithGroupType[] => {
+export const setSortedChannelsLoadingAtom = atom(null, (get, set, next: boolean) => {
+  set(sortedChannelsLoadingAtom, next)
+})
+
+export const prepareSortedChannels = (
+  channels: any[],
+  dm_channels: any[],
+  currentChannelIsDone: Record<string, number> = {}
+): ChannelWithGroupType[] => {
   return [
-    ...channels.map((channel) => ({
+    ...(channels ?? []).map((channel) => ({
       ...channel,
       group_type: 'channel' as const,
-      is_done: channel.is_done ?? 0,
+      is_done: Object.prototype.hasOwnProperty.call(currentChannelIsDone, channel.name)
+        ? currentChannelIsDone[channel.name]
+        : typeof channel.is_done === 'number'
+          ? channel.is_done
+          : 0,
       user_labels: channel.user_labels ?? []
     })),
-    ...dm_channels.map((dm) => ({
+    ...(dm_channels ?? []).map((dm) => ({
       ...dm,
       group_type: 'dm' as const,
-      is_done: dm.is_done ?? 0,
+      is_done: Object.prototype.hasOwnProperty.call(currentChannelIsDone, dm.name)
+        ? currentChannelIsDone[dm.name]
+        : typeof dm.is_done === 'number'
+          ? dm.is_done
+          : 0,
       user_labels: dm.user_labels ?? []
     }))
   ].sort((a, b) => {
-    const timeA = new Date(a.last_message_timestamp || 0).getTime()
-    const timeB = new Date(b.last_message_timestamp || 0).getTime()
+    const getTimestamp = (item: any) => {
+      const lastMsg = item.last_message_timestamp ? new Date(item.last_message_timestamp).getTime() : 0
+      const creation = item.creation ? new Date(item.creation).getTime() : 0
+      return lastMsg > 0 ? lastMsg : creation
+    }
+
+    const timeA = getTimestamp(a)
+    const timeB = getTimestamp(b)
+
     return timeB - timeA
   })
 }
 
-// Hook để lấy danh sách channel chưa done
-export const useEnrichedChannels = (): ChannelWithGroupType[] => {
+export const useEnrichedSortedChannels = (filter?: 0 | 1 | string) => {
   const channels = useAtomValue(sortedChannelsAtom)
+  const channelIsDone = useAtomValue(channelIsDoneAtom)
   const unreadList = useUnreadCount().message || []
+  const overrideLabels = useAtomValue(overrideLabelsAtom)
 
   const enriched = useMemo(() => {
-    // Chỉ lọc theo is_done
-    const filteredChannels = channels.filter((channel) => channel.is_done === 0)
+    return channels
+      ?.map((channel) => {
+        const resolvedIsDone = Object.prototype.hasOwnProperty.call(channelIsDone, channel.name)
+          ? channelIsDone[channel.name]
+          : channel.is_done
 
-    return filteredChannels.map((channel) => {
-      const unread = unreadList.find((u) => u.name === channel.name)
+        const unread = unreadList.find((u) => u.name === channel.name)
+        const override = overrideLabels.get(channel.name)
 
-      return {
-        ...channel,
-        unread_count: unread?.unread_count ?? channel.unread_count ?? 0,
-        last_message_content: unread?.last_message_content ?? channel.last_message_content,
-        last_message_sender_name: unread?.last_message_sender_name ?? channel.last_message_sender_name,
-        user_labels: channel.user_labels ?? []
-      }
-    })
-  }, [channels, unreadList])
+        return {
+          ...channel,
+          is_done: resolvedIsDone,
+          unread_count: unread?.unread_count ?? channel.unread_count ?? 0,
+          last_message_content: unread?.last_message_content ?? channel.last_message_content,
+          last_message_sender_name: unread?.last_message_sender_name ?? channel.last_message_sender_name,
+          user_labels: override ?? channel.user_labels ?? []
+        }
+      })
+      .filter((channel) => {
+        if (typeof filter === 'string') {
+          return Array.isArray(channel.user_labels) && channel.user_labels.some((l) => l.label_id === filter)
+        }
+
+        if (filter === 0) return channel.is_done === 0
+        if (filter === 1) return channel.is_done === 1
+
+        return true
+      })
+  }, [channels, channelIsDone, unreadList, overrideLabels, filter])
 
   return enriched
 }
 
-export const useEnrichedLabelChannels = (): ChannelWithGroupType[] => {
+export const useEnrichedLabelChannels = (labelID: string): ChannelWithGroupType[] => {
   const channels = useAtomValue(sortedChannelsAtom)
   const unreadList = useUnreadCount().message || []
+  const overrideLabels = useAtomValue(overrideLabelsAtom)
 
   const enriched = useMemo(() => {
-    return channels.map((channel) => {
-      const unread = unreadList.find((u) => u.name === channel.name)
+    return channels
+      ?.map((channel) => {
+        const unread = unreadList.find((u) => u.name === channel.name)
+        const override = overrideLabels.get(channel.name)
 
-      return {
-        ...channel,
-        unread_count: unread?.unread_count ?? channel.unread_count ?? 0,
-        last_message_content: unread?.last_message_content ?? channel.last_message_content,
-        last_message_sender_name: unread?.last_message_sender_name ?? channel.last_message_sender_name,
-        user_labels: channel.user_labels ?? []
-      }
-    })
-  }, [channels, unreadList])
+        const user_labels = override ?? channel.user_labels ?? []
+
+        return {
+          ...channel,
+          unread_count: unread?.unread_count ?? channel.unread_count ?? 0,
+          last_message_content: unread?.last_message_content ?? channel.last_message_content,
+          last_message_sender_name: unread?.last_message_sender_name ?? channel.last_message_sender_name,
+          user_labels
+        }
+      })
+      .filter(
+        (channel) => Array.isArray(channel.user_labels) && channel.user_labels.some((l) => l.label_id === labelID)
+      )
+  }, [channels, unreadList, overrideLabels, labelID])
 
   return enriched
 }
 
-// Hook update label
 export const useUpdateChannelLabels = () => {
   const setSortedChannels = useSetAtom(sortedChannelsAtom)
+  const setOverrideLabels = useSetAtom(overrideLabelsAtom)
 
-  const updateChannelLabels = (channelID: string, updateFn: (prevLabels: string[]) => string[]) => {
+  const updateChannelLabels = (channelID: string, updateFn: (prevLabels: LabelType[]) => LabelType[]) => {
     setSortedChannels((prev) =>
-      prev.map((channel) =>
+      prev?.map((channel) =>
         channel.name === channelID
           ? {
               ...channel,
@@ -113,17 +160,98 @@ export const useUpdateChannelLabels = () => {
     )
   }
 
-  const addLabelToChannel = (channelID: string, newLabelID: string) => {
-    updateChannelLabels(channelID, (prev) => [...new Set([...prev, newLabelID])])
+  const addLabelToChannel = (channelID: string, newLabel: LabelType) => {
+    updateChannelLabels(channelID, (prev) => {
+      if (prev.some((l) => l.label_id === newLabel.label_id)) return prev
+      return [...prev, newLabel]
+    })
+
+    setOverrideLabels((prev) => {
+      const newMap = new Map(prev)
+      const current = newMap.get(channelID) || []
+      if (!current.some((l) => l.label_id === newLabel.label_id)) {
+        newMap.set(channelID, [...current, newLabel])
+      }
+      return newMap
+    })
   }
 
-  const removeLabelFromChannel = (channelID: string, labelID: string) => {
-    updateChannelLabels(channelID, (prev) => prev.filter((id) => id !== labelID))
+  const removeLabelFromChannel = (channelID: string | '*', labelID: string) => {
+    if (channelID === '*') {
+      // ✅ Xoá label khỏi tất cả các channel
+      setSortedChannels((prev) =>
+        prev?.map((channel) => {
+          if (!Array.isArray(channel.user_labels)) return channel
+          const updatedLabels = channel.user_labels.filter((l) => l.label_id !== labelID)
+          return {
+            ...channel,
+            user_labels: updatedLabels
+          }
+        })
+      )
+
+      // ✅ Update overrideLabelsAtom
+      setOverrideLabels((prev) => {
+        const newMap = new Map(prev)
+        newMap.forEach((labels, chID) => {
+          const filtered = labels.filter((l) => l.label_id !== labelID)
+          if (filtered.length > 0) {
+            newMap.set(chID, filtered)
+          } else {
+            newMap.delete(chID)
+          }
+        })
+        return newMap
+      })
+    } else {
+      // ✅ Update sortedChannelsAtom
+      updateChannelLabels(channelID, (prev) => prev.filter((l) => l.label_id !== labelID))
+
+      // ✅ Update overrideLabelsAtom
+      setOverrideLabels((prev) => {
+        const newMap = new Map(prev)
+        const current = newMap.get(channelID) || []
+        const filtered = current.filter((l) => l.label_id !== labelID)
+        if (filtered.length > 0) {
+          newMap.set(channelID, filtered)
+        } else {
+          newMap.delete(channelID)
+        }
+        return newMap
+      })
+    }
+  }
+
+  const renameLabel = (oldLabelID: string, newLabel: string) => {
+    setSortedChannels((prev) =>
+      prev?.map((channel) => {
+        if (!Array.isArray(channel.user_labels)) return channel
+        const updatedLabels = channel.user_labels.map((l) =>
+          l.label_id === oldLabelID ? { ...l, label: newLabel } : l
+        )
+        return {
+          ...channel,
+          user_labels: updatedLabels
+        }
+      })
+    )
+
+    setOverrideLabels((prev) => {
+      const newMap = new Map(prev)
+      newMap.forEach((labels, channelID) => {
+        newMap.set(
+          channelID,
+          labels.map((l) => (l.label_id === oldLabelID ? { ...l, label: newLabel } : l))
+        )
+      })
+      return newMap
+    })
   }
 
   return {
     updateChannelLabels,
     addLabelToChannel,
-    removeLabelFromChannel
+    removeLabelFromChannel,
+    renameLabel
   }
 }

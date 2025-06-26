@@ -1,16 +1,20 @@
-import { Flex, Dialog, IconButton, Box, Button, VisuallyHidden } from '@radix-ui/themes'
-import { Suspense } from 'react'
-import { BiX } from 'react-icons/bi'
-import { Message } from '../../../../../../../types/Messaging/Message'
-import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
-import { UserFields } from '@/utils/users/UserListProvider'
-import { Controller, FormProvider, useForm } from 'react-hook-form'
-import { toast } from 'sonner'
-import UsersOrChannelsDropdown from '@/components/feature/selectDropdowns/UsersOrChannelsDropdown'
 import { ErrorText } from '@/components/common/Form'
 import { Loader } from '@/components/common/Loader'
-import { useFrappePostCall } from 'frappe-react-sdk'
+import UsersOrChannelsDropdown from '@/components/feature/selectDropdowns/UsersOrChannelsDropdown'
 import { ErrorBanner } from '@/components/layout/AlertBanner/ErrorBanner'
+import {
+  ChannelListItem,
+  useUpdateLastMessageDetails,
+  useUpdateLastMessageInChannelList
+} from '@/utils/channel/ChannelListProvider'
+import { UserFields } from '@/utils/users/UserListProvider'
+import { Box, Button, Dialog, Flex, IconButton, VisuallyHidden } from '@radix-ui/themes'
+import { useFrappePostCall } from 'frappe-react-sdk'
+import { Suspense } from 'react'
+import { Controller, FormProvider, useForm } from 'react-hook-form'
+import { BiX } from 'react-icons/bi'
+import { toast } from 'sonner'
+import { Message } from '../../../../../../../types/Messaging/Message'
 
 interface ForwardMessageModalProps {
   onClose: () => void
@@ -34,6 +38,9 @@ const ForwardMessageModal = ({ onClose, message }: ForwardMessageModalProps) => 
 
   const { call, error, loading } = useFrappePostCall('raven.api.raven_message.forward_message')
 
+  const { updateLastMessageForChannel } = useUpdateLastMessageDetails()
+  const { updateLastMessageInChannelList } = useUpdateLastMessageInChannelList()
+
   const onSubmit = (data: ForwardMessageForm) => {
     if (data.selected_options && data.selected_options.length > 0) {
       call({
@@ -41,11 +48,32 @@ const ForwardMessageModal = ({ onClose, message }: ForwardMessageModalProps) => 
         forwarded_message: data.message
       })
         .then(() => {
-          toast.success('Message forwarded successfully!')
+          data.selected_options!.forEach((receiver) => {
+            let channelID = ''
+
+            if (receiver.type === 'User') {
+              channelID = (receiver as any).channel_id
+            } else {
+              channelID = receiver.name
+            }
+
+            const timestamp = new Date().toISOString()
+
+            const messageDetails = {
+              message_id: message.name,
+              content: message.text || '',
+              owner: message.owner
+            }
+
+            updateLastMessageInChannelList(channelID, timestamp, messageDetails)
+            updateLastMessageForChannel(channelID, messageDetails, timestamp)
+          })
+
+          toast.success('Chuyển tiếp tin nhắn thành công')
           handleClose()
         })
         .catch(() => {
-          toast.error('Failed to forward message')
+          toast.error('Chuyển tiếp tin nhắn thất bại')
         })
     }
   }
@@ -59,9 +87,9 @@ const ForwardMessageModal = ({ onClose, message }: ForwardMessageModalProps) => 
     <FormProvider {...methods}>
       <form onSubmit={handleSubmit(onSubmit)}>
         <Flex justify={'between'}>
-          <Dialog.Title>Forward Message</Dialog.Title>
+          <Dialog.Title>Chuyển tiếp tin nhắn</Dialog.Title>
           <VisuallyHidden>
-            <Dialog.Description>Forward message to a user or channel</Dialog.Description>
+            <Dialog.Description>Chuyển tiếp tin nhắn đến người dùng hoặc nhóm chat</Dialog.Description>
           </VisuallyHidden>
           <Dialog.Close onClick={handleClose}>
             <IconButton size='1' variant='soft' color='gray'>
@@ -80,7 +108,7 @@ const ForwardMessageModal = ({ onClose, message }: ForwardMessageModalProps) => 
                   name='selected_options'
                   rules={{
                     validate: (value) => {
-                      if (value && value.length > 0) {
+                      if (value && value?.length > 0) {
                         return true
                       }
                       return 'Please select at least one member'
@@ -104,7 +132,7 @@ const ForwardMessageModal = ({ onClose, message }: ForwardMessageModalProps) => 
           </Dialog.Close>
           <Button type='submit' disabled={loading}>
             {loading && <Loader className='text-white' />}
-            {loading ? 'Sending' : 'Send'}
+            {loading ? 'Đang gửi' : 'Gửi'}
           </Button>
         </Flex>
       </form>

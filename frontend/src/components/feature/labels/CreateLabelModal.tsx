@@ -1,34 +1,43 @@
-import { useEffect, useRef, useState } from 'react'
-import { FiPlus } from 'react-icons/fi'
-import { Dialog } from '@radix-ui/themes'
-import { useIsDesktop } from '@/hooks/useMediaQuery'
-import { Box, Button, Flex, IconButton, TextField } from '@radix-ui/themes'
-import { Drawer, DrawerContent, DrawerTrigger } from '@/components/layout/Drawer'
-import { toast } from 'sonner'
-import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { Label } from '@/components/common/Form'
+import { Drawer, DrawerContent, DrawerTrigger } from '@/components/layout/Drawer'
+import { useIsDesktop } from '@/hooks/useMediaQuery'
+import { Box, Button, Dialog, Flex, IconButton, TextField } from '@radix-ui/themes'
 import { useFrappePostCall } from 'frappe-react-sdk'
+import { useAtom, useSetAtom } from 'jotai'
+import { useEffect, useRef } from 'react'
+import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { IoMdClose } from 'react-icons/io'
-import { useSetAtom } from 'jotai'
-import { refreshLabelListAtom } from './conversations/atoms/labelAtom'
+import { toast } from 'sonner'
+import { labelListAtom } from './conversations/atoms/labelAtom'
+import { atom } from 'jotai'
+import { FiPlus } from 'react-icons/fi'
+import { useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
+
+export const createLabelModalAtom = atom<{
+  isOpen: boolean
+  addUserToLabel?: boolean
+  selectedChannel?: string
+}>({
+  isOpen: false
+})
 
 interface CreateLabelForm {
   label: string
 }
 
 const DIALOG_CONTENT_CLASS =
-  'z-[300] bg-white dark:bg-gray-900 rounded-xl p-6 shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto'
+  'z-[300] bg-white dark:bg-gray-900 rounded-xl p-6 shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto'
 
 export const CreateLabelButton = () => {
-  const [isOpen, setIsOpen] = useState(false)
+  const [modalState, setModalState] = useAtom(createLabelModalAtom)
+  const { isOpen } = modalState
   const isDesktop = useIsDesktop()
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  // Close when clicking outside content (desktop only)
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       if (dialogRef.current && !dialogRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
+        setModalState((prev) => ({ ...prev, isOpen: false }))
       }
     }
 
@@ -36,18 +45,21 @@ export const CreateLabelButton = () => {
       document.addEventListener('mousedown', handleOutsideClick)
       return () => document.removeEventListener('mousedown', handleOutsideClick)
     }
-  }, [isOpen, isDesktop])
+  }, [isOpen, isDesktop, setModalState])
 
   const handleChangeOpen = (open: boolean) => {
-    if (!open) setIsOpen(open)
+    if (!open) setModalState((prev) => ({ ...prev, isOpen: false }))
+  }
+
+  const openModal = () => {
+    setModalState((prev) => ({ ...prev, isOpen: true }))
   }
 
   if (isDesktop) {
     return (
       <>
-        {/* Button mở modal */}
         <IconButton
-          onClick={() => setIsOpen(true)}
+          onClick={openModal}
           variant='soft'
           size='1'
           radius='large'
@@ -59,24 +71,20 @@ export const CreateLabelButton = () => {
           <FiPlus size='16' />
         </IconButton>
 
-        {/* Modal desktop */}
         <Dialog.Root open={isOpen} onOpenChange={handleChangeOpen}>
           <Dialog.Content ref={dialogRef} className={DIALOG_CONTENT_CLASS}>
-            <CreateLabelContent isOpen={isOpen} setIsOpen={setIsOpen} />
+            <CreateLabelContent />
           </Dialog.Content>
         </Dialog.Root>
       </>
     )
   }
 
-  // Drawer cho mobile
   return (
-    <Drawer open={isOpen} onOpenChange={setIsOpen}>
+    <Drawer open={isOpen} onOpenChange={(open) => setModalState((prev) => ({ ...prev, isOpen: open }))}>
       <DrawerTrigger asChild>
         <IconButton
-          onClick={() => {
-            setTimeout(() => setIsOpen(true), 50) // Cho phép Drawer hoàn tất mở trước
-          }}
+          onClick={() => setTimeout(openModal, 50)}
           variant='soft'
           size='1'
           radius='large'
@@ -85,23 +93,22 @@ export const CreateLabelButton = () => {
           title='Tạo nhãn'
           className='transition-all ease-ease text-gray-10 bg-transparent hover:bg-gray-3 hover:text-gray-12'
         >
-          <FiPlus size='16' />
+          <FiPlus size='14' />
         </IconButton>
       </DrawerTrigger>
       <DrawerContent>
         <div className='pb-16 overflow-y-scroll min-h-96'>
-          <CreateLabelContent isOpen={isOpen} setIsOpen={setIsOpen} />
+          <CreateLabelContent />
         </div>
       </DrawerContent>
     </Drawer>
   )
 }
 
-export const CreateLabelContent = ({ setIsOpen }: { isOpen: boolean; setIsOpen: (v: boolean) => void }) => {
-  const methods = useForm<CreateLabelForm>({
-    defaultValues: { label: '' }
-  })
-
+export const CreateLabelContent = () => {
+  const [modalState, setModalState] = useAtom(createLabelModalAtom)
+  const { addUserToLabel, selectedChannel } = modalState
+  const methods = useForm<CreateLabelForm>({ defaultValues: { label: '' } })
   const {
     handleSubmit,
     control,
@@ -111,17 +118,52 @@ export const CreateLabelContent = ({ setIsOpen }: { isOpen: boolean; setIsOpen: 
   } = methods
 
   const labelValue = watch('label') || ''
-  const { call, loading } = useFrappePostCall('raven.api.user_label.create_label')
 
-  const setRefreshKey = useSetAtom(refreshLabelListAtom)
+  const { call: callCreateLabel, loading: loadingCreateLabel } = useFrappePostCall('raven.api.user_label.create_label')
+  const { call: callCreateOrAssignLabel, loading: loadingAssignLabel } = useFrappePostCall(
+    'raven.api.user_channel_label.create_or_assign_label'
+  )
+  const call = addUserToLabel ? callCreateOrAssignLabel : callCreateLabel
+  const loading = addUserToLabel ? loadingAssignLabel : loadingCreateLabel
+
+  const setLabelList = useSetAtom(labelListAtom)
+  const { addLabelToChannel } = useUpdateChannelLabels()
 
   const onSubmit = async (data: CreateLabelForm) => {
     try {
-      await call({ label: data.label.trim() })
-      toast.success('Đã tạo nhãn')
-      reset()
-      setIsOpen(false)
-      setRefreshKey((prev) => prev + 1)
+      const label_name = data.label.trim()
+      const payload = addUserToLabel
+        ? {
+            label: label_name,
+            channel_ids: JSON.stringify([selectedChannel])
+          }
+        : { label: label_name }
+
+      const res = await call(payload)
+
+      if (res?.status === 'error') {
+        toast.error(res.message || 'Không thể tạo nhãn')
+        return
+      }
+
+      const label_id = res?.message?.label_id
+
+      if (label_id) {
+        if (modalState.selectedChannel) {
+          await addLabelToChannel(modalState.selectedChannel, {
+            label_id,
+            label: label_name
+          })
+        }
+
+        setLabelList((prev) => [...prev, { label_id, label: label_name, channels: [] }])
+        toast.success('Đã tạo nhãn')
+        reset()
+        setModalState((prev) => ({ ...prev, isOpen: false }))
+      } else {
+        toast.error('Không thể tạo nhãn')
+        console.error('API không trả label_id:', res)
+      }
     } catch (err) {
       console.error(err)
       toast.error('Không thể tạo nhãn')
@@ -160,31 +202,41 @@ export const CreateLabelContent = ({ setIsOpen }: { isOpen: boolean; setIsOpen: 
             control={control}
             rules={{
               required: 'Vui lòng nhập tên nhãn',
-              maxLength: { value: 50, message: 'Tên nhãn không quá 50 ký tự' }
+              maxLength: { value: 60, message: 'Tên nhãn không quá 60 ký tự' }
             }}
             render={({ field, fieldState: { error } }) => (
-              <TextField.Root
-                id='label'
-                placeholder='Vui lòng nhập tên nhãn'
-                required
-                color={error ? 'red' : undefined}
-                {...field}
-              />
+              <>
+                <TextField.Root
+                  id='label'
+                  placeholder='Vui lòng nhập tên nhãn'
+                  required
+                  color={error ? 'red' : undefined}
+                  maxLength={60}
+                  {...field}
+                />
+                <Flex justify='between' mt='1'>
+                  {errors.label ? (
+                    <div className='text-red-500 text-sm'>{errors.label.message}</div>
+                  ) : (
+                    <div className='text-transparent text-sm'>Ẩn</div>
+                  )}
+                  <div className='text-sm text-gray-500'>{labelValue?.length}/60</div>
+                </Flex>
+              </>
             )}
           />
-          {errors.label && <div className='text-red-500 text-sm pt-1'>{errors.label.message}</div>}
         </Box>
 
-        <Flex justify='between' align='center'>
+        <Flex justify='end' align='center'>
           <Flex gap='3' align='center'>
-            <Button className='cursor-pointer' type='submit' size='2' disabled={loading}>
-              Tạo
-            </Button>
             <Dialog.Close>
-              <Button className='cursor-pointer' variant='ghost' type='button' size='2'>
+              <Button className='cursor-pointer' variant='soft' type='button' size='2'>
                 Hủy bỏ
               </Button>
             </Dialog.Close>
+            <Button className='cursor-pointer' type='submit' size='2' disabled={loading}>
+              {loading ? 'Đang tạo...' : 'Tạo'}
+            </Button>
           </Flex>
         </Flex>
       </form>

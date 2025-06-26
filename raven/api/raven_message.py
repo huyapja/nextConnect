@@ -1,12 +1,14 @@
 import json
 from datetime import timedelta
-
 import frappe
 from frappe import _
 from frappe.query_builder import JoinType, Order
 from frappe.query_builder.functions import Coalesce, Count, Max, Coalesce
 from raven.api.raven_channel import create_direct_message_channel, get_peer_user_id
 from raven.utils import get_channel_member, is_channel_member, track_channel_visit
+import datetime
+from frappe.utils import now_datetime, get_datetime
+from pypika import Case
 
 @frappe.whitelist(methods=["POST"])
 def send_message(
@@ -15,7 +17,8 @@ def send_message(
     is_reply=False,
     linked_message=None,
     json_content=None,
-    send_silently=False
+    send_silently=False,
+    client_id=None  # <== Thêm client_id ở đây
 ):
     # Tạo tin nhắn mới
     doc_fields = {
@@ -48,10 +51,8 @@ def send_message(
 
     if done_members:
         for member in done_members:
-            # Cập nhật is_done = 0
             frappe.db.set_value("Raven Channel Member", member.name, "is_done", 0)
 
-            # Emit realtime event cho user bị reset done
             frappe.publish_realtime(
                 event="raven:channel_done_updated",
                 message={
@@ -89,7 +90,6 @@ def send_message(
 
     for member in members:
         if member != frappe.session.user:
-            # Gửi event new_message cho user khác
             frappe.publish_realtime(
                 event="new_message",
                 message={
@@ -100,7 +100,11 @@ def send_message(
                 user=member
             )
 
-    return doc
+    # ✅ Trả về message + client_id
+    return {
+        "message": doc.as_dict(),
+        "client_id": client_id
+    }
 
 @frappe.whitelist()
 def fetch_recent_files(channel_id):
@@ -268,7 +272,10 @@ def get_saved_messages():
 			raven_message.name,
 			raven_message.owner,
 			raven_message.creation,
-			raven_message.text,
+			Case()
+			.when(raven_message.is_retracted == 1, None)
+			.else_(raven_message.text)
+			.as_('text'),
 			raven_message.channel_id,
 			raven_message.file,
 			raven_message.message_type,
@@ -279,11 +286,13 @@ def get_saved_messages():
 			raven_message.thumbnail_height,
 			raven_message.is_bot_message,
 			raven_message.bot,
-			raven_message.content,
+			Case()
+			.when(raven_message.is_retracted == 1, None)
+			.else_(raven_message.content)
+			.as_('content'),
 			raven_message.is_retracted
 		)
 		.where(raven_message._liked_by.like(f"%{frappe.session.user}%"))
-		.where(raven_message.is_retracted == 0)
 		.where(
 			(raven_channel.type.isin(["Open", "Public"]))
 			| (raven_channel_member.user_id == frappe.session.user)
@@ -844,58 +853,162 @@ def forward_message(message_receivers, forwarded_message):
 
 	return "messages forwarded"
 
-
 def add_forwarded_message_to_channel(channel_id, forwarded_message):
-	"""
-	Forward a message to a channel - copy over the message,
-	change the owner to the current user and timestamp to now,
-	mark it as forwarded
-	"""
-	# If the forwarded message has a file, we need to remove the "fid" from the URL - this is done so that the new user can access the file
-	if forwarded_message.get("file"):
-		forwarded_message["file"] = forwarded_message["file"].split("?")[0]
-	doc = frappe.get_doc(
-		{
-			"doctype": "Raven Message",
-			**forwarded_message,
-			"channel_id": channel_id,
-			"name": None,
-			"owner": frappe.session.user,
-			"creation": frappe.utils.now_datetime(),
-			"modified": frappe.utils.now_datetime(),
-			"is_continuation": 0,
-			"is_edited": 0,
-			"is_reply": 0,
-			"is_forwarded": 1,
-			"is_thread": 0,
-			"replied_message_details": None,
-			"message_reactions": None,
-		}
-	)
-	doc.insert()
-	return "message forwarded"
+    """
+    Forward a message to a channel - copy over the message,
+    change the owner to the current user and timestamp to now,
+    mark it as forwarded
+    """
+    # Thời gian hiện tại dùng đồng nhất
+    now_ts = frappe.utils.now_datetime()
+
+    # Nếu có file → bỏ ?fid
+    if forwarded_message.get("file"):
+        forwarded_message["file"] = forwarded_message["file"].split("?")[0]
+
+    # Tạo bản sao message mới
+    doc = frappe.get_doc(
+        {
+            "doctype": "Raven Message",
+            **forwarded_message,
+            "channel_id": channel_id,
+            "name": None,
+            "owner": frappe.session.user,
+            "creation": now_ts,
+            "modified": now_ts,
+            "is_continuation": 0,
+            "is_edited": 0,
+            "is_reply": 0,
+            "is_forwarded": 1,
+            "is_thread": 0,
+            "replied_message_details": None,
+            "message_reactions": None,
+        }
+    )
+    doc.insert()
+
+    # ✅ Batch RESET is_done = 0 (1 query)
+    done_members = frappe.get_all(
+        "Raven Channel Member",
+        filters={"channel_id": channel_id, "is_done": 1},
+        fields=["user_id"]
+    )
+
+    if done_members:
+        frappe.db.sql("""
+            UPDATE `tabRaven Channel Member`
+            SET is_done = 0
+            WHERE channel_id = %s AND is_done = 1
+        """, (channel_id,))
+
+        for member in done_members:
+            frappe.publish_realtime(
+                event="raven:channel_done_updated",
+                message={"channel_id": channel_id, "is_done": 0},
+                user=member.user_id,
+                after_commit=True
+            )
+
+    # ✅ Chuẩn bị nội dung hiển thị
+    message_type = doc.message_type or "Text"
+    content = doc.text or "tin nhắn forward"  # fallback tránh rỗng
+
+    if message_type in ["File", "Image"] and doc.json:
+        json_content = frappe.parse_json(doc.json)
+        filename = json_content.get("filename") or json_content.get("name") or "Tập tin"
+        content = filename
+
+    last_message = {
+        "message_id": doc.name,
+        "content": content,
+        "owner": doc.owner,
+        "message_type": message_type,
+        "is_bot_message": 0,
+        "bot": None,
+    }
+
+    # ✅ Update Raven Channel
+    frappe.db.set_value("Raven Channel", channel_id, {
+        "last_message_details": frappe.as_json(last_message),
+        "last_message_timestamp": now_ts
+    })
+
+    # ✅ Bắn realtime new_message cho các user khác (trừ sender)
+    members = frappe.get_all("Raven Channel Member", filters={"channel_id": channel_id}, pluck="user_id")
+    other_members = [user for user in members if user != frappe.session.user]
+
+    for member in other_members:
+        frappe.publish_realtime(
+            event="new_message",
+            message={
+                "channel_id": channel_id,
+                "user": frappe.session.user,
+                "seen_at": now_ts,
+            },
+            user=member
+        )
+
+    return "message forwarded"
+
 
 @frappe.whitelist()
 def retract_message(message_id: str):
-    user = frappe.session.user
+
     message = frappe.get_doc("Raven Message", message_id)
 
     if message.is_retracted:
         frappe.throw(_("Tin nhắn đã được thu hồi trước đó."))
 
+    message_time = get_datetime(message.creation)
+    current_time = now_datetime()
+    time_difference = current_time - message_time
+
+    if time_difference.total_seconds() > 3 * 3600:
+        frappe.throw(_("Bạn chỉ có thể thu hồi tin nhắn trong vòng 3 giờ sau khi gửi."))
+
+    last_message_id = frappe.db.get_value(
+        "Raven Message",
+        filters={
+            "channel_id": message.channel_id,
+            "is_retracted": 0
+        },
+        fieldname="name",
+        order_by="creation desc"
+    )
+    is_last_message = last_message_id == message.name
+
     message.db_set("is_retracted", 1)
-    frappe.db.commit()
+    if is_last_message:
+        fallback_message = {
+            "message_id": message.name,
+            "content": "Tin nhắn đã được thu hồi",
+            "owner": message.owner,
+            "message_type": message.message_type,
+            "is_bot_message": 0,
+            "bot": None,
+        }
+
+        frappe.db.set_value("Raven Channel", message.channel_id, {
+            "last_message_details": frappe.as_json(fallback_message),
+            "last_message_timestamp": message.creation
+        })
 
     frappe.publish_realtime(
         event="raven_message_retracted",
         message={
             "message_id": message.name,
             "channel_id": message.channel_id,
-            "is_thread": message.is_thread
+            "is_thread": message.is_thread,
+            "is_last_message": is_last_message,
+            "owner": message.owner,
+            "message_type": message.message_type,
+            "is_bot_message": message.is_bot_message,
+            "bot": message.bot,
+            "timestamp": message.creation.isoformat()
         },
         doctype="Raven Channel",
-        docname=message.channel_id,
         after_commit=True
     )
 
     return {"message": "Đã thu hồi tin nhắn"}
+

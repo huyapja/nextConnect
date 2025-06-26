@@ -40,6 +40,9 @@ export interface Props {
   unseenByOthers: any
   isThinking?: boolean
   is_retracted?: number
+  isPending?: boolean
+  removePendingMessage: (id: string) => void
+  sendOnePendingMessage: (id: string) => void
 }
 
 export const LeftRightLayout = ({
@@ -60,7 +63,10 @@ export const LeftRightLayout = ({
   channel,
   unseenByOthers,
   isThinking = false,
-  is_retracted
+  is_retracted,
+  isPending,
+  removePendingMessage,
+  sendOnePendingMessage
 }: Props) => {
   const {
     // name,
@@ -90,6 +96,7 @@ export const LeftRightLayout = ({
   const [isEmojiPickerOpen, setEmojiPickerOpen] = useState(false)
 
   // For mobile, we want to show the quick actions on double tap
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const bind = useDoubleTap((event) => {
     if (!isDesktop) setIsHovered(!isHovered)
   })
@@ -127,6 +134,8 @@ export const LeftRightLayout = ({
       setSelectedText('')
     }
   }
+
+  const isSaved = JSON.parse(message._liked_by ? message._liked_by : '[]').includes(currentUser)
 
   if (is_retracted === 1) {
     return (
@@ -195,12 +204,17 @@ export const LeftRightLayout = ({
 
                 {message.is_forwarded === 1 && (
                   <Flex className='text-gray-10 text-xs' gap={'1'} align={'center'}>
-                    <RiShareForwardFill size='12' /> forwarded
+                    <RiShareForwardFill size='12' /> Chuyển tiếp
                   </Flex>
                 )}
                 {message.is_pinned === 1 && (
                   <Flex className='text-accent-9 text-xs' gap={'1'} align={'center'}>
-                    <RiPushpinFill size='12' /> Pinned
+                    <RiPushpinFill size='12' /> Ghim
+                  </Flex>
+                )}
+                {isSaved && (
+                  <Flex className='text-accent-9 text-xs' gap={'1'} align={'center'}>
+                    <RiPushpinFill size='12' /> Đã gắn cờ
                   </Flex>
                 )}
                 {linked_message && replied_message_details && (
@@ -213,7 +227,13 @@ export const LeftRightLayout = ({
                   />
                 )}
 
-                <MessageContent message={message} user={user} currentUser={currentUser} />
+                <MessageContent
+                  removePendingMessage={removePendingMessage}
+                  sendOnePendingMessage={sendOnePendingMessage}
+                  message={message}
+                  user={user}
+                  currentUser={currentUser}
+                />
 
                 {message.link_doctype && message.link_document && (
                   <Box className={clsx(message.is_continuation ? 'ml-0.5' : '-ml-0.5')}>
@@ -227,13 +247,13 @@ export const LeftRightLayout = ({
                   </Text>
                 )}
 
-                {message_reactions?.length && (
+                {!isPending && message_reactions?.length && (
                   <MessageReactions message={message} message_reactions={message_reactions} />
                 )}
 
                 {message.is_thread === 1 ? <ThreadMessage thread={message} /> : null}
 
-                {(isHoveredDebounced || isEmojiPickerOpen) && (
+                {!isPending && (isHoveredDebounced || isEmojiPickerOpen) && (
                   <QuickActions
                     message={message}
                     onDelete={onDelete}
@@ -262,17 +282,18 @@ export const LeftRightLayout = ({
             />
           </ContextMenu.Root>
         </Stack>
-
-        <div className='absolute bottom-0 -right-2'>
-          <MessageSeenStatus
-            hasBeenSeen={hasBeenSeen}
-            channelType={channel?.type}
-            seenByOthers={seenByOthers}
-            unseenByOthers={unseenByOthers}
-            currentUserOwnsMessage={message.owner === currentUser}
-            position='end'
-          />
-        </div>
+        {!isPending && (
+          <div className='absolute bottom-0 -right-2'>
+            <MessageSeenStatus
+              hasBeenSeen={hasBeenSeen}
+              channelType={channel?.type}
+              seenByOthers={seenByOthers}
+              unseenByOthers={unseenByOthers}
+              currentUserOwnsMessage={message.owner === currentUser}
+              position='end'
+            />
+          </div>
+        )}
       </Flex>
     </div>
   )

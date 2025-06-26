@@ -16,9 +16,7 @@ const SelectedChannelItem = ({ channel, handleToggle }: { channel: any; handleTo
     <div
       className={clsx(
         'relative',
-        isMobile
-          ? 'w-10 h-10'
-          : 'flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-2 dark:hover:bg-gray-7'
+        isMobile ? 'w-10 h-10' : 'flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-2 dark:hover:bg-gray-7'
       )}
     >
       <div className='flex items-center gap-2 truncate'>
@@ -57,7 +55,7 @@ const SelectedChannelItem = ({ channel, handleToggle }: { channel: any; handleTo
         onClick={() => handleToggle(channel.name)}
         aria-label='Xoá khỏi danh sách'
         className={clsx(
-          'transition-colors p-1',
+          'transition-colors p-1 ml-auto cursor-pointer',
           isMobile
             ? 'absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 flex items-center justify-center shadow'
             : 'text-gray-500 hover:text-black dark:hover:text-white bg-transparent'

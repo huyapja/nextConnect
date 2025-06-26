@@ -1,13 +1,7 @@
 import { manuallyMarkedAtom } from '@/utils/atoms/manuallyMarkedAtom'
 import { UserContext } from '@/utils/auth/UserProvider'
 import { UnreadCountData, useChannelList, useUpdateLastMessageInChannelList } from '@/utils/channel/ChannelListProvider'
-import {
-  FrappeConfig,
-  FrappeContext,
-  useFrappeEventListener,
-  useFrappeGetCall,
-  useFrappePostCall
-} from 'frappe-react-sdk'
+import { FrappeConfig, FrappeContext, useFrappeEventListener, useFrappeGetCall } from 'frappe-react-sdk'
 import { useAtomValue } from 'jotai'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
@@ -29,10 +23,10 @@ export const useUnreadMessageCount = () => {
   )
 
   const totalUnreadCount = useMemo(() => {
-    const idsFromServer = new Set(unread_count?.message.map((c) => c.name))
+    const idsFromServer = new Set(unread_count?.message?.map((c) => c.name))
     const manualOnly = Array.from(manuallyMarked).filter((id) => !idsFromServer.has(id))
 
-    const manualCount = manualOnly.length
+    const manualCount = manualOnly?.length
     const serverCount = unread_count?.message.reduce((sum, c) => sum + c.unread_count, 0) || 0
 
     return serverCount + manualCount
@@ -104,33 +98,29 @@ export const useFetchUnreadMessageCount = () => {
   const { channelID } = useParams()
   const { updateLastMessageInChannelList } = useUpdateLastMessageInChannelList()
 
-  const { call: trackVisit } = useFrappePostCall('raven.api.raven_channel_member.track_visit')
+  // const { call: trackVisit } = useFrappePostCall('raven.api.raven_channel_member.track_visit')
 
   const { play } = useNotificationAudio()
 
   useFrappeEventListener('raven:unread_channel_count_updated', async (event) => {
     if (event.sent_by !== currentUser) {
-      const isCurrentChannel = channelID === event.channel_id
-
-      // if (isCurrentChannel && !document.hidden) {
-      //   // Chỉ trackVisit khi tab active
-      //   trackVisit({ channel_id: channelID })
-      // }
-
       const currentUnread = unread_count?.message.find((c) => c.name === event.channel_id)?.unread_count || 0
       const isManuallyMarked = manuallyMarked.has(event.channel_id)
 
-      const shouldPlay = !isManuallyMarked || (isManuallyMarked && currentUnread > 1)
+      const shouldPlay = !isManuallyMarked || (isManuallyMarked && currentUnread > 1) || event.play_sound
 
-      setLatestUnreadData({
-        name: event.channel_id,
-        last_message_sender_name: event.last_message_sender_name,
-        is_direct_message: event.is_direct_message,
-        channel_name: event.channel_name,
-        last_message_timestamp: event.last_message_timestamp
-      })
+      // Kiểm tra channel có nằm trong danh sách của user không
+      const isKnownChannel =
+        channels.some((c) => c.name === event.channel_id) || dm_channels.some((c) => c.name === event.channel_id)
 
-      if (shouldPlay) {
+      if (isKnownChannel && shouldPlay) {
+        setLatestUnreadData({
+          name: event.channel_id,
+          last_message_sender_name: event.last_message_sender_name,
+          is_direct_message: event.is_direct_message,
+          channel_name: event.channel_name,
+          last_message_timestamp: event.last_message_timestamp
+        })
         play(event.last_message_timestamp)
       }
 
@@ -147,7 +137,7 @@ export const useFetchUnreadMessageCount = () => {
     updateCount(
       (d) => {
         if (d) {
-          const newChannels = d.message.map((c) => {
+          const newChannels = d.message?.map((c) => {
             if (c.name === channel_id) return { ...c, unread_count: 0 }
             return c
           })
@@ -164,9 +154,9 @@ export const useFetchUnreadMessageCount = () => {
     let blinkState = false
     let activeTitle = app_name
 
-    const allChannelMap = new Map((unread_count?.message || []).map((c) => [c.name, c]))
+    const allChannelMap = new Map((unread_count?.message || [])?.map((c) => [c.name, c]))
     const manualOnly = Array.from(manuallyMarked).filter((id) => !allChannelMap.has(id))
-    const manualCount = manualOnly.length
+    const manualCount = manualOnly?.length
     const serverUnreadCount = unread_count?.message.reduce((sum, c) => sum + c.unread_count, 0) || 0
     const totalUnread = serverUnreadCount + manualCount
 
@@ -192,7 +182,6 @@ export const useFetchUnreadMessageCount = () => {
         } else {
           activeTitle = `(${totalUnread}) ${last_message_sender_name} đã nhắn cho bạn`
         }
-        play(last_message_timestamp)
       } else {
         activeTitle = `(${totalUnread}) Bạn có tin nhắn chưa đọc`
       }
@@ -243,10 +232,12 @@ export const useUpdateUnreadCountToZero = () => {
   const { updateCount } = useUnreadMessageCount()
 
   const updateUnreadCountToZero = (channel_id?: string) => {
+    if (!channel_id) return
+
     updateCount(
       (d) => {
         const currentList = d?.message ?? []
-        const newList = currentList.map((c) => (c.name === channel_id ? { ...c, unread_count: 0 } : c))
+        const newList = currentList?.map((c) => (c.name === channel_id ? { ...c, unread_count: 0 } : c))
         return { message: newList }
       },
       { revalidate: false }

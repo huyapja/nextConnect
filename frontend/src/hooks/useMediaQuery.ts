@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 
 const useMediaQuery = (query: string) => {
-  const [value, setValue] = useState(matchMedia(query).matches)
+  const [value, setValue] = useState(() => matchMedia(query).matches)
 
   useEffect(() => {
-    function onChange(event: MediaQueryListEvent) {
+    const result = matchMedia(query)
+
+    const onChange = (event: MediaQueryListEvent) => {
       setValue(event.matches)
     }
 
-    const result = matchMedia(query)
     result.addEventListener('change', onChange)
     setValue(result.matches)
 
@@ -36,4 +37,10 @@ export const useIsTablet = () => {
   const isTablet = useMediaQuery('(max-width: 1024px)')
 
   return isTablet
+}
+
+export const useIsLaptop = () => {
+  const isLaptop = useMediaQuery('(max-width: 1400px)')
+
+  return isLaptop
 }

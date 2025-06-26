@@ -1,9 +1,8 @@
-import { Box, Flex, Tabs } from '@radix-ui/themes'
-import { Outlet, useParams } from 'react-router-dom'
-import ParticipatingThreads from './ThreadManager/ParticipatingThreads'
+import { Box, Tabs } from '@radix-ui/themes'
 import clsx from 'clsx'
-import AIThreads from './ThreadManager/AIThreads'
+import { useParams } from 'react-router-dom'
 import OtherThreads from './ThreadManager/OtherThreads'
+import ParticipatingThreads from './ThreadManager/ParticipatingThreads'
 
 export type ThreadMessage = {
   bot: string
@@ -37,24 +36,10 @@ const ThreadsCustom = () => {
       <Box className={clsx('w-full', threadID ? 'hidden sm:block' : 'block')}>
         {/* Show only regular threads now since this needs pagination */}
         <Tabs.Root defaultValue='Participating'>
-          <Tabs.List>
-            <Tabs.Trigger className='cursor-pointer' value='Participating'>
-              Đang tham gia
-            </Tabs.Trigger>
-            <Tabs.Trigger className='cursor-pointer' value='Other'>
-              Khác
-            </Tabs.Trigger>
-            {/* <Tabs.Trigger className='cursor-pointer' value='AI Threads'>AI Agents</Tabs.Trigger> */}
-          </Tabs.List>
+          <Tabs.List></Tabs.List>
           <Tabs.Content value='Participating'>
             <ParticipatingThreads />
           </Tabs.Content>
-          <Tabs.Content value='Other' className='h-[calc(100vh-6rem)] overflow-y-auto'>
-            <OtherThreads />
-          </Tabs.Content>
-          {/* <Tabs.Content value='AI Threads' className='h-[calc(100vh-6rem)] overflow-y-auto'>
-            <AIThreads />
-          </Tabs.Content> */}
         </Tabs.Root>
       </Box>
     </div>

@@ -1,23 +1,23 @@
-import { useCurrentEditor } from '@tiptap/react'
-import { BiAt, BiHash, BiSmile, BiPaperclip, BiSolidSend, BiChevronDown, BiBellOff } from 'react-icons/bi'
-import { DEFAULT_BUTTON_STYLE, ICON_PROPS } from './ToolPanel'
-import { ToolbarFileProps } from './Tiptap'
-import { Dialog, DropdownMenu, Flex, FlexProps, IconButton, Inset, Popover, Separator } from '@radix-ui/themes'
 import { Loader } from '@/components/common/Loader'
-import { Suspense, lazy } from 'react'
-import { HiOutlineGif } from 'react-icons/hi2'
-import { IconButtonProps } from '@radix-ui/themes/dist/cjs/components/icon-button'
+import { HStack } from '@/components/layout/Stack'
 import { useBoolean } from '@/hooks/useBoolean'
-import { MdOutlineBarChart } from 'react-icons/md'
 import { DIALOG_CONTENT_CLASS } from '@/utils/layout/dialog'
+import { Dialog, Flex, FlexProps, IconButton, Inset, Popover, Separator } from '@radix-ui/themes'
+import { IconButtonProps } from '@radix-ui/themes/dist/cjs/components/icon-button'
+import { useCurrentEditor } from '@tiptap/react'
+import clsx from 'clsx'
+import { Suspense, lazy } from 'react'
+import { BiAt, BiPaperclip, BiSmile, BiSolidSend } from 'react-icons/bi'
+import { MdOutlineBarChart } from 'react-icons/md'
+import CreatePollContent from '../../polls/CreatePoll'
 import AISavedPromptsButton from './AISavedPromptsButton'
 import DocumentLinkButton from './DocumentLinkButton'
-import { HStack } from '@/components/layout/Stack'
-import clsx from 'clsx'
+import { ToolbarFileProps } from './Tiptap'
+import { DEFAULT_BUTTON_STYLE, ICON_PROPS } from './ToolPanel'
 
 const EmojiPicker = lazy(() => import('@/components/common/EmojiPicker/EmojiPicker'))
-const CreatePollContent = lazy(() => import('@/components/feature/polls/CreatePoll'))
-const GIFPicker = lazy(() => import('@/components/common/GIFPicker/GIFPicker'))
+// const CreatePollContent = lazy(() => import('@/components/feature/polls/CreatePoll'))
+// const GIFPicker = lazy(() => import('@/components/common/GIFPicker/GIFPicker'))
 
 export type RightToolbarButtonsProps = {
   fileProps?: ToolbarFileProps
@@ -53,7 +53,7 @@ export const RightToolbarButtons = ({ fileProps, channelID, isEdit, ...sendProps
       <Separator orientation='vertical' />
       <Flex gap='3' align='center'>
         <EmojiPickerButton />
-        <GIFPickerButton />
+        {/* <GIFPickerButton /> */}
         {fileProps && <FilePickerButton fileProps={fileProps} />}
       </Flex>
       <Separator orientation='vertical' />
@@ -71,7 +71,7 @@ const MentionButtons = () => {
 
   return (
     <Flex gap='3'>
-      <IconButton
+      {/* <IconButton
         onClick={() => editor.chain().focus().insertContent('#').run()}
         aria-label='mention channel'
         title='Mention a channel'
@@ -81,7 +81,7 @@ const MentionButtons = () => {
         disabled={!editor.can().chain().focus().insertContent('#').run() || !editor.isEditable}
       >
         <BiHash {...ICON_PROPS} />
-      </IconButton>
+      </IconButton> */}
       <IconButton
         onClick={() => editor.chain().focus().insertContent('@').run()}
         aria-label='mention user'
@@ -137,44 +137,44 @@ const EmojiPickerButton = () => {
   )
 }
 
-const GIFPickerButton = () => {
-  const { editor } = useCurrentEditor()
+// const GIFPickerButton = () => {
+//   const { editor } = useCurrentEditor()
 
-  if (!editor) {
-    return null
-  }
+//   if (!editor) {
+//     return null
+//   }
 
-  return (
-    <Popover.Root>
-      <Popover.Trigger>
-        <IconButton
-          size='1'
-          variant='ghost'
-          className={DEFAULT_BUTTON_STYLE}
-          title='Add GIF'
-          // disabled
-          aria-label={'add GIF'}
-        >
-          <HiOutlineGif {...ICON_PROPS} />
-        </IconButton>
-      </Popover.Trigger>
-      <Popover.Content>
-        <Inset>
-          <Suspense fallback={<Loader />}>
-            {/* FIXME: 1. Handle 'HardBreak' coz it adds newline (empty); and if user doesn't write any text, then newline is added as text content.
-                               2. Also if you write first & then add GIF there's no 'HardBreak'.
-                    */}
-            <GIFPicker
-              onSelect={(gif) =>
-                editor.chain().focus().setImage({ src: gif.media_formats.gif.url }).setHardBreak().run()
-              }
-            />
-          </Suspense>
-        </Inset>
-      </Popover.Content>
-    </Popover.Root>
-  )
-}
+//   return (
+//     <Popover.Root>
+//       <Popover.Trigger>
+//         <IconButton
+//           size='1'
+//           variant='ghost'
+//           className={DEFAULT_BUTTON_STYLE}
+//           title='Add GIF'
+//           // disabled
+//           aria-label={'add GIF'}
+//         >
+//           <HiOutlineGif {...ICON_PROPS} />
+//         </IconButton>
+//       </Popover.Trigger>
+//       <Popover.Content>
+//         <Inset>
+//           <Suspense fallback={<Loader />}>
+//             {/* FIXME: 1. Handle 'HardBreak' coz it adds newline (empty); and if user doesn't write any text, then newline is added as text content.
+//                                2. Also if you write first & then add GIF there's no 'HardBreak'.
+//                     */}
+//             <GIFPicker
+//               onSelect={(gif) =>
+//                 editor.chain().focus().setImage({ src: gif.media_formats.gif.url }).setHardBreak().run()
+//               }
+//             />
+//           </Suspense>
+//         </Inset>
+//       </Popover.Content>
+//     </Popover.Root>
+//   )
+// }
 
 const FilePickerButton = ({ fileProps }: { fileProps: ToolbarFileProps }) => {
   const { editor } = useCurrentEditor()
@@ -210,7 +210,7 @@ export const SendButton = ({ sendMessage, messageSending, setContent, boxProps, 
   const { editor } = useCurrentEditor()
   const onClick = (sendSilently: boolean = false) => {
     if (editor) {
-      const hasContent = editor.getText().trim().length > 0
+      const hasContent = editor.getText().trim()?.length > 0
 
       const hasInlineImage = editor.getHTML().includes('img')
 
@@ -222,8 +222,8 @@ export const SendButton = ({ sendMessage, messageSending, setContent, boxProps, 
         // remove empty paragraphs at the end of the content
         const content = json.content
 
-        for (let i = content.length - 1; i >= 0; i--) {
-          if (content[i].type === 'paragraph' && (!content[i].content || content[i].content.length === 0)) {
+        for (let i = content?.length - 1; i >= 0; i--) {
+          if (content[i].type === 'paragraph' && (!content[i].content || content[i].content?.length === 0)) {
             content.pop()
           } else {
             break
@@ -268,7 +268,7 @@ export const SendButton = ({ sendMessage, messageSending, setContent, boxProps, 
       >
         {messageSending ? <Loader /> : <BiSolidSend {...ICON_PROPS} />}
       </IconButton>
-      <DropdownMenu.Root>
+      {/* <DropdownMenu.Root>
         <DropdownMenu.Trigger>
           <IconButton
             aria-label='send message'
@@ -287,7 +287,7 @@ export const SendButton = ({ sendMessage, messageSending, setContent, boxProps, 
             Send without notification
           </DropdownMenu.Item>
         </DropdownMenu.Content>
-      </DropdownMenu.Root>
+      </DropdownMenu.Root> */}
     </HStack>
   )
 }
@@ -304,15 +304,17 @@ const CreatePollButton = ({ channelID }: { channelID: string }) => {
           variant='ghost'
           className={DEFAULT_BUTTON_STYLE}
           disabled={editor?.isEditable === false}
-          title='Create Poll'
-          aria-label={'create poll'}
+          title='Tạo bình chọn'
+          aria-label='tạo bình chọn'
         >
           <MdOutlineBarChart />
         </IconButton>
       </Dialog.Trigger>
       <Dialog.Content className={DIALOG_CONTENT_CLASS}>
-        <Dialog.Title>Create Poll</Dialog.Title>
-        <Dialog.Description size='2'>Create a quick poll to get everyone's thoughts on a topic.</Dialog.Description>
+        <Dialog.Title>Tạo cuộc bình chọn</Dialog.Title>
+        <Dialog.Description size='2'>
+          Tạo một cuộc bình chọn nhanh để lấy ý kiến của mọi người về một chủ đề.
+        </Dialog.Description>
         <Suspense fallback={<Loader />}>
           <CreatePollContent channelID={channelID} setIsOpen={setIsOpen} />
         </Suspense>

@@ -5,6 +5,7 @@ import { useChannelSeenUsers } from '@/hooks/useChannelSeenUsers'
 import { useCurrentChannelData } from '@/hooks/useCurrentChannelData'
 import { useDebounceDynamic } from '@/hooks/useDebounce'
 import { useUserData } from '@/hooks/useUserData'
+import { getFileExtension } from '@/utils/operations'
 import { virtuosoSettings } from '@/utils/VirtuosoSettings'
 import {
   forwardRef,
@@ -20,12 +21,15 @@ import {
 import { useLocation } from 'react-router-dom'
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso'
 import { Message } from '../../../../../../types/Messaging/Message'
+import { PendingMessage } from '../ChatInput/useSendMessage'
+import { isImageFile } from '../ChatMessage/Renderers/FileMessage'
 import ChatDialogs from './ChatDialogs'
 import ChatStreamLoader from './ChatStreamLoader'
 import { MessageItemRenderer } from './MessageListRenderer'
 import ScrollToBottomButtons from './ScrollToBottomButtons'
 import useChatStream from './useChatStream'
 import { useChatStreamActions } from './useChatStreamActions'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 
 type Props = {
   channelID: string
@@ -34,6 +38,9 @@ type Props = {
   pinnedMessagesString?: string
   onModalClose?: () => void
   virtuosoRef: MutableRefObject<VirtuosoHandle>
+  pendingMessages?: PendingMessage[]
+  removePendingMessage?: (id: string) => void
+  sendOnePendingMessage?: (id: string) => void
 }
 
 interface ScrollState {
@@ -137,7 +144,20 @@ const useAnimationFrame = () => {
 }
 
 const ChatStream = forwardRef<VirtuosoHandle, Props>(
-  ({ channelID, replyToMessage, showThreadButton = true, pinnedMessagesString, onModalClose, virtuosoRef }, ref) => {
+  (
+    {
+      channelID,
+      replyToMessage,
+      showThreadButton = true,
+      pinnedMessagesString,
+      onModalClose,
+      virtuosoRef,
+      pendingMessages,
+      sendOnePendingMessage,
+      removePendingMessage
+    },
+    ref
+  ) => {
     const location = useLocation()
     const searchParams = new URLSearchParams(location.search)
     const isSavedMessage = searchParams.has('message_id')
@@ -197,7 +217,10 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
     } = useChatStream(channelID, virtuosoRef, pinnedMessagesString, scrollState.isAtBottom)
 
     useEffect(() => {
-      if (messages && messages.length > 0 && !renderState.isInitialLoadComplete) {
+      if (
+        ((messages && messages?.length > 0) || (pendingMessages?.length ?? 0) > 0) &&
+        !renderState.isInitialLoadComplete
+      ) {
         setTimeout(() => {
           dispatchRenderState({ type: 'SET_INITIAL_LOAD_COMPLETE', payload: true })
         }, 100)
@@ -205,7 +228,7 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
         setTimeout(() => dispatchRenderState({ type: 'SET_CONTENT_MEASURED', payload: true }), 300)
         setTimeout(() => dispatchRenderState({ type: 'SET_INITIAL_RENDER_COMPLETE', payload: true }), 500)
       }
-    }, [messages, renderState.isInitialLoadComplete])
+    }, [messages, pendingMessages, renderState.isInitialLoadComplete])
 
     const debouncedRangeChanged = useDebounceDynamic(
       useCallback(
@@ -221,7 +244,7 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
           const shouldLoadNewer =
             hasNewMessages &&
             range &&
-            range.endIndex >= messages.length - 5 &&
+            range.endIndex >= messages?.length - 5 &&
             !loadingState.isLoadingMessages &&
             !loadingState.hasInitialLoadedWithMessageId
 
@@ -234,7 +257,7 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
 
           if (range && newMessageIds.size > 0) {
             const visibleMessages = messages.slice(range.startIndex, range.endIndex + 1)
-            visibleMessages.forEach((message: any) => {
+            visibleMessages?.forEach((message: any) => {
               if (message.name && newMessageIds.has(message.name)) {
                 setTimeout(() => markMessageAsSeen(message.name), 2000)
               }
@@ -322,7 +345,7 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
         ...virtuosoRef.current,
         onUpArrow: () => {
           if (messages?.length) {
-            const lastMessage = messages[messages.length - 1]
+            const lastMessage = messages[messages?.length - 1]
             if (lastMessage.message_type === 'Text' && lastMessage.owner === userID && !lastMessage.is_bot_message) {
               editActions.setEditMessage(lastMessage)
             }
@@ -331,11 +354,41 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
       }
     }, [messages, userID, editActions.setEditMessage])
 
+    const combinedMessages = useMemo(() => {
+      const baseMessages = (messages ?? []).map((m) => ({
+        ...m,
+        // Nếu có resend_at → dùng để sort
+        sort_time: m.resend_at ? m.resend_at : new Date(m.modified || m.creation || 0).getTime()
+      }))
+
+      const pending = (pendingMessages ?? []).map((m) => {
+        const ext = m.fileMeta?.name ? getFileExtension(m.fileMeta.name) : ''
+        const fixedType = m.message_type === 'File' && isImageFile(ext) ? 'Image' : m.message_type
+
+        return {
+          name: m.id,
+          message_type: fixedType,
+          content: m.content,
+          owner: userID,
+          is_pending: true,
+          is_error: m.status === 'error',
+          file: m.file,
+          fileMeta: m.fileMeta,
+          modified: m.createdAt ? new Date(m.createdAt).toISOString() : new Date(0).toISOString(),
+          sort_time: m.createdAt || 0
+        }
+      })
+
+      const all = [...baseMessages, ...pending]
+
+      // Sort theo sort_time
+      return all.sort((a, b) => a.sort_time - b.sort_time)
+    }, [messages, pendingMessages, userID])
+
     const itemRenderer = useCallback(
       (index: number) => {
-        const message = messages?.[index]
+        const message = combinedMessages?.[index]
         if (!message) return null
-
         return (
           <MessageItemRenderer
             message={message}
@@ -350,11 +403,14 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
             setReactionMessage={reactionActions.setReactionMessage}
             seenUsers={seenUsers}
             channel={channel}
+            isPending={!!(message as any).is_pending}
+            sendOnePendingMessage={sendOnePendingMessage as any}
+            removePendingMessage={removePendingMessage as any}
           />
         )
       },
       [
-        messages,
+        combinedMessages,
         highlightedMessage,
         onReplyMessageClick,
         editActions.setEditMessage,
@@ -446,10 +502,10 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
     )
 
     const scrollActionToBottom = useCallback(() => {
-      if (virtuosoRef.current && messages && messages.length > 0) {
+      if (virtuosoRef.current && messages && messages?.length > 0) {
         scheduleFrame(() => {
           virtuosoRef.current?.scrollToIndex({
-            index: messages.length - 1,
+            index: messages?.length - 1,
             behavior: 'auto',
             align: 'end'
           })
@@ -458,7 +514,8 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
     }, [messages, virtuosoRef, scheduleFrame])
 
     const computeItemKey = useCallback((index: number, item: any) => {
-      return item?.name ?? `fallback-${index}`
+      if (item?.name) return item.name
+      return `fallback-${index >= 0 ? index : Math.random()}`
     }, [])
 
     const virtuosoStyles = useMemo(
@@ -478,21 +535,23 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
       [renderState.initialRenderComplete]
     )
 
+    const isMobile = useIsMobile()
+
     return (
-      <div className='relative h-full flex flex-col overflow-hidden pb-16 sm:pb-0'>
+      <div className={`relative h-full flex flex-col overflow-hidden ${isMobile ? 'pb-4' : 'pb-16'} sm:pb-0`}>
         {!isLoading && !hasOlderMessages && <ChannelHistoryFirstMessage channelID={channelID ?? ''} />}
 
         {isLoading && <ChatStreamLoader />}
 
         {error && <ErrorBanner error={error} />}
 
-        {messages && messages.length > 0 && (
+        {((messages && messages?.length > 0) || (pendingMessages?.length ?? 0) > 0) && (
           <Virtuoso
             ref={virtuosoRef}
-            data={messages}
+            data={combinedMessages}
             itemContent={itemRenderer}
             followOutput={scrollState.isAtBottom ? 'auto' : false}
-            initialTopMostItemIndex={!isSavedMessage ? messages.length - 1 : targetIndex}
+            initialTopMostItemIndex={!isSavedMessage ? (messages?.length ?? 0) - 1 : targetIndex}
             atTopStateChange={handleAtTopStateChange}
             atBottomStateChange={handleAtBottomStateChange}
             rangeChanged={handleRangeChanged}
@@ -513,7 +572,6 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
             }}
           />
         )}
-
         <ScrollToBottomButtons
           hasNewMessages={hasNewMessages}
           newMessageCount={newMessageCount}

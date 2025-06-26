@@ -6,7 +6,8 @@ import { Button, Text, Tooltip } from '@radix-ui/themes'
 import clsx from 'clsx'
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { BiSolidSend } from 'react-icons/bi'
-import { FiCpu, FiPaperclip, FiRefreshCw } from 'react-icons/fi'
+import { FiArrowLeft, FiCpu, FiPaperclip, FiRefreshCw } from 'react-icons/fi'
+import { useNavigate, useParams } from 'react-router-dom'
 import { commonButtonStyle } from '../labels/LabelItemMenu'
 import ChatbotFileMessage from './ChatbotFileMessage'
 
@@ -72,6 +73,8 @@ const ChatbotAIChatBox: React.FC<Props> = ({
   const messagesTopRef = useRef<HTMLDivElement>(null)
   const textAreaRef = useRef<HTMLTextAreaElement>(null)
   const thinkingTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const { workspaceID } = useParams<{ workspaceID: string; channelID: string }>()
+  const navigate = useNavigate()
 
   const { currentUser } = useContext(UserContext)
   const user = useGetUser(currentUser)
@@ -192,12 +195,23 @@ const ChatbotAIChatBox: React.FC<Props> = ({
     return `${minutes}m ${remainingSeconds}s`
   }
 
+  const handleNavigateBack = useCallback(() => {
+    navigate(`/${workspaceID}`)
+  }, [])
   return (
     <div className='flex flex-col w-full h-screen'>
       {/* Header */}
       <div className='border-b px-4 py-2 bg-white dark:bg-gray-2 border-gray-200 dark:border-gray-600'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-3'>
+            {/* Back button - chỉ hiển thị trên mobile */}
+            <button
+              onClick={handleNavigateBack}
+              className='md:hidden flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors'
+            >
+              <FiArrowLeft className='text-gray-600 dark:text-gray-400' size={18} />
+            </button>
+
             <div className='w-8 h-8 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center'>
               <FiCpu className='text-white' size={16} />
             </div>
@@ -231,7 +245,7 @@ const ChatbotAIChatBox: React.FC<Props> = ({
           </div>
         )}
 
-        {session.messages.length === 0 && !isThinking && (
+        {session.messages?.length === 0 && !isThinking && (
           <div className='flex items-center justify-center h-full'>
             <div className='text-center'>
               <div className='w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center'>
@@ -243,7 +257,7 @@ const ChatbotAIChatBox: React.FC<Props> = ({
         )}
 
         <div className='max-w-3xl mx-auto p-4'>
-          {session.messages.map((msg, idx) => (
+          {session.messages?.map((msg, idx) => (
             <div key={msg.id || startIdx + idx} className='group mb-8'>
               <div className='flex gap-4 items-start'>
                 {/* Avatar */}

@@ -1,14 +1,14 @@
+import { ErrorText, Label } from '@/components/common/Form'
+import { Loader } from '@/components/common/Loader'
+import { ErrorBanner } from '@/components/layout/AlertBanner/ErrorBanner'
+import { useIsDesktop } from '@/hooks/useMediaQuery'
+import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
+import { ChannelIcon } from '@/utils/layout/channelIcon'
+import { Box, Button, Dialog, Flex, Text, TextField } from '@radix-ui/themes'
 import { useFrappeUpdateDoc } from 'frappe-react-sdk'
 import { ChangeEvent, useCallback } from 'react'
 import { Controller, FormProvider, useForm } from 'react-hook-form'
-import { ErrorBanner } from '@/components/layout/AlertBanner/ErrorBanner'
-import { ChannelIcon } from '@/utils/layout/channelIcon'
-import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
-import { Box, Dialog, Flex, Text, TextField, Button } from '@radix-ui/themes'
-import { ErrorText, Label } from '@/components/common/Form'
-import { Loader } from '@/components/common/Loader'
 import { toast } from 'sonner'
-import { useIsDesktop } from '@/hooks/useMediaQuery'
 
 interface RenameChannelForm {
   channel_name: string
@@ -51,7 +51,7 @@ export const RenameChannelModalContent = ({
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      setValue('channel_name', event.target.value?.toLowerCase().replace(' ', '-'))
+      setValue('channel_name', event.target.value)
     },
     [setValue]
   )
@@ -61,32 +61,26 @@ export const RenameChannelModalContent = ({
   return (
     <FormProvider {...methods}>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <Dialog.Title>Rename this channel</Dialog.Title>
+        <Dialog.Title>Đổi tên kênh</Dialog.Title>
 
         <Flex gap='2' direction='column' width='100%'>
           <ErrorBanner error={error} />
           <Box width='100%'>
             <Label htmlFor='channel_name' isRequired>
-              Name
+              Tên kênh
             </Label>
             <Controller
               name='channel_name'
               control={control}
               rules={{
-                required: 'Please add a channel name',
+                required: 'Vui lòng nhập tên kênh',
                 maxLength: {
                   value: 50,
-                  message: 'Channel name cannot be more than 50 characters.'
+                  message: 'Tên kênh không được dài quá 50 ký tự.'
                 },
                 minLength: {
                   value: 3,
-                  message: 'Channel name cannot be less than 3 characters.'
-                },
-                pattern: {
-                  // no special characters allowed
-                  // cannot start with a space
-                  value: /^[a-zA-Z0-9][a-zA-Z0-9-]*$/,
-                  message: 'Channel name can only contain letters, numbers and hyphens.'
+                  message: 'Tên kênh phải có ít nhất 3 ký tự.'
                 }
               }}
               render={({ field, fieldState: { error } }) => (
@@ -94,7 +88,7 @@ export const RenameChannelModalContent = ({
                   maxLength={50}
                   required
                   autoFocus={isDesktop}
-                  placeholder='e.g. wedding-gone-wrong, joffrey-tributes'
+                  placeholder='ví dụ: cuoi-hoi, team-thao-luan'
                   color={error ? 'red' : undefined}
                   {...field}
                   aria-invalid={error ? 'true' : 'false'}
@@ -103,7 +97,7 @@ export const RenameChannelModalContent = ({
                   <TextField.Slot side='left'>{<ChannelIcon type={type} />}</TextField.Slot>
                   <TextField.Slot side='right'>
                     <Text size='2' weight='light' color='gray'>
-                      {50 - field.value.length}
+                      {50 - field.value?.length}
                     </Text>
                   </TextField.Slot>
                 </TextField.Root>
@@ -121,7 +115,7 @@ export const RenameChannelModalContent = ({
           </Dialog.Close>
           <Button type='submit' disabled={updatingDoc}>
             {updatingDoc && <Loader className='text-white' />}
-            {updatingDoc ? 'Saving' : 'Lưu'}
+            {updatingDoc ? 'Đang lưu...' : 'Lưu'}
           </Button>
         </Flex>
       </form>

@@ -14,6 +14,13 @@ export interface EventBusEvents {
   'thread:deleted': {
     threadId: string
   }
+  'user:interacted': {
+    source: 'input' | 'textarea' | 'editor' | 'click'
+    timestamp: number
+  }
+  'saved:count_changed': {
+    newCount: number
+  }
 }
 
 class TypedEventBus extends EventEmitter<EventBusEvents> {}
