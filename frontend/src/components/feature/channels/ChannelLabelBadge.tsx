@@ -4,7 +4,7 @@ import { useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
 import { toast } from 'sonner'
 import { useSetAtom } from 'jotai'
 import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
-import { labelListAtom } from '../labels/conversations/atoms/labelAtom'
+import { labelListAtom, useRefreshLabelList } from '../labels/conversations/atoms/labelAtom'
 
 const ChannelLabelBadge = ({
   channelID,
@@ -28,6 +28,7 @@ const ChannelLabelBadge = ({
   }
 
   const setLabelList = useSetAtom(labelListAtom)
+  const refreshLabelList = useRefreshLabelList()
 
   const handleConfirmRemove = async () => {
     try {
@@ -51,6 +52,7 @@ const ChannelLabelBadge = ({
 
       toast.success(`Đã xoá thành công`)
       setShowModal(false)
+      refreshLabelList()
     } catch (err) {
       console.error('Xoá thất bại:', err)
       toast.error('Xoá channel khỏi nhãn thất bại')

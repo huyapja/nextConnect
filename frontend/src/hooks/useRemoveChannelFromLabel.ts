@@ -11,7 +11,7 @@ export const useRemoveChannelFromLabel = () => {
 
   const removeChannel = async (label_id: string, channel_id: string): Promise<string> => {
     const res = await call({ label_id, channel_id })
-    return res.message // giờ đây không bị lỗi TypeScript nữa
+    return res.message
   }
 
   return {

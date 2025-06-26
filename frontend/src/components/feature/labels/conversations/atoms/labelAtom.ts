@@ -32,6 +32,10 @@ export const useLabelList = () => {
     }
   }, [call, setLabelList, labelList])
 
+  useEffect(() => {
+    refreshLabelList()
+  }, [])
+
   return {
     labelList,
     refreshLabelList,
@@ -42,4 +46,9 @@ export const useLabelList = () => {
 
 export const useLabelListValue = () => {
   return useAtomValue(labelListAtom)
+}
+
+export const useRefreshLabelList = () => {
+  const setRefresh = useSetAtom(refreshLabelListAtom)
+  return () => setRefresh((v) => v + 1)
 }

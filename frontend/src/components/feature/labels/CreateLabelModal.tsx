@@ -72,7 +72,16 @@ export const CreateLabelButton = () => {
         </IconButton>
 
         <Dialog.Root open={isOpen} onOpenChange={handleChangeOpen}>
-          <Dialog.Content ref={dialogRef} className={DIALOG_CONTENT_CLASS}>
+          <Dialog.Content
+            onInteractOutside={(e) => {
+              // Ngăn đóng dialog nếu click bên trong
+              if (dialogRef.current?.contains(e.target as Node)) {
+                e.preventDefault()
+              }
+            }}
+            ref={dialogRef}
+            className={DIALOG_CONTENT_CLASS}
+          >
             <CreateLabelContent />
           </Dialog.Content>
         </Dialog.Root>

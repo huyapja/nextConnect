@@ -28,7 +28,7 @@ import LabelByUserList from '../labels/LabelByUserList'
 import ThreadsCustom from '../threads/ThreadsCustom'
 import { MessageSaved } from './DirectMessageSaved'
 import clsx from 'clsx'
-import { labelListAtom, useLabelListValue } from '../labels/conversations/atoms/labelAtom'
+import { labelListAtom, useLabelListValue, useRefreshLabelList } from '../labels/conversations/atoms/labelAtom'
 import { MdLabelOutline } from 'react-icons/md'
 import { GoPlus } from 'react-icons/go'
 import { RxTriangleRight } from 'react-icons/rx'
@@ -106,34 +106,92 @@ export const DirectMessageItemList = ({ channel_list }: any) => {
 }
 
 export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnreadCount }) => {
-  const { isPinned, togglePin, markAsUnread, isManuallyMarked } = useChannelActions()
   const labelList = useLabelListValue()
   const setShowCreateLabel = useSetAtom(createLabelModalAtom)
-  const [selectedChannel, setSelectedChannel] = useState<UnifiedChannel | null>(null)
   const selectedChannelRef = useRef<UnifiedChannel | null>(null)
+  const [selectedChannel, setSelectedChannel] = useState<UnifiedChannel | null>(null)
+
+  const setLabelList = useSetAtom(labelListAtom)
+  const channels = useAtomValue(sortedChannelsAtom)
+  const { removeChannel } = useRemoveChannelFromLabel()
+  const { addLabelToChannel, removeLabelFromChannel } = useUpdateChannelLabels()
   const { call: callCreateOrAssignLabel } = useFrappePostCall(
     'raven.api.user_channel_label.add_label_to_multiple_channels'
   )
+  const refreshLabelList = useRefreshLabelList()
 
-  const setSortedChannels = useSetAtom(sortedChannelsAtom)
+  const { isPinned, togglePin, markAsUnread, isManuallyMarked } = useChannelActions()
 
-  const { removeChannel } = useRemoveChannelFromLabel()
-  const { addLabelToChannel, removeLabelFromChannel } = useUpdateChannelLabels()
-  const setLabelList = useSetAtom(labelListAtom)
+  const handleToggleLabel = async (label: LabelType, isAssigned: boolean) => {
+    const channelID = dm_channel.name
+    const labelID = label.label_id
+
+    try {
+      if (isAssigned) {
+        await removeChannel(labelID, channelID)
+        removeLabelFromChannel(channelID, labelID)
+
+        // cập nhật labelListAtom
+        setLabelList((prev) =>
+          prev.map((l) =>
+            l.label_id === labelID ? { ...l, channels: l.channels.filter((c) => c.channel_id !== channelID) } : l
+          )
+        )
+
+        toast.success(`Đã xoá nhãn "${label.label}" khỏi kênh`)
+      } else {
+        const res = await callCreateOrAssignLabel({
+          label_id: labelID,
+          channel_ids: JSON.stringify([channelID])
+        })
+
+        if (res?.message?.status === 'success') {
+          addLabelToChannel(channelID, { label_id: labelID, label: label.label })
+
+          // cập nhật labelListAtom
+          setLabelList((prev) =>
+            prev.map((l) => {
+              if (l.label_id !== labelID) return l
+              const updatedChannels = [...l.channels]
+              const exists = updatedChannels.some((c) => c.channel_id === channelID)
+              if (!exists) {
+                const ch = channels.find((c) => c.name === channelID)
+                updatedChannels.push({
+                  channel_id: channelID,
+                  channel_name: ch?.channel_name || '',
+                  is_direct_message: ch?.is_direct_message === 1
+                })
+              }
+              return { ...l, channels: updatedChannels }
+            })
+          )
+
+          toast.success(`Đã gán nhãn "${label.label}" cho kênh`)
+        } else {
+          toast.error('Không thể gán nhãn')
+        }
+      }
+      refreshLabelList()
+    } catch (err) {
+      console.error('Xử lý nhãn thất bại:', err)
+      toast.error('Không thể cập nhật nhãn')
+    }
+  }
 
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger>
         <div className='select-none'>
           <DirectMessageItemElement
+            channel={dm_channel}
             onContextMenu={() => {
               selectedChannelRef.current = dm_channel
               setSelectedChannel(dm_channel)
             }}
-            channel={dm_channel}
           />
         </div>
       </ContextMenu.Trigger>
+
       <ContextMenu.Content className='z-50 bg-white dark:bg-gray-800 border dark:border-gray-600 shadow rounded p-1 text-black dark:text-white'>
         <ContextMenu.Item
           onClick={() => markAsUnread(dm_channel)}
@@ -141,21 +199,23 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
         >
           {dm_channel.unread_count > 0 || isManuallyMarked(dm_channel.name) ? 'Đánh dấu đã đọc' : 'Đánh dấu chưa đọc'}
         </ContextMenu.Item>
+
         <ContextMenu.Item
           onClick={() => togglePin(dm_channel)}
           className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded'
         >
           {isPinned(dm_channel.name) ? 'Bỏ ghim tin nhắn' : 'Ghim tin nhắn lên đầu'}
         </ContextMenu.Item>
+
         {labelList.length === 0 ? (
           <ContextMenu.Item
-            onClick={() => {
+            onClick={() =>
               setShowCreateLabel({
                 addUserToLabel: true,
                 isOpen: true,
                 selectedChannel: selectedChannelRef.current?.name
               })
-            }}
+            }
             className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center gap-2'
           >
             <MdLabelOutline size={14} />
@@ -173,104 +233,18 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
 
             <ContextMenu.SubContent side='right' align='start' className='dark:bg-gray-800 rounded px-1 py-1 w-48 z-50'>
               {labelList.map((label) => {
-                const isAssigned = selectedChannelRef.current?.user_labels?.some((l) => l.label_id === label.label_id)
-
+                const isAssigned = dm_channel.user_labels?.some((l) => l.label_id === label.label_id)
                 return (
                   <ContextMenu.Item
                     key={label.label_id}
-                    onSelect={(e) => e.preventDefault()} // ✅ Ngăn đóng menu
-                    onClick={async () => {
-                      const channelID = selectedChannelRef.current?.name
-                      const labelID = label.label_id
-
-                      if (!channelID || !labelID) return
-
-                      if (isAssigned) {
-                        try {
-                          await removeChannel(labelID, channelID)
-
-                          // ✅ Xoá local overrideLabels + sortedChannelsAtom
-                          removeLabelFromChannel(channelID, labelID)
-
-                          // ✅ Xoá local labelListAtom
-                          setLabelList((prev) =>
-                            prev.map((l) => {
-                              if (l.label_id === labelID) {
-                                return {
-                                  ...l,
-                                  channels: l.channels.filter((c) => c.channel_id !== channelID)
-                                }
-                              }
-                              return l
-                            })
-                          )
-                          if (selectedChannelRef.current) {
-                            selectedChannelRef.current.user_labels =
-                              selectedChannelRef.current.user_labels?.filter((l) => l.label_id !== labelID) || []
-                          }
-                          toast.success(`Đã xoá nhãn "${label.label}" khỏi kênh`)
-                        } catch (err) {
-                          console.error('Xoá nhãn thất bại:', err)
-                          toast.error('Không thể xoá nhãn khỏi kênh')
-                        }
-                      } else {
-                        try {
-                          // Gán nhãn
-                          const res = await callCreateOrAssignLabel({
-                            label_id: label.label_id,
-                            channel_ids: JSON.stringify([channelID])
-                          })
-                          // Nếu API thành công
-                          if (res?.message?.status === 'success') {
-                            addLabelToChannel(channelID, { label_id: labelID, label: label.label })
-
-                            // ✅ Cập nhật user_labels của channel local
-                            if (selectedChannelRef.current) {
-                              selectedChannelRef.current.user_labels = [
-                                ...(selectedChannelRef.current.user_labels || []),
-                                { label_id: labelID, label: label.label }
-                              ]
-                            }
-
-                            // ✅ Cập nhật labelListAtom
-                            setLabelList((prev) =>
-                              prev.map((l) => {
-                                if (l.label_id === labelID) {
-                                  const updatedChannels = [...l.channels]
-                                  const alreadyExists = updatedChannels.some((c) => c.channel_id === channelID)
-                                  if (!alreadyExists) {
-                                    const channels = useAtomValue(sortedChannelsAtom)
-
-                                    const ch = channels.find((c) => c.name === channelID)
-                                    updatedChannels.push({
-                                      channel_id: channelID,
-                                      channel_name: ch?.channel_name || '',
-                                      is_direct_message: ch?.is_direct_message === 1
-                                    })
-                                  }
-                                  return { ...l, channels: updatedChannels }
-                                }
-                                return l
-                              })
-                            )
-
-                            toast.success(`Đã gán nhãn "${label.label}" cho kênh`)
-                          } else {
-                            toast.error('Không thể gán nhãn')
-                          }
-                        } catch (err) {
-                          console.error('Gán nhãn thất bại:', err)
-                          toast.error('Không thể gán nhãn')
-                        }
-                      }
-                    }}
+                    onSelect={(e) => e.preventDefault()}
+                    onClick={() => handleToggleLabel(label, isAssigned)}
                     className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center gap-2 justify-between'
                   >
                     <div className='flex items-center gap-2'>
                       <MdLabelOutline size={14} />
-                      <span>{label.label}</span>
+                      <span className='truncate max-w-[70px]'>{label.label}</span>
                     </div>
-
                     {isAssigned && <HiCheck size={14} className='text-green-500' />}
                   </ContextMenu.Item>
                 )
@@ -279,13 +253,15 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
               <ContextMenu.Separator className='h-px bg-gray-600 my-2' />
 
               <ContextMenu.Item
-                onClick={() => {
-                  setShowCreateLabel({
-                    addUserToLabel: true,
-                    isOpen: true,
-                    selectedChannel: selectedChannelRef.current?.name
-                  })
-                }}
+                onClick={() =>
+                  setTimeout(() => {
+                    setShowCreateLabel({
+                      addUserToLabel: true,
+                      isOpen: true,
+                      selectedChannel: dm_channel.name
+                    })
+                  }, 0)
+                }
                 className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center gap-2'
               >
                 <GoPlus size={14} />
