@@ -16,7 +16,7 @@ const TABS: TabConfig[] = [
   { key: 'Links', label: 'Liên kết', icon: BiLink, count: 0 }
 ]
 
-export const SearchPanel = () => {
+export const SearchPanel = ({ onClose }: { onClose: () => void }) => {
   const { channelID } = useParams<{ channelID: string }>()
   const [activeTab, setActiveTab] = useState('Messages')
   const [searchQuery, setSearchQuery] = useState('')
@@ -47,7 +47,7 @@ export const SearchPanel = () => {
               ) : !results || results.length === 0 ? (
                 <EmptyState type={searchQuery ? 'no-results' : 'no-search'} />
               ) : (
-                <SearchResults results={results} activeTab={activeTab} />
+                <SearchResults results={results} activeTab={activeTab} onClose={onClose} />
               )}
             </div>
           </div>

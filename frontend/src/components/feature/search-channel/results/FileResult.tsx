@@ -1,6 +1,7 @@
 import { StandardDate } from '@/utils/dateConversions'
 import { formatBytes } from '@/utils/operations'
 import { BiFile } from 'react-icons/bi'
+import { useScrollToMessage } from '../useScrollToMessage'
 export interface SearchFile {
   id: string
   file: string
@@ -13,9 +14,11 @@ export interface SearchFile {
 
 interface FileResultProps {
   file: SearchFile
+  onClose: () => void
 }
 
-export const FileResult = ({ file }: FileResultProps) => {
+export const FileResult = ({ file, onClose }: FileResultProps) => {
+  const { handleScrollToMessage } = useScrollToMessage(onClose)
   return (
     <div className='group p-4 rounded-xl border border-gray-3 dark:border-gray-7 hover:border-gray-6 dark:hover:border-gray-6 hover:shadow-md dark:hover:bg-gray-2 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-1'>
       <div className='flex items-center gap-3'>

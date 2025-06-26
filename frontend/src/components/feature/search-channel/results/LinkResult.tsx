@@ -5,7 +5,9 @@ import { DMChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { DateMonthYear } from '@/utils/dateConversions'
 import { Box, Flex, Separator, Text } from '@radix-ui/themes'
 import { useCallback, useMemo } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { MessageSenderAvatar, UserHoverCard } from '../../chat/ChatMessage/MessageItem'
+import { useScrollToMessage } from '../useScrollToMessage'
 
 export interface SearchLink {
   id: number
@@ -23,6 +25,7 @@ export interface SearchLink {
 interface LinkResultProps {
   link: SearchLink
   onLinkClick?: (url: string, link: SearchLink) => void
+  onClose: () => void
 }
 
 const linkResultStyles = {
@@ -87,7 +90,7 @@ const openUrl = (url: string): void => {
   }
 }
 
-export const LinkResult = ({ link }: LinkResultProps) => {
+export const LinkResult = ({ link, onClose }: LinkResultProps) => {
   const { owner, creation, channel_id, url } = link
   const users = useGetUserRecords()
 
@@ -110,6 +113,8 @@ export const LinkResult = ({ link }: LinkResultProps) => {
   const handleContainerClick = useCallback(() => {
     openUrl(url)
   }, [url])
+
+  const { handleScrollToMessage } = useScrollToMessage(onClose)
 
   if (!user) {
     return null

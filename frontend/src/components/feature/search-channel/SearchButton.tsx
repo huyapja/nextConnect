@@ -30,7 +30,7 @@ export const SearchButton = ({ open, setOpen }: { open: boolean; setOpen: (open:
               </Flex>
             }
           >
-            <SearchPanel />
+            <SearchPanel onClose={() => setOpen(false)} />
           </Suspense>
         </Dialog.Content>
       </Dialog.Root>
@@ -49,7 +49,7 @@ export const SearchButton = ({ open, setOpen }: { open: boolean; setOpen: (open:
               </Flex>
             }
           >
-            <SearchPanel />
+            <SearchPanel onClose={() => setOpen(false)} />
           </Suspense>
         </DrawerContent>
       </Drawer>

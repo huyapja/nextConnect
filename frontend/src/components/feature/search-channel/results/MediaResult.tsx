@@ -4,6 +4,7 @@ import { HoverCard, Inset, Text } from '@radix-ui/themes'
 import clsx from 'clsx'
 import { useCallback } from 'react'
 import { BsDownload, BsPlayFill } from 'react-icons/bs'
+import { useScrollToMessage } from '../useScrollToMessage'
 
 export interface SearchMedia {
   id: number
@@ -20,6 +21,7 @@ interface MediaResultProps {
   media: SearchMedia
   onMediaClick?: (media: SearchMedia) => void
   onDownload?: (media: SearchMedia) => void
+  onClose: () => void
 }
 
 const ImagePreview = ({ file, name, messageType }: { file: string; name: string; messageType: string }) => {
@@ -63,7 +65,7 @@ const truncateFileName = (name: string, maxLength: number = 30): string => {
   return `${nameWithoutExt.substring(0, maxNameLength)}...${extension}`
 }
 
-export const MediaResult = ({ media, onMediaClick, onDownload }: MediaResultProps) => {
+export const MediaResult = ({ media, onMediaClick, onDownload, onClose }: MediaResultProps) => {
   const handleContainerClick = useCallback(() => {
     if (onMediaClick) {
       onMediaClick(media)
@@ -91,6 +93,8 @@ export const MediaResult = ({ media, onMediaClick, onDownload }: MediaResultProp
   )
 
   const truncatedName = truncateFileName(media.content || media.name)
+
+  const { handleScrollToMessage } = useScrollToMessage(onClose)
 
   return (
     <div
