@@ -255,5 +255,5 @@ const CompressImageCheckbox = ({
 }
 
 const ThreadMessagesContainer = ({ children }: { children: React.ReactNode }) => {
-  return <div className='flex flex-col overflow-hidden px-2 pt-16 justify-end h-full'>{children}</div>
+  return <div className='flex flex-col overflow-hidden px-2 pt-5 justify-end h-full'>{children}</div>
 }
