@@ -28,7 +28,7 @@ export const FileResult = ({ file }: FileResultProps) => {
             <span className='bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full'>{file.message_type}</span>
             <span>{formatBytes(file.file_size)}</span>
             <span>•</span>
-            <span>{file.owner}</span>
+            <span className='truncate max-w-[120px] sm:max-w-none'>{file.owner}</span>
             <span>•</span>
             <StandardDate date={file.creation} />
           </div>

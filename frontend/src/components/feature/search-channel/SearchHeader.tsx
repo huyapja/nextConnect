@@ -30,8 +30,7 @@ export const SearchHeader = ({ searchQuery, onSearchChange }: SearchHeaderProps)
               border: '1px solid var(--gray-6)',
               borderRadius: '12px',
               fontSize: '14px',
-              color: 'var(--gray-12)',
-              padding: '8px 12px 8px 40px'
+              color: 'var(--gray-12)'
             }}
           >
             <TextField.Slot side='left'>
