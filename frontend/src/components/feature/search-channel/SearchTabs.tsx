@@ -32,9 +32,6 @@ export const SearchTabs = ({ tabs }: SearchTabsProps) => {
             >
               <Icon className='w-4 h-4' />
               <span>{tab.label}</span>
-              <span className='ml-1 px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-full min-w-[18px] text-center data-[state=active]:bg-blue-100 dark:data-[state=active]:bg-blue-900 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400'>
-                {tab.count}
-              </span>
             </Tabs.Trigger>
           )
         })}

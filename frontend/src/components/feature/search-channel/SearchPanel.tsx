@@ -8,6 +8,7 @@ import { SearchHeader } from './SearchHeader'
 import { SearchResults } from './SearchResults'
 import { SearchTabs, TabConfig } from './SearchTabs'
 import { useSearchResults } from './useSearchResults'
+import { useDebounce } from '@/hooks/useDebounce'
 
 const TABS: TabConfig[] = [
   { key: 'Messages', label: 'Messages', icon: BiMessageRounded, count: 0 },
@@ -21,7 +22,9 @@ export const SearchPanel = () => {
   const [activeTab, setActiveTab] = useState('Messages')
   const [searchQuery, setSearchQuery] = useState('')
 
-  const { results, isLoading, error } = useSearchResults(activeTab, searchQuery, channelID)
+  const debouncedQuery = useDebounce(searchQuery, 400)
+
+  const { results, isLoading, error } = useSearchResults(activeTab, debouncedQuery, channelID)
 
   return (
     <div className='flex flex-col h-full bg-white dark:bg-gray-900 overflow-hidden'>
