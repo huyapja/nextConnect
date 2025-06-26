@@ -27,7 +27,7 @@ export const useSearchResults = (tab: string, searchQuery: string, channelId?: s
       case 'Images & Videos':
         return { filter_type: 'Media', file_type: 'image' }
       case 'Links':
-        return { filter_type: 'Links', message_type: 'Link' }
+        return { filter_type: 'Link', message_type: 'Text' }
       default:
         return { filter_type: 'Message' }
     }
