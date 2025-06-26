@@ -11,7 +11,7 @@ import { useParams } from 'react-router-dom'
 import AddChannelMembersModal from '../channel-member-details/add-members/AddChannelMembersModal'
 import ViewChannelDetailsModal from '../channels/ViewChannelDetailsModal'
 import { ViewFilesButton } from '../files/ViewFilesButton'
-import GlobalSearch from '../GlobalSearch/GlobalSearch'
+import { SearchButton } from '../search-channel/SearchButton'
 
 type Props = {
   channelData: ChannelListItem
@@ -26,8 +26,8 @@ const ChannelHeaderMenu = ({ channelData }: Props) => {
   const { channelMembers } = useFetchChannelMembers(channelData.name)
 
   const [isFileOpen, { on: onFileOpen }, onFileChange] = useBoolean(false)
+  const [isSearchOpen, { on: onSearchOpen }, onSearchChange] = useBoolean(false)
   const [isAddMembersOpen, { on: onAddMembersOpen }, onAddMembersChange] = useBoolean(false)
-  const [isGlobalSearchModalOpen, { on: onGlobalSearchModalOpen, off: onGlobalSearchModalClose }] = useBoolean(false)
   const [isChannelDetailsOpen, { on: onChannelDetailsOpen }, onChannelDetailsChange] = useBoolean(false)
   // const [isMeetingModalOpen, onMeetingModalChange] = useBoolean(false)
 
@@ -48,13 +48,7 @@ const ChannelHeaderMenu = ({ channelData }: Props) => {
           </IconButton>
         </DropdownMenu.Trigger>
         <DropdownMenu.Content className='min-w-48'>
-          {/* <DropdownMenu.Item onClick={onMeetingModalOpen}>
-            <Flex gap='2' align='center'>
-              <BiVideoPlus size={ICON_SIZE} />
-              Start a Meeting
-            </Flex>
-          </DropdownMenu.Item> */}
-          <DropdownMenu.Item onClick={onGlobalSearchModalOpen}>
+          <DropdownMenu.Item onClick={onSearchOpen}>
             <Flex gap='2' align='center'>
               <BiSearch size={ICON_SIZE} />
               Tìm kiếm
@@ -66,12 +60,6 @@ const ChannelHeaderMenu = ({ channelData }: Props) => {
               Xem tập tin
             </Flex>
           </DropdownMenu.Item>
-          {/* <DropdownMenu.Item>
-                    <Flex gap='2' align='center'>
-                        <BiFolder size={ICON_SIZE} />
-                        View Documents
-                    </Flex>
-                </DropdownMenu.Item> */}
           {channelData.is_direct_message === 0 && (
             <>
               <DropdownMenu.Separator />
@@ -95,18 +83,10 @@ const ChannelHeaderMenu = ({ channelData }: Props) => {
         </DropdownMenu.Content>
       </DropdownMenu.Root>
       <ViewFilesButton open={isFileOpen} setOpen={onFileChange} />
+      <SearchButton open={isSearchOpen} setOpen={onSearchChange} />
       <AddChannelMembersModal open={isAddMembersOpen} setOpen={onAddMembersChange} />
-      <GlobalSearch
-        isOpen={isGlobalSearchModalOpen}
-        onClose={onGlobalSearchModalClose}
-        tabIndex={0}
-        input={''}
-        inFilter={channelID}
-      />
 
       <ViewChannelDetailsModal open={isChannelDetailsOpen} setOpen={onChannelDetailsChange} channelData={channelData} />
-
-      {/* <CreateMeetingDialog isOpen={isMeetingModalOpen} setOpen={onMeetingModalChange} channelData={channelData} /> */}
     </>
   )
 }

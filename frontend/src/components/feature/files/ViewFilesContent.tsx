@@ -70,7 +70,7 @@ const ViewFilesContent = () => {
   return (
     <div>
       <Flex justify='between' gap='2'>
-        <Dialog.Title>Files shared in this channel</Dialog.Title>
+        <Dialog.Title>Files shared in this channels</Dialog.Title>
         {isDesktop && (
           <Dialog.Close>
             <IconButton size='1' color='gray' variant='soft' aria-label='close dialog'>
