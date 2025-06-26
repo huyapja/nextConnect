@@ -355,9 +355,8 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
     }, [messages, userID, editActions.setEditMessage])
 
     const combinedMessages = useMemo(() => {
-      const baseMessages = (messages ?? []).map((m) => ({
+      const baseMessages = (messages ?? []).map((m: any) => ({
         ...m,
-        // Nếu có resend_at → dùng để sort
         sort_time: m.resend_at ? m.resend_at : new Date(m.modified || m.creation || 0).getTime()
       }))
 

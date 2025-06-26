@@ -17,7 +17,7 @@ const ToggleThemeCommand = () => {
   return (
     <Command.Item onSelect={onSelect}>
       {appearance === 'light' ? <BiMoon size={16} /> : <BiSun size={16} />}
-      Toggle Theme
+      Chuyển đổi giao diện
     </Command.Item>
   )
 }

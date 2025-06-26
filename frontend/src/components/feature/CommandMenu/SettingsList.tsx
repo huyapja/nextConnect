@@ -11,24 +11,24 @@ const ICON_SIZE = 16
 
 const SettingsList = () => {
   const navigate = useNavigate()
-
   const setOpen = useSetAtom(commandMenuOpenAtom)
 
   const onSelect = (value: string) => {
     navigate(`/settings/${value}`)
     setOpen(false)
   }
+
   return (
-    <Command.Group heading='Settings'>
+    <Command.Group heading='Cài đặt'>
       <Command.Item value='profile' onSelect={onSelect}>
         <BiUserCircle size={ICON_SIZE} />
-        Profile
+        Hồ sơ cá nhân
       </Command.Item>
       <Command.Item value='users' onSelect={onSelect}>
         <BiGroup size={ICON_SIZE} />
-        Users
+        Người dùng
       </Command.Item>
-      <Command.Item value='hr' keywords={['hr', 'human resources', 'Frappe HR']} onSelect={onSelect}>
+      <Command.Item value='hr' keywords={['hr', 'nhân sự', 'Frappe HR']} onSelect={onSelect}>
         <svg fill='none' viewBox='0 0 32 32' width={18} height={18} xmlns='http://www.w3.org/2000/svg'>
           <g clipPath='url(#clip0_2850_17380)'>
             <path
@@ -50,17 +50,21 @@ const SettingsList = () => {
             </clipPath>
           </defs>
         </svg>
-        HR
+        Nhân sự (HR)
       </Command.Item>
 
       <Command.Item value='message-actions' onSelect={onSelect}>
         <BiBoltCircle size={ICON_SIZE} />
-        Message Actions
+        Hành động tin nhắn
       </Command.Item>
 
-      <Command.Item value='scheduled-messages' keywords={['scheduled messages']} onSelect={onSelect}>
+      <Command.Item
+        value='scheduled-messages'
+        keywords={['tin nhắn hẹn giờ', 'scheduled messages']}
+        onSelect={onSelect}
+      >
         <BiTime size={ICON_SIZE} />
-        Scheduled Messages
+        Tin nhắn hẹn giờ
       </Command.Item>
 
       <Command.Item value='webhooks' onSelect={onSelect}>
@@ -75,27 +79,27 @@ const SettingsList = () => {
 
       <Command.Item value='functions' onSelect={onSelect}>
         <LuSquareFunction size={ICON_SIZE} />
-        Functions
+        Hàm (Functions)
       </Command.Item>
 
       <Command.Item value='instructions' onSelect={onSelect}>
         <BiFile size={ICON_SIZE} />
-        Instructions
+        Hướng dẫn
       </Command.Item>
 
       <Command.Item value='commands' onSelect={onSelect}>
         <BiMessageSquareDots size={ICON_SIZE} />
-        Commands
+        Lệnh
       </Command.Item>
 
       <Command.Item value='openai-settings' onSelect={onSelect}>
         <PiOpenAiLogo size={ICON_SIZE} />
-        OpenAI Settings
+        Cài đặt OpenAI
       </Command.Item>
 
       <Command.Item value='push-notifications' onSelect={onSelect}>
         <PiOpenAiLogo size={ICON_SIZE} />
-        Push Notification
+        Thông báo đẩy
       </Command.Item>
     </Command.Group>
   )

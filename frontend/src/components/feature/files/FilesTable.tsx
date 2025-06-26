@@ -26,7 +26,7 @@ export const FilesTable = ({ data }: { data: FileInChannel[] }) => {
           </Table.Row>
         </Table.Header>
         <Table.Body>
-          {data?.map((file: FileInChannel, index: number) => {
+          {data?.map((file: FileInChannel) => {
             return (
               <Table.Row key={file.name}>
                 <Table.Cell>
