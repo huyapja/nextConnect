@@ -69,8 +69,8 @@ function App() {
       <UserProvider>
         <CallProvider>
           <GlobalStringeeProvider>
-            <Toaster position='top-right' richColors />
-            <ThemeProvider
+          <Toaster position='top-right' richColors />
+          <ThemeProvider
             appearance={appearance}
             // grayColor='slate'
             accentColor='iris'

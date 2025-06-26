@@ -6,6 +6,7 @@ import {
 } from 'react-icons/fi'
 import { useTheme } from '@/ThemeProvider'
 import { toast } from 'sonner'
+import { useGlobalStringee } from './GlobalStringeeProvider'
 
 // Import utilities and hooks
 import { getIconColor, getBackgroundColor } from './utils/themeUtils'
@@ -41,6 +42,7 @@ export default function StringeeCallComponent({
 }: CallStringeeProps) {
   
   const { appearance } = useTheme()
+  const { isInCall: globalIsInCall, setIsInCall: setGlobalIsInCall } = useGlobalStringee()
   const [client, setClient] = useState<any>(null)
   const [call, setCall] = useState<any>(null)
   const [incoming, setIncoming] = useState<any>(null)
@@ -61,6 +63,9 @@ export default function StringeeCallComponent({
   
   // State để track xem đã lưu lịch sử cuộc gọi chưa
   const [callHistorySaved, setCallHistorySaved] = useState(false)
+  
+  // State để prevent spam end call button
+  const [isEndingCall, setIsEndingCall] = useState(false)
   
   // Video refs
   const localVideoRef = useRef<HTMLVideoElement>(null)
@@ -98,6 +103,7 @@ export default function StringeeCallComponent({
   
   // Hook để gọi API lưu lịch sử cuộc gọi
   const { call: saveCallHistory } = useFrappePostCall('raven.api.raven_message.send_call_history_message')
+  const { call: findDMChannel } = useFrappePostCall('raven.api.raven_message.find_dm_channel_between_users')
 
   // Add proper Frappe API hooks để thay thế fetch calls với error handling
   const { call: createCallSession, error: createCallError } = useFrappePostCall('raven.api.stringee_token.create_call_session')
@@ -113,14 +119,17 @@ export default function StringeeCallComponent({
     enabled: !!callerUserId
   })
 
-  // Reset call history flag when starting new call
+  // Reset call states when starting new call
   useEffect(() => {
     if (call || incoming) {
       setCallHistorySaved(false) // Reset flag lưu lịch sử
+      setIsEndingCall(false) // Reset ending flag
       
       // Reset video states khi bắt đầu cuộc gọi mới
       setIsLocalVideoEnabled(true)
       setIsRemoteVideoEnabled(true)
+      
+      console.log('🔄 Reset call states for new call - callHistorySaved: false, isEndingCall: false')
     }
   }, [call, incoming])
 
@@ -172,52 +181,82 @@ export default function StringeeCallComponent({
   const userAvatar = getUserAvatar(incoming, callerData, userData)
   const avatarInitials = getAvatarInitials(displayName, toUserId, incoming, callerUserId)
 
-  // 📝 Function để tạo đúng DM channel ID theo format API
-  const getDMChannelId = useCallback(() => {
-    if (channelId && !isGlobalCall) {
-      // Nếu có channelId và không phải global call, sử dụng channelId hiện tại
-      return channelId
+  // 📝 Function để tìm đúng DM channel ID qua API
+  const getDMChannelId = useCallback(async () => {
+    const currentUserId = data?.message?.user_id
+    
+    // Xác định caller và callee dựa trên loại cuộc gọi
+    let callerId: string | undefined
+    let calleeId: string | undefined
+    
+    if (incoming) {
+      // Cuộc gọi đến: fromNumber là caller, toNumber (current user) là callee
+      callerId = incoming.fromNumber
+      calleeId = incoming.toNumber || currentUserId
+    } else {
+      // Cuộc gọi đi: current user là caller, toUserId là callee
+      callerId = currentUserId
+      calleeId = toUserId
     }
     
-    // Tạo DM channel ID đúng format cho call giữa 2 user
-    const currentUserId = data?.message?.user_id
-    if (!currentUserId || !toUserId) {
-      console.error('❌ Missing user IDs for channel creation')
+    if (!callerId || !calleeId) {
+      console.error('❌ Missing caller or callee ID for channel lookup')
       return null
     }
     
-    // Format: user1 _ user2 (sắp xếp theo thứ tự alphabet)
-    const dmChannelId = currentUserId < toUserId 
-      ? `${currentUserId} _ ${toUserId}` 
-      : `${toUserId} _ ${currentUserId}`
-    
-    console.log('📝 Generated DM channel ID:', dmChannelId, 'for users:', currentUserId, '<->', toUserId)
-    return dmChannelId
-  }, [channelId, isGlobalCall, data?.message?.user_id, toUserId])
+    try {
+      console.log('📝 Finding DM channel between:', callerId, '<->', calleeId)
+      console.log('📝 Call direction:', incoming ? 'incoming' : 'outgoing')
+      
+      // Gọi API để tìm channel ID đúng
+      const result = await findDMChannel({
+        user1: callerId,
+        user2: calleeId
+      })
+      
+      const channelId = result?.message || result
+      console.log('📝 Found DM channel ID:', channelId)
+      return channelId
+    } catch (error) {
+      console.error('❌ Failed to find DM channel:', error)
+      return null
+    }
+  }, [data?.message?.user_id, toUserId, incoming, findDMChannel])
 
   // Function để lưu lịch sử cuộc gọi
   const saveCallHistoryToChat = async (callType: 'audio' | 'video', callStatus: 'completed' | 'missed' | 'rejected' | 'ended', duration?: number) => {
-    if (callHistorySaved) return
-    
-    const dmChannelId = getDMChannelId()
-    if (!dmChannelId) {
-      console.error('❌ Cannot save call history - no valid channel ID')
+    // Double check để tránh duplicate
+    if (callHistorySaved) {
+      console.log('⚠️ Call history already saved - skipping duplicate save attempt')
       return
     }
     
-    console.log('💾 Saving call history to channel:', dmChannelId, 'Call type:', callType, 'Status:', callStatus)
+    // Set flag ngay lập tức để prevent race conditions
+    setCallHistorySaved(true)
     
     try {
+      const dmChannelId = await getDMChannelId()
+      if (!dmChannelId) {
+        console.error('❌ Cannot save call history - no valid channel ID')
+        // Reset flag nếu failed
+        setCallHistorySaved(false)
+        return
+      }
+      
+      console.log('💾 Saving call history to channel:', dmChannelId, 'Call type:', callType, 'Status:', callStatus, 'Duration:', duration)
+      
       await saveCallHistory({
         channel_id: dmChannelId,
         call_type: callType,
         call_status: callStatus,
         duration: duration
       })
-      setCallHistorySaved(true) // Đánh dấu đã lưu
+      
       console.log('✅ Call history saved successfully to:', dmChannelId)
     } catch (error) {
-      console.error('❌ Failed to save call history to:', dmChannelId, error)
+      console.error('❌ Failed to save call history:', error)
+      // Reset flag nếu failed để có thể retry
+      setCallHistorySaved(false)
     }
   }
 
@@ -1024,6 +1063,9 @@ export default function StringeeCallComponent({
   }, [isVideoCall, isLocalVideoEnabled, localStreamRef.current, call, currentSessionId, data?.message?.user_id, toUserId, sendVideoStatus])
 
   const makeCall = async (isVideoCall: boolean = true) => {
+    // Set global call status immediately when starting call
+    setGlobalIsInCall(true)
+    
     // Initialize audio context immediately on user interaction
     initAudioContext()
     
@@ -1356,8 +1398,14 @@ export default function StringeeCallComponent({
     // Reset call history flag
     setCallHistorySaved(false)
     
+    // Reset ending call flag
+    setIsEndingCall(false)
+    
     // Reset detailed stats view
     setShowDetailedStats(false)
+
+    // Reset global call status
+    setGlobalIsInCall(false)
 
     // 🌐 Gọi callback để đóng global modal
     if (isGlobalCall && onClose) {
@@ -1367,6 +1415,9 @@ export default function StringeeCallComponent({
 
   const answerCall = async () => {
     if (!incoming) return
+    
+    // Set global call status when answering call
+    setGlobalIsInCall(true)
     
     // Initialize audio context immediately on user interaction
     initAudioContext()
@@ -1484,13 +1535,25 @@ export default function StringeeCallComponent({
   }
 
   const hangupCall = async () => {
-    // Nếu call đã ended hoặc rejected, chỉ cần đóng modal
+    // Nếu call đã ended hoặc rejected, chỉ cần đóng modal - KHÔNG block
     if (callStatus === 'ended' || callStatus === 'rejected') {
+      console.log('📱 Closing modal for ended/rejected call')
       performCleanup()
       return
     }
     
-    if (!call) return
+    // Prevent spam clicking chỉ khi đang có active call
+    if (isEndingCall) {
+      console.log('❌ Hangup already in progress - ignoring duplicate call')
+      return
+    }
+    setIsEndingCall(true)
+    
+    if (!call) {
+      console.log('❌ No active call to hangup')
+      performCleanup()
+      return
+    }
     
     // Lưu lịch sử cuộc gọi nếu chưa lưu
     if (!callHistorySaved) {
@@ -1856,22 +1919,24 @@ export default function StringeeCallComponent({
         <div style={{ display: 'flex', gap: '12px' }}>
           <button 
             onClick={() => makeCall(false)} 
+            disabled={globalIsInCall}
             style={{
             width: '36px',
             height: '36px',
             borderRadius: '50%',
             border: 'none',
-            background: getBackgroundColor('button', appearance),
-            color: getIconColor('green', appearance),
-            cursor: 'pointer',
+            background: globalIsInCall ? getIconColor('gray', appearance) : getBackgroundColor('button', appearance),
+            color: globalIsInCall ? getIconColor('gray', appearance) : getIconColor('green', appearance),
+            cursor: globalIsInCall ? 'not-allowed' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '16px',
             boxShadow: `0 2px 8px ${getIconColor('gray', appearance)}33`,
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
+            opacity: globalIsInCall ? '0.5' : '1'
           }}
-          title="Audio Call"
+          title={globalIsInCall ? "Cuộc gọi đang diễn ra" : "Audio Call"}
           onMouseOver={(e) => {
             e.currentTarget.style.transform = 'scale(1.1)'
             e.currentTarget.style.opacity = '0.8'
@@ -1885,22 +1950,24 @@ export default function StringeeCallComponent({
         </button>
         <button 
           onClick={() => makeCall(true)} 
+          disabled={globalIsInCall}
           style={{
             width: '36px',
             height: '36px',
             borderRadius: '50%',
             border: 'none',
-            background: getBackgroundColor('button', appearance),
-            color: getIconColor('blue', appearance),
-            cursor: 'pointer',
+            background: globalIsInCall ? getIconColor('gray', appearance) : getBackgroundColor('button', appearance),
+            color: globalIsInCall ? getIconColor('gray', appearance) : getIconColor('blue', appearance),
+            cursor: globalIsInCall ? 'not-allowed' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '16px',
             boxShadow: `0 2px 8px ${getIconColor('gray', appearance)}33`,
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
+            opacity: globalIsInCall ? '0.5' : '1'
           }}
-          title="Video Call"
+          title={globalIsInCall ? "Cuộc gọi đang diễn ra" : "Video Call"}
           onMouseOver={(e) => {
             e.currentTarget.style.transform = 'scale(1.1)'
             e.currentTarget.style.opacity = '0.8'
@@ -2624,36 +2691,54 @@ export default function StringeeCallComponent({
                   )}
                   <button
                     onClick={hangupCall}
+                    disabled={isEndingCall && !['ended', 'rejected'].includes(callStatus || '')}
                     style={{
                       width: '64px',
                       height: '64px',
                       borderRadius: '50%',
                       border: 'none',
-                      backgroundColor: (callStatus === 'ended' || callStatus === 'rejected') 
+                      backgroundColor: ['ended', 'rejected'].includes(callStatus || '')
                         ? getBackgroundColor('button', appearance) 
-                        : getIconColor('red', appearance),
-                      color: (callStatus === 'ended' || callStatus === 'rejected') 
+                        : (isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))
+                          ? getIconColor('gray', appearance)
+                          : getIconColor('red', appearance),
+                      color: ['ended', 'rejected'].includes(callStatus || '')
                         ? getIconColor('white', appearance) 
                         : 'white',
-                      cursor: 'pointer',
+                      cursor: (isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))
+                        ? 'not-allowed' 
+                        : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontSize: '24px',
-                      boxShadow: (callStatus === 'ended' || callStatus === 'rejected')
+                      boxShadow: ['ended', 'rejected'].includes(callStatus || '')
                         ? `0 4px 16px ${getIconColor('gray', appearance)}33`
                         : '0 4px 16px rgba(255, 71, 87, 0.3)',
-                      transition: 'all 0.2s ease'
+                      transition: 'all 0.2s ease',
+                      opacity: (isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))
+                        ? '0.6' 
+                        : '1'
                     }}
                     onMouseOver={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.1)'
-                      e.currentTarget.style.opacity = '0.9'
+                      if (!(isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))) {
+                        e.currentTarget.style.transform = 'scale(1.1)'
+                        e.currentTarget.style.opacity = '0.9'
+                      }
                     }}
                     onMouseOut={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)'
-                      e.currentTarget.style.opacity = '1'
+                      if (!(isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))) {
+                        e.currentTarget.style.transform = 'scale(1)'
+                        e.currentTarget.style.opacity = '1'
+                      }
                     }}
-                    title={(callStatus === 'ended' || callStatus === 'rejected') ? 'Đóng' : 'Kết thúc cuộc gọi'}
+                    title={
+                      (isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))
+                        ? 'Đang kết thúc cuộc gọi...'
+                        : ['ended', 'rejected'].includes(callStatus || '')
+                          ? 'Đóng' 
+                          : 'Kết thúc cuộc gọi'
+                    }
                   >
                     <FiPhoneOff size={24} />
                   </button>

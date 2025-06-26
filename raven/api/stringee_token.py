@@ -511,3 +511,158 @@ def send_video_status(session_id, from_user, to_user, video_enabled):
 		print(f"📹 [API] Error sending video status: {str(e)}")
 		frappe.log_error(f"Lỗi khi gửi video status: {str(e)}")
 		frappe.throw(_("Không thể gửi trạng thái video"))
+
+@frappe.whitelist(methods=["GET"])
+def check_ongoing_calls():
+	"""
+	Kiểm tra xem user hiện tại có đang trong cuộc gọi nào không
+	Dùng để recovery sau khi refresh page
+	"""
+	try:
+		current_user = frappe.session.user
+		
+		print(f"🔍 [API] Checking ongoing calls for user: {current_user}")
+		
+		# Tìm các cuộc gọi đang active của user (trong vòng 10 phút gần đây)
+		ongoing_calls = frappe.db.sql("""
+			SELECT session_id, caller_id, callee_id, status, call_type, creation,
+				TIMESTAMPDIFF(MINUTE, creation, NOW()) as minutes_ago
+			FROM `tabRaven Call Session`
+			WHERE (caller_id = %(user_id)s OR callee_id = %(user_id)s)
+			AND status IN ('initiated', 'answered', 'connected')
+			AND TIMESTAMPDIFF(MINUTE, creation, NOW()) < 10
+			ORDER BY creation DESC
+			LIMIT 1
+		""", {"user_id": current_user}, as_dict=True)
+		
+		if not ongoing_calls:
+			print(f"🔍 [API] No ongoing calls found for user {current_user}")
+			return {
+				"has_ongoing_call": False,
+				"call_info": None
+			}
+		
+		call_info = ongoing_calls[0]
+		
+		# Xác định peer user
+		peer_user = call_info.caller_id if call_info.callee_id == current_user else call_info.callee_id
+		
+		# Lấy thông tin peer user
+		peer_user_info = frappe.db.get_value("Raven User", peer_user, ["full_name", "first_name", "user_image"], as_dict=True)
+		peer_name = peer_user_info.get("full_name") or peer_user_info.get("first_name") or peer_user
+		
+		print(f"🔍 [API] Found ongoing call: {call_info.session_id} with {peer_name}")
+		
+		return {
+			"has_ongoing_call": True,
+			"call_info": {
+				"session_id": call_info.session_id,
+				"peer_user_id": peer_user,
+				"peer_user_name": peer_name,
+				"peer_user_image": peer_user_info.get("user_image"),
+				"call_type": call_info.call_type,
+				"status": call_info.status,
+				"minutes_ago": call_info.minutes_ago,
+				"is_caller": call_info.caller_id == current_user
+			}
+		}
+		
+	except Exception as e:
+		print(f"🔍 [API] Error checking ongoing calls: {str(e)}")
+		frappe.log_error(f"Lỗi khi check ongoing calls: {str(e)}")
+		return {
+			"has_ongoing_call": False,
+			"call_info": None,
+			"error": str(e)
+		}
+
+@frappe.whitelist(methods=["POST"])
+def rejoin_call(session_id):
+	"""
+	Rejoin vào cuộc gọi đang diễn ra sau khi refresh
+	"""
+	try:
+		current_user = frappe.session.user
+		
+		print(f"🔄 [API] User {current_user} attempting to rejoin call: {session_id}")
+		
+		# Kiểm tra call session tồn tại và user có quyền join
+		call_session = frappe.get_doc("Raven Call Session", {"session_id": session_id})
+		
+		if current_user not in [call_session.caller_id, call_session.callee_id]:
+			frappe.throw(_("Bạn không có quyền tham gia cuộc gọi này"))
+		
+		if call_session.status not in ["initiated", "answered", "connected"]:
+			frappe.throw(_("Cuộc gọi đã kết thúc hoặc không còn hoạt động"))
+		
+		# Gửi thông báo realtime cho peer user về việc rejoin
+		peer_user = call_session.caller_id if call_session.callee_id == current_user else call_session.callee_id
+		
+		frappe.publish_realtime(
+			event="call_rejoin_notification",
+			message={
+				"session_id": session_id,
+				"rejoining_user": current_user,
+				"peer_user": peer_user
+			},
+			user=peer_user
+		)
+		
+		print(f"🔄 [API] Rejoin notification sent to peer user: {peer_user}")
+		
+		return {
+			"success": True,
+			"call_info": {
+				"session_id": session_id,
+				"peer_user_id": peer_user,
+				"call_type": call_session.call_type,
+				"status": call_session.status
+			}
+		}
+		
+	except Exception as e:
+		print(f"🔄 [API] Error rejoining call: {str(e)}")
+		frappe.log_error(f"Lỗi khi rejoin call: {str(e)}")
+		frappe.throw(_("Không thể tham gia lại cuộc gọi"))
+
+@frappe.whitelist(methods=["POST"])
+def decline_rejoin(session_id):
+	"""
+	Từ chối rejoin và end cuộc gọi
+	"""
+	try:
+		current_user = frappe.session.user
+		
+		print(f"❌ [API] User {current_user} declined to rejoin call: {session_id}")
+		
+		# End the call session
+		call_session = frappe.get_doc("Raven Call Session", {"session_id": session_id})
+		
+		if current_user not in [call_session.caller_id, call_session.callee_id]:
+			frappe.throw(_("Bạn không có quyền thao tác cuộc gọi này"))
+		
+		# Update call status to ended
+		call_session.status = "ended"
+		call_session.end_time = frappe.utils.now_datetime()
+		call_session.save(ignore_permissions=True)
+		
+		# Gửi thông báo end call cho peer user
+		peer_user = call_session.caller_id if call_session.callee_id == current_user else call_session.callee_id
+		
+		frappe.publish_realtime(
+			event="call_status_update",
+			message={
+				"session_id": session_id,
+				"status": "ended"
+			},
+			user=[current_user, peer_user]
+		)
+		
+		print(f"❌ [API] Call ended due to rejoin decline. Notified peer: {peer_user}")
+		
+		return {"success": True}
+		
+	except Exception as e:
+		print(f"❌ [API] Error declining rejoin: {str(e)}")
+		frappe.log_error(f"Lỗi khi decline rejoin: {str(e)}")
+		frappe.throw(_("Không thể kết thúc cuộc gọi"))
