@@ -1,10 +1,9 @@
-import { DocumentResult, SearchDoc } from './results/DocumentResult'
 import { FileResult, SearchFile } from './results/FileResult'
 import { LinkResult, SearchLink } from './results/LinkResult'
 import { MediaResult, SearchMedia } from './results/MediaResult'
 import { MessageResult, SearchMessage } from './results/MessageResult'
 
-type SearchResult = SearchMessage | SearchDoc | SearchFile | SearchMedia | SearchLink
+type SearchResult = SearchMessage | SearchFile | SearchMedia | SearchLink
 
 interface SearchResultsProps {
   results: SearchResult[]
@@ -16,8 +15,6 @@ export const SearchResults = ({ results, activeTab }: SearchResultsProps) => {
     switch (activeTab) {
       case 'Messages':
         return <MessageResult key={item.id} message={item as any} />
-      case 'Docs':
-        return <DocumentResult key={item.id} document={item as any} />
       case 'Files':
         return <FileResult key={item.id} file={item as any} />
       case 'Images & Videos':

@@ -2,7 +2,6 @@
 import { Tabs } from '@radix-ui/themes'
 import { useState } from 'react'
 import { BiFolder, BiImage, BiLink, BiMessageRounded } from 'react-icons/bi'
-import { HiOutlineDocumentText } from 'react-icons/hi'
 import { useParams } from 'react-router-dom'
 import { EmptyState } from './EmptyState'
 import { SearchHeader } from './SearchHeader'
@@ -12,7 +11,6 @@ import { useSearchResults } from './useSearchResults'
 
 const TABS: TabConfig[] = [
   { key: 'Messages', label: 'Messages', icon: BiMessageRounded, count: 0 },
-  { key: 'Docs', label: 'Documents', icon: HiOutlineDocumentText, count: 0 },
   { key: 'Files', label: 'Files', icon: BiFolder, count: 0 },
   { key: 'Images & Videos', label: 'Media', icon: BiImage, count: 0 },
   { key: 'Links', label: 'Links', icon: BiLink, count: 0 }
