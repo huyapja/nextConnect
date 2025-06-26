@@ -1,18 +1,17 @@
-import { useBoolean } from '@/hooks/useBoolean'
-import { DropdownMenu, Flex, IconButton } from '@radix-ui/themes'
-import { BiDotsVerticalRounded, BiFile, BiSearch, BiVideoPlus } from 'react-icons/bi'
-import { ViewFilesButton } from '../files/ViewFilesButton'
-import AddChannelMembersModal from '../channel-member-details/add-members/AddChannelMembersModal'
-import { useParams } from 'react-router-dom'
-import GlobalSearch from '../GlobalSearch/GlobalSearch'
-import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
-import { useContext, useMemo } from 'react'
 import useFetchChannelMembers from '@/hooks/fetchers/useFetchChannelMembers'
+import { useBoolean } from '@/hooks/useBoolean'
 import { UserContext } from '@/utils/auth/UserProvider'
-import ViewChannelDetailsModal from '../channels/ViewChannelDetailsModal'
+import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
+import { DropdownMenu, Flex, IconButton } from '@radix-ui/themes'
+import { useContext, useMemo } from 'react'
+import { BiDotsVerticalRounded, BiFile, BiSearch } from 'react-icons/bi'
 import { SlSettings } from 'react-icons/sl'
 import { TbUsersPlus } from 'react-icons/tb'
-import CreateMeetingDialog from '../integrations/meetings/CreateMeetingDialog'
+import { useParams } from 'react-router-dom'
+import AddChannelMembersModal from '../channel-member-details/add-members/AddChannelMembersModal'
+import ViewChannelDetailsModal from '../channels/ViewChannelDetailsModal'
+import { ViewFilesButton } from '../files/ViewFilesButton'
+import GlobalSearch from '../GlobalSearch/GlobalSearch'
 
 type Props = {
   channelData: ChannelListItem
@@ -30,7 +29,7 @@ const ChannelHeaderMenu = ({ channelData }: Props) => {
   const [isAddMembersOpen, { on: onAddMembersOpen }, onAddMembersChange] = useBoolean(false)
   const [isGlobalSearchModalOpen, { on: onGlobalSearchModalOpen, off: onGlobalSearchModalClose }] = useBoolean(false)
   const [isChannelDetailsOpen, { on: onChannelDetailsOpen }, onChannelDetailsChange] = useBoolean(false)
-  const [isMeetingModalOpen, { on: onMeetingModalOpen }, onMeetingModalChange] = useBoolean(false)
+  // const [isMeetingModalOpen, onMeetingModalChange] = useBoolean(false)
 
   const canAddMembers = useMemo(() => {
     if (channelData.type === 'Open') return false
@@ -49,22 +48,22 @@ const ChannelHeaderMenu = ({ channelData }: Props) => {
           </IconButton>
         </DropdownMenu.Trigger>
         <DropdownMenu.Content className='min-w-48'>
-          <DropdownMenu.Item onClick={onMeetingModalOpen}>
+          {/* <DropdownMenu.Item onClick={onMeetingModalOpen}>
             <Flex gap='2' align='center'>
               <BiVideoPlus size={ICON_SIZE} />
               Start a Meeting
             </Flex>
-          </DropdownMenu.Item>
+          </DropdownMenu.Item> */}
           <DropdownMenu.Item onClick={onGlobalSearchModalOpen}>
             <Flex gap='2' align='center'>
               <BiSearch size={ICON_SIZE} />
-              Search
+              Tìm kiếm
             </Flex>
           </DropdownMenu.Item>
           <DropdownMenu.Item onClick={onFileOpen}>
             <Flex gap='2' align='center'>
               <BiFile size={ICON_SIZE} />
-              View Files
+              Xem tập tin
             </Flex>
           </DropdownMenu.Item>
           {/* <DropdownMenu.Item>
@@ -80,7 +79,7 @@ const ChannelHeaderMenu = ({ channelData }: Props) => {
                 <DropdownMenu.Item onClick={onAddMembersOpen}>
                   <Flex gap='2' align='center'>
                     <TbUsersPlus size={ICON_SIZE} />
-                    Add Members
+                    Thêm thành viên
                   </Flex>
                 </DropdownMenu.Item>
               )}
@@ -88,7 +87,7 @@ const ChannelHeaderMenu = ({ channelData }: Props) => {
               <DropdownMenu.Item onClick={onChannelDetailsOpen}>
                 <Flex gap='2' align='center'>
                   <SlSettings size={ICON_SIZE} />
-                  Channel Settings
+                  Cài đặt kênh
                 </Flex>
               </DropdownMenu.Item>
             </>
@@ -107,7 +106,7 @@ const ChannelHeaderMenu = ({ channelData }: Props) => {
 
       <ViewChannelDetailsModal open={isChannelDetailsOpen} setOpen={onChannelDetailsChange} channelData={channelData} />
 
-      <CreateMeetingDialog isOpen={isMeetingModalOpen} setOpen={onMeetingModalChange} channelData={channelData} />
+      {/* <CreateMeetingDialog isOpen={isMeetingModalOpen} setOpen={onMeetingModalChange} channelData={channelData} /> */}
     </>
   )
 }
