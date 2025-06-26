@@ -46,24 +46,24 @@ const ChatStream = ({ channelID, isThread, scrollRef, onMomentumScrollEnd, onScr
             ref={scrollRef}
             data={data}
             keyExtractor={messageKeyExtractor}
-            // drawDistance={500}
-            alignItemsAtEnd
-            keyboardDismissMode='on-drag'
-            maintainVisibleContentPosition
-            waitForInitialLayout
+            renderItem={MessageContentRenderer}
             initialScrollIndex={data.length > 0 ? data.length - 1 : undefined}
+            keyboardDismissMode='on-drag'
+            onScrollBeginDrag={onScrollBeginDrag}
+            onStartReached={loadOlderMessages}
+            onEndReached={loadNewerMessages}
+            drawDistance={500}
+            alignItemsAtEnd
+            // maintainVisibleContentPosition
+            // waitForInitialLayout
             maintainScrollAtEnd
             maintainScrollAtEndThreshold={0.1}
             getEstimatedItemSize={getEstimatedItemSize}
-            renderItem={MessageContentRenderer}
             recycleItems={false}
             contentContainerStyle={{
                 paddingBottom: 32
             }}
             onMomentumScrollEnd={onMomentumScrollEnd}
-            onScrollBeginDrag={onScrollBeginDrag}
-            onStartReached={loadOlderMessages}
-            onEndReached={loadNewerMessages}
         />
     )
 
@@ -149,18 +149,25 @@ const getEstimatedItemSize = (index: number, item: MessageDateBlock) => {
     return estimatedHeight
 }
 
-const messageKeyExtractor = (item: MessageDateBlock) => {
-    let key = '';
+const messageKeyExtractor = (item: MessageDateBlock, index: number) => {
     if (!item) {
-        key = 'empty'
-    } else if (item.message_type === 'header') {
-        key = `header-${item.name}`
-    } else if (item.message_type === 'date') {
-        key = `date-${item.creation}`
-    } else {
-        key = `${item.name}-${item.modified}`
+        return `null-item-${index}` // Thêm index để đảm bảo uniqueness
     }
-    return key;
+
+    if (item.message_type === 'header') {
+        return item.name ? `header-${item.name}` : `header-unknown-${index}`
+    }
+
+    if (item.message_type === 'date') {
+        return item.creation ? `date-${item.creation}` : `date-unknown-${index}`
+    }
+
+    if (item.name && item.modified) {
+        return `${item.name}-${item.modified}`
+    }
+
+    // Fallback với index để không bị trùng
+    return `fallback-${index}`
 }
 
 const MessageContentRenderer = ({ item }: { item: MessageDateBlock }) => {
