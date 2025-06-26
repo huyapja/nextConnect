@@ -40,7 +40,7 @@ import { RxTriangleRight } from 'react-icons/rx'
 import { CreateLabelButton, createLabelModalAtom } from '../labels/CreateLabelModal'
 import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
 import { toast } from 'sonner'
-import { useFrappePostCall } from 'frappe-react-sdk'
+import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
 
 type UnifiedChannel = ChannelWithUnreadCount | DMChannelWithUnreadCount | any
 
@@ -118,15 +118,15 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
   const selectedChannelRef = useRef<UnifiedChannel | null>(null)
   const [selectedChannel, setSelectedChannel] = useState<UnifiedChannel | null>(null)
 
-
+  const setLabelList = useSetAtom(labelListAtom)
+  const channels = useAtomValue(sortedChannelsAtom)
   const { removeChannel } = useRemoveChannelFromLabel()
   const { addLabelToChannel, removeLabelFromChannel } = useUpdateChannelLabels()
   const { call: callCreateOrAssignLabel } = useFrappePostCall(
     'raven.api.user_channel_label.add_label_to_multiple_channels'
   )
-
+  const { mutate } = useSWRConfig()
   const { isPinned, togglePin, markAsUnread, isManuallyMarked } = useChannelActions()
-  const refreshLabelList = useRefreshLabelList()
 
   const handleToggleLabel = async (label: LabelType, isAssigned: boolean) => {
     const channelID = dm_channel.name
@@ -135,7 +135,17 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
       if (isAssigned) {
         await removeChannel(labelID, channelID)
         removeLabelFromChannel(channelID, labelID)
-
+        setLabelList((prev) =>
+          prev.map((l) => {
+            if (l.label_id === labelID) {
+              return {
+                ...l,
+                channels: l.channels.filter((c) => c.channel_id !== channelID)
+              }
+            }
+            return l
+          })
+        )
         toast.success(`Đã xoá nhãn "${label.label}" khỏi kênh`)
       } else {
         const res = await callCreateOrAssignLabel({
@@ -150,7 +160,7 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
           toast.error('Không thể gán nhãn')
         }
       }
-      refreshLabelList()
+      mutate('channel_list')
     } catch (err) {
       console.error('Xử lý nhãn thất bại:', err)
       toast.error('Không thể cập nhật nhãn')

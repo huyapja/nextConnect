@@ -1,3 +1,4 @@
+// channelAtom.ts
 import { atom, useAtomValue, useSetAtom } from 'jotai'
 import { useMemo } from 'react'
 import { useUnreadCount } from '../layout/sidebar'
@@ -9,12 +10,11 @@ export type ChannelWithGroupType = {
   last_message_timestamp?: string
   unread_count?: number
   group_type: 'channel' | 'dm'
+  user_labels?: LabelType[]
   [key: string]: any
 }
 
 export type LabelType = { label_id: string; label: string }
-
-export const overrideLabelsAtom = atom<Map<string, LabelType[]>>(new Map())
 
 export const sortedChannelsAtom = atom<ChannelWithGroupType[]>([])
 export const sortedChannelsLoadingAtom = atom<boolean>(false)
@@ -23,7 +23,6 @@ export const setSortedChannelsAtom = atom(
   null,
   (get, set, next: ChannelWithGroupType[] | ((prev: ChannelWithGroupType[]) => ChannelWithGroupType[])) => {
     const prev = get(sortedChannelsAtom)
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     const resolved = typeof next === 'function' ? (next as Function)(prev) : next
     set(sortedChannelsAtom, resolved)
   }
@@ -45,8 +44,8 @@ export const prepareSortedChannels = (
       is_done: Object.prototype.hasOwnProperty.call(currentChannelIsDone, channel.name)
         ? currentChannelIsDone[channel.name]
         : typeof channel.is_done === 'number'
-          ? channel.is_done
-          : 0,
+        ? channel.is_done
+        : 0,
       user_labels: channel.user_labels ?? []
     })),
     ...(dm_channels ?? []).map((dm) => ({
@@ -55,8 +54,8 @@ export const prepareSortedChannels = (
       is_done: Object.prototype.hasOwnProperty.call(currentChannelIsDone, dm.name)
         ? currentChannelIsDone[dm.name]
         : typeof dm.is_done === 'number'
-          ? dm.is_done
-          : 0,
+        ? dm.is_done
+        : 0,
       user_labels: dm.user_labels ?? []
     }))
   ].sort((a, b) => {
@@ -77,7 +76,6 @@ export const useEnrichedSortedChannels = (filter?: 0 | 1 | string) => {
   const channels = useAtomValue(sortedChannelsAtom)
   const channelIsDone = useAtomValue(channelIsDoneAtom)
   const unreadList = useUnreadCount().message || []
-  const overrideLabels = useAtomValue(overrideLabelsAtom)
 
   const enriched = useMemo(() => {
     return channels
@@ -87,7 +85,6 @@ export const useEnrichedSortedChannels = (filter?: 0 | 1 | string) => {
           : channel.is_done
 
         const unread = unreadList.find((u) => u.name === channel.name)
-        const override = overrideLabels.get(channel.name)
 
         return {
           ...channel,
@@ -95,7 +92,7 @@ export const useEnrichedSortedChannels = (filter?: 0 | 1 | string) => {
           unread_count: unread?.unread_count ?? channel.unread_count ?? 0,
           last_message_content: unread?.last_message_content ?? channel.last_message_content,
           last_message_sender_name: unread?.last_message_sender_name ?? channel.last_message_sender_name,
-          user_labels: override ?? channel.user_labels ?? []
+          user_labels: channel.user_labels ?? []
         }
       })
       .filter((channel) => {
@@ -108,7 +105,7 @@ export const useEnrichedSortedChannels = (filter?: 0 | 1 | string) => {
 
         return true
       })
-  }, [channels, channelIsDone, unreadList, overrideLabels, filter])
+  }, [channels, channelIsDone, unreadList, filter])
 
   return enriched
 }
@@ -116,15 +113,12 @@ export const useEnrichedSortedChannels = (filter?: 0 | 1 | string) => {
 export const useEnrichedLabelChannels = (labelID: string): ChannelWithGroupType[] => {
   const channels = useAtomValue(sortedChannelsAtom)
   const unreadList = useUnreadCount().message || []
-  const overrideLabels = useAtomValue(overrideLabelsAtom)
 
   const enriched = useMemo(() => {
     return channels
       ?.map((channel) => {
         const unread = unreadList.find((u) => u.name === channel.name)
-        const override = overrideLabels.get(channel.name)
-
-        const user_labels = override ?? channel.user_labels ?? []
+        const user_labels = channel.user_labels ?? []
 
         return {
           ...channel,
@@ -137,14 +131,13 @@ export const useEnrichedLabelChannels = (labelID: string): ChannelWithGroupType[
       .filter(
         (channel) => Array.isArray(channel.user_labels) && channel.user_labels.some((l) => l.label_id === labelID)
       )
-  }, [channels, unreadList, overrideLabels, labelID])
+  }, [channels, unreadList, labelID])
 
   return enriched
 }
 
 export const useUpdateChannelLabels = () => {
   const setSortedChannels = useSetAtom(sortedChannelsAtom)
-  const setOverrideLabels = useSetAtom(overrideLabelsAtom)
 
   const updateChannelLabels = (channelID: string, updateFn: (prevLabels: LabelType[]) => LabelType[]) => {
     setSortedChannels((prev) =>
@@ -164,15 +157,6 @@ export const useUpdateChannelLabels = () => {
       if (prev.some((l) => l.label_id === newLabel.label_id)) return prev
       return [...prev, newLabel]
     })
-
-    setOverrideLabels((prev) => {
-      const newMap = new Map(prev)
-      const current = newMap.get(channelID) || []
-      if (!current.some((l) => l.label_id === newLabel.label_id)) {
-        newMap.set(channelID, [...current, newLabel])
-      }
-      return newMap
-    })
   }
 
   const removeLabelFromChannel = (channelID: string | '*', labelID: string) => {
@@ -187,29 +171,8 @@ export const useUpdateChannelLabels = () => {
           }
         })
       )
-
-      setOverrideLabels((prev) => {
-        const newMap = new Map(prev)
-        newMap.forEach((labels, channelID) => {
-          newMap.set(
-            channelID,
-            labels.filter((l) => l.label_id !== labelID)
-          )
-        })
-        return newMap
-      })
     } else {
       updateChannelLabels(channelID, (prev) => prev.filter((l) => l.label_id !== labelID))
-
-      setOverrideLabels((prev) => {
-        const newMap = new Map(prev)
-        const current = newMap.get(channelID) || []
-        newMap.set(
-          channelID,
-          current.filter((l) => l.label_id !== labelID)
-        )
-        return newMap
-      })
     }
   }
 
@@ -226,17 +189,6 @@ export const useUpdateChannelLabels = () => {
         }
       })
     )
-
-    setOverrideLabels((prev) => {
-      const newMap = new Map(prev)
-      newMap.forEach((labels, channelID) => {
-        newMap.set(
-          channelID,
-          labels.map((l) => (l.label_id === oldLabelID ? { ...l, label: newLabel } : l))
-        )
-      })
-      return newMap
-    })
   }
 
   return {

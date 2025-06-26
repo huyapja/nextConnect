@@ -41,9 +41,12 @@ const ChannelLabelBadge = ({
       setLabelList((prev) =>
         prev.map((l) => {
           if (l.label_id === labelID) {
-            return {
-              ...l,
-              channels: l.channels.filter((c) => c.channel_id !== channelID)
+            // Chỉ xoá nếu còn nhiều hơn 1 channel
+            if ((l.channels?.length ?? 0) > 1) {
+              return {
+                ...l,
+                channels: l.channels.filter((c) => c.channel_id !== channelID)
+              }
             }
           }
           return l
