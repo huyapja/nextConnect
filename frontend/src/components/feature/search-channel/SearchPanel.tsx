@@ -35,7 +35,7 @@ export const SearchPanel = ({ onClose }: { onClose: () => void }) => {
           </div>
 
           <div className='flex-1 overflow-y-auto min-h-0'>
-            <div className='p-3 sm:p-4 lg:p-6'>
+            <div className='sm:p-4 lg:p-6'>
               {isLoading ? (
                 <div className='flex items-center justify-center py-8'>
                   <div className='text-sm text-gray-500 dark:text-gray-400'>Searching...</div>

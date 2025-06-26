@@ -48,7 +48,7 @@ export const FileResult = ({ file, onClose }: FileResultProps) => {
         </div>
         <div className='flex-1 min-w-0'>
           <div className='flex items-center justify-between gap-2'>
-            <h4 className='font-medium text-gray-900 dark:text-white text-sm truncate'>{file.content}</h4>
+            <h4 className='font-medium text-gray-900 dark:text-white text-xs truncate sm:text-sm'>{file.content}</h4>
             <div className='flex items-center gap-2'>
               <Tooltip content='Tải xuống'>
                 <div onClick={handleDownloadClick}>
@@ -64,7 +64,7 @@ export const FileResult = ({ file, onClose }: FileResultProps) => {
           </div>
           <div className='flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400'>
             <span className='bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full'>{file.message_type}</span>
-            <span>{formatBytes(file.file_size)}</span>
+            <span className='truncate text-xs'>{formatBytes(file.file_size)}</span>
             <span>•</span>
             <span className='truncate max-w-[120px] sm:max-w-none'>{file.owner}</span>
             <span>•</span>
