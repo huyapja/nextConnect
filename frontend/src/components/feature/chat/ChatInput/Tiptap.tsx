@@ -414,11 +414,11 @@ const Tiptap = forwardRef(
           items: (query) => {
             if (channelType !== 'channel') {
               return channelMembersRef.current.filter((user) =>
-                user.full_name.toLowerCase().startsWith(query.query.toLowerCase())
+                user.full_name.toLowerCase().includes(query.query.toLowerCase())
               )
             }
             const members = channelMembersRef.current.filter((user) =>
-              user.full_name.toLowerCase().startsWith(query.query.toLowerCase())
+              user.full_name.toLowerCase().includes(query.query.toLowerCase())
             )
             const isMatchingAll = 'all'.startsWith(query.query.toLowerCase())
 
