@@ -1,3 +1,13 @@
+import { useCurrentChannelData } from '@/hooks/useCurrentChannelData'
+import { useGetUser } from '@/hooks/useGetUser'
+import { useGetUserRecords } from '@/hooks/useGetUserRecords'
+import { UserContext } from '@/utils/auth/UserProvider'
+import { DMChannelListItem } from '@/utils/channel/ChannelListProvider'
+import { DateMonthYear } from '@/utils/dateConversions'
+import { Box, Flex, Separator, Text } from '@radix-ui/themes'
+import { useContext, useMemo } from 'react'
+import { MessageSenderAvatar, UserHoverCard } from '../../chat/ChatMessage/MessageItem'
+
 interface MessageResultProps {
   message: SearchMessage
 }
@@ -9,26 +19,66 @@ export interface SearchMessage {
   time: string
   avatar: string
   channel: string
+  is_bot_message: boolean
+  bot: string
+  owner: string
+  creation: string
+  channel_id: string
+  workspace: string
 }
 
 export const MessageResult = ({ message }: MessageResultProps) => {
+  const { owner, creation, channel_id } = message
+  const users = useGetUserRecords()
+  const { currentUser } = useContext(UserContext)
+
+  const user = useGetUser(message.is_bot_message && message.bot ? message.bot : message.owner)
+  const { channel } = useCurrentChannelData(channel_id)
+  const channelData = channel?.channelData
+
+  const channelName = useMemo(() => {
+    if (channelData) {
+      if (channelData.is_direct_message) {
+        const peer_user_name =
+          users[(channelData as DMChannelListItem).peer_user_id]?.full_name ??
+          (channelData as DMChannelListItem).peer_user_id
+        return `DM with ${peer_user_name}`
+      } else {
+        return channelData.channel_name
+      }
+    }
+  }, [channelData])
   return (
-    <div className='group p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-sm dark:hover:bg-gray-800/50 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900'>
-      <div className='flex items-start gap-3'>
-        <div className='w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0'>
-          {message.avatar}
-        </div>
-        <div className='flex-1 min-w-0'>
-          <div className='flex items-center gap-2 mb-1'>
-            <h4 className='font-medium text-gray-900 dark:text-white text-sm'>{message.sender}</h4>
-            <span className='text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full'>
-              {message.channel}
-            </span>
-            <span className='text-xs text-gray-400 dark:text-gray-500 ml-auto'>{message.time}</span>
-          </div>
-          <p className='text-sm text-gray-700 dark:text-gray-300 line-clamp-2'>{message.content}</p>
-        </div>
-      </div>
-    </div>
+    <Flex
+      direction='column'
+      gap='2'
+      className='group
+        hover:bg-gray-100
+                            dark:hover:bg-gray-4
+                            p-2
+                            rounded-md'
+    >
+      <Flex gap='2'>
+        <Text as='span' size='1'>
+          {channelName}
+        </Text>
+        <Separator orientation='vertical' />
+        <Text as='span' size='1' color='gray'>
+          <DateMonthYear date={creation} />
+        </Text>
+      </Flex>
+
+      <Flex gap='3'>
+        <MessageSenderAvatar userID={owner} user={user} isActive={false} />
+        <Flex direction='column' gap='0' justify='center'>
+          <Box>
+            <UserHoverCard user={user} userID={owner} isActive={false} />
+          </Box>
+          <Text size={'2'} color='gray'>
+            {message.content}
+          </Text>
+        </Flex>
+      </Flex>
+    </Flex>
   )
 }
