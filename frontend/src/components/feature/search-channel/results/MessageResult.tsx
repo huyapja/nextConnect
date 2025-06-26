@@ -3,7 +3,7 @@ import { useGetUser } from '@/hooks/useGetUser'
 import { useGetUserRecords } from '@/hooks/useGetUserRecords'
 import { DMChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { DateMonthYear } from '@/utils/dateConversions'
-import { Box, Flex, Separator, Text } from '@radix-ui/themes'
+import { Flex, Separator, Text } from '@radix-ui/themes'
 import { useMemo } from 'react'
 import { MessageSenderAvatar, UserHoverCard } from '../../chat/ChatMessage/MessageItem'
 
@@ -45,34 +45,39 @@ export const MessageResult = ({ message }: MessageResultProps) => {
         return channelData.channel_name
       }
     }
-  }, [channelData])
+    return 'Unknown Channel'
+  }, [channelData, users])
+
+  if (!user) return null
+
   return (
-    <Flex
-      direction='column'
-      gap='2'
-      className='group p-4 rounded-xl border border-gray-3 dark:border-gray-7 hover:border-gray-6 dark:hover:border-gray-6 hover:shadow-md dark:hover:bg-gray-2 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-1'
-    >
-      <Flex gap='2'>
-        <Text as='span' size='1'>
+    <div className='group p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md dark:hover:bg-gray-800/50 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900'>
+      {/* Header with channel and date */}
+      <div className='flex items-center gap-2 mb-2 sm:mb-3'>
+        <Text as='span' size='1' className='text-gray-600 dark:text-gray-400 font-medium truncate'>
           {channelName}
         </Text>
-        <Separator orientation='vertical' />
-        <Text as='span' size='1' color='gray'>
+        <Separator orientation='vertical' className='hidden sm:block' />
+        <Text as='span' size='1' className='text-gray-500 dark:text-gray-500 flex-shrink-0'>
           <DateMonthYear date={creation} />
         </Text>
-      </Flex>
+      </div>
 
-      <Flex gap='3'>
-        <MessageSenderAvatar userID={owner} user={user} isActive={false} />
-        <Flex direction='column' gap='0' justify='center'>
-          <Box>
+      {/* Message content */}
+      <Flex gap='2 sm:gap-3' align='start'>
+        <div className='flex-shrink-0'>
+          <MessageSenderAvatar userID={owner} user={user} isActive={false} />
+        </div>
+
+        <div className='flex-1 min-w-0'>
+          <div className='mb-1'>
             <UserHoverCard user={user} userID={owner} isActive={false} />
-          </Box>
-          <Text size={'2'} color='gray'>
+          </div>
+          <Text size='2' className='text-gray-700 dark:text-gray-300 leading-relaxed break-words'>
             {message.content}
           </Text>
-        </Flex>
+        </div>
       </Flex>
-    </Flex>
+    </div>
   )
 }

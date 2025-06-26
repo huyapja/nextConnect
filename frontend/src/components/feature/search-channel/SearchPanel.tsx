@@ -1,4 +1,3 @@
-// SearchPanel.tsx
 import { useDebounce } from '@/hooks/useDebounce'
 import { Tabs } from '@radix-ui/themes'
 import { useState } from 'react'
@@ -23,11 +22,10 @@ export const SearchPanel = () => {
   const [searchQuery, setSearchQuery] = useState('')
 
   const debouncedQuery = useDebounce(searchQuery, 400)
-
   const { results, isLoading, error } = useSearchResults(activeTab, debouncedQuery, channelID)
 
   return (
-    <div className='flex flex-col h-full overflow-hidden'>
+    <div className='flex flex-col h-full overflow-hidden bg-white dark:bg-gray-900'>
       <SearchHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
       <div className='flex-1 flex flex-col min-h-0'>
@@ -37,11 +35,15 @@ export const SearchPanel = () => {
           </div>
 
           <div className='flex-1 overflow-y-auto min-h-0'>
-            <div className='p-6'>
+            <div className='p-3 sm:p-4 lg:p-6'>
               {isLoading ? (
-                <div className='text-sm text-gray-500 dark:text-gray-400'>Loading...</div>
+                <div className='flex items-center justify-center py-8'>
+                  <div className='text-sm text-gray-500 dark:text-gray-400'>Searching...</div>
+                </div>
               ) : error ? (
-                <div className='text-sm text-red-500'>Error: {error.message}</div>
+                <div className='text-sm text-red-500 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg'>
+                  Error: {error.message}
+                </div>
               ) : !results || results.length === 0 ? (
                 <EmptyState type={searchQuery ? 'no-results' : 'no-search'} />
               ) : (
