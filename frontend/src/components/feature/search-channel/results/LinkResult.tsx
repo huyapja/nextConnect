@@ -3,9 +3,9 @@ import { useGetUser } from '@/hooks/useGetUser'
 import { useGetUserRecords } from '@/hooks/useGetUserRecords'
 import { DMChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { DateMonthYear } from '@/utils/dateConversions'
-import { Box, Flex, Separator, Text } from '@radix-ui/themes'
-import { useCallback, useMemo } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Box, Flex, Separator, Text, Tooltip } from '@radix-ui/themes'
+import { useCallback, useMemo, useState } from 'react'
+import { BiCheck, BiCopy, BiLinkExternal } from 'react-icons/bi'
 import { MessageSenderAvatar, UserHoverCard } from '../../chat/ChatMessage/MessageItem'
 import { useScrollToMessage } from '../useScrollToMessage'
 
@@ -20,6 +20,10 @@ export interface SearchLink {
   channel_id: string
   is_bot_message?: boolean
   bot?: string
+  name: string
+  workspace: string
+  channel: string
+  file: string
 }
 
 interface LinkResultProps {
@@ -91,6 +95,7 @@ const openUrl = (url: string): void => {
 }
 
 export const LinkResult = ({ link, onClose }: LinkResultProps) => {
+  const [copied, setCopied] = useState(false)
   const { owner, creation, channel_id, url } = link
   const users = useGetUserRecords()
 
@@ -115,6 +120,48 @@ export const LinkResult = ({ link, onClose }: LinkResultProps) => {
   }, [url])
 
   const { handleScrollToMessage } = useScrollToMessage(onClose)
+
+  const handleIconClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    handleScrollToMessage(link.name, link.channel_id || '', link.workspace)
+  }
+
+  const extractFirstUrl = (content: string): string | null => {
+    const match = content.match(/https?:\/\/[^\s]+/)
+    return match ? match[0] : null
+  }
+
+  const handleCopyLink = (e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    const url = extractFirstUrl(link.content)
+    if (url) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+      navigator.clipboard.writeText(url)
+    }
+  }
+
+  const renderContentWithLinks = (content: string) => {
+    const parts = content.split(/(https?:\/\/[^\s]+)/g)
+
+    return parts.map((part, index) => {
+      if (part.match(/https?:\/\/[^\s]+/)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-800 hover:decoration-solid transition-colors duration-150 break-all'
+          >
+            {part}
+          </a>
+        )
+      }
+      return <span key={index}>{part}</span>
+    })
+  }
 
   if (!user) {
     return null
@@ -148,14 +195,29 @@ export const LinkResult = ({ link, onClose }: LinkResultProps) => {
 
       <Flex gap='3'>
         <MessageSenderAvatar userID={owner} user={user} isActive={false} />
-        <Flex direction='column' gap='0' justify='center'>
-          <Box>
-            <UserHoverCard user={user} userID={owner} isActive={false} />
-          </Box>
-          <Text size={'2'} color='gray'>
-            {link.content}
-          </Text>
-        </Flex>
+        <div className='flex flex-1 min-w-0 justify-between'>
+          <Flex direction='column' gap='0' justify='center'>
+            <Box>
+              <UserHoverCard user={user} userID={owner} isActive={false} />
+            </Box>
+            <Text size={'2'} color='gray'>
+              {renderContentWithLinks(link.content)}
+            </Text>
+          </Flex>
+
+          <div className='flex items-center gap-2'>
+            <Tooltip content='Sao chép link'>
+              <div onClick={handleCopyLink}>
+                {copied ? <BiCheck className='w-4 h-4' /> : <BiCopy className='w-4 h-4' />}
+              </div>
+            </Tooltip>
+            <Tooltip content='Xem tin nhắn gốc'>
+              <div onClick={handleIconClick}>
+                <BiLinkExternal className='w-4 h-4' />
+              </div>
+            </Tooltip>
+          </div>
+        </div>
       </Flex>
     </Flex>
   )

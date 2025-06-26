@@ -1,9 +1,10 @@
 import { StandardDate } from '@/utils/dateConversions'
 import { formatBytes } from '@/utils/operations'
-import { HoverCard, Inset, Text } from '@radix-ui/themes'
+import { HoverCard, Inset, Text, Tooltip } from '@radix-ui/themes'
 import clsx from 'clsx'
 import { useCallback } from 'react'
-import { BsDownload, BsPlayFill } from 'react-icons/bs'
+import { BiDownload, BiLinkExternal } from 'react-icons/bi'
+import { BsPlayFill } from 'react-icons/bs'
 import { useScrollToMessage } from '../useScrollToMessage'
 
 export interface SearchMedia {
@@ -12,9 +13,11 @@ export interface SearchMedia {
   message_type: 'Image' | 'Video'
   file: string
   file_size: number
-  content?: string
+  content: string
   owner?: string
   creation: string
+  channel_id: string
+  workspace: string
 }
 
 interface MediaResultProps {
@@ -83,7 +86,7 @@ export const MediaResult = ({ media, onMediaClick, onDownload, onClose }: MediaR
       } else {
         const link = document.createElement('a')
         link.href = media.file
-        link.download = media.name
+        link.download = media.content
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
@@ -95,6 +98,11 @@ export const MediaResult = ({ media, onMediaClick, onDownload, onClose }: MediaR
   const truncatedName = truncateFileName(media.content || media.name)
 
   const { handleScrollToMessage } = useScrollToMessage(onClose)
+
+  const handleIconClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    handleScrollToMessage(media.name, media.channel_id || '', media.workspace)
+  }
 
   return (
     <div
@@ -126,14 +134,18 @@ export const MediaResult = ({ media, onMediaClick, onDownload, onClose }: MediaR
               {truncatedName}
             </Text>
 
-            <button
-              className='opacity-0 group-hover:opacity-100 sm:opacity-100 transition-opacity duration-200 p-1.5 sm:p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0'
-              onClick={handleDownload}
-              title='Download'
-              aria-label={`Download ${media.name}`}
-            >
-              <BsDownload className='w-3 h-3 sm:w-4 sm:h-4 text-gray-600 dark:text-gray-400' />
-            </button>
+            <div className='flex items-center gap-2'>
+              <Tooltip content='Tải xuống'>
+                <div onClick={handleDownload}>
+                  <BiDownload className='w-4 h-4' />
+                </div>
+              </Tooltip>
+              <Tooltip content='Xem tin nhắn gốc'>
+                <div onClick={handleIconClick}>
+                  <BiLinkExternal className='w-4 h-4' />
+                </div>
+              </Tooltip>
+            </div>
           </div>
 
           {/* Meta information */}
