@@ -1,11 +1,10 @@
 import { useCurrentChannelData } from '@/hooks/useCurrentChannelData'
 import { useGetUser } from '@/hooks/useGetUser'
 import { useGetUserRecords } from '@/hooks/useGetUserRecords'
-import { UserContext } from '@/utils/auth/UserProvider'
 import { DMChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { DateMonthYear } from '@/utils/dateConversions'
 import { Box, Flex, Separator, Text } from '@radix-ui/themes'
-import { useContext, useMemo } from 'react'
+import { useMemo } from 'react'
 import { MessageSenderAvatar, UserHoverCard } from '../../chat/ChatMessage/MessageItem'
 
 interface MessageResultProps {
@@ -30,7 +29,6 @@ export interface SearchMessage {
 export const MessageResult = ({ message }: MessageResultProps) => {
   const { owner, creation, channel_id } = message
   const users = useGetUserRecords()
-  const { currentUser } = useContext(UserContext)
 
   const user = useGetUser(message.is_bot_message && message.bot ? message.bot : message.owner)
   const { channel } = useCurrentChannelData(channel_id)

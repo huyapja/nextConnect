@@ -1,40 +1,173 @@
-import { BiLink } from 'react-icons/bi'
+import { useCurrentChannelData } from '@/hooks/useCurrentChannelData'
+import { useGetUser } from '@/hooks/useGetUser'
+import { useGetUserRecords } from '@/hooks/useGetUserRecords'
+import { DMChannelListItem } from '@/utils/channel/ChannelListProvider'
+import { DateMonthYear } from '@/utils/dateConversions'
+import { Box, Flex, Separator, Text } from '@radix-ui/themes'
+import { useCallback, useMemo } from 'react'
+import { MessageSenderAvatar, UserHoverCard } from '../../chat/ChatMessage/MessageItem'
 
 export interface SearchLink {
   id: number
   url: string
   label: string
   description: string
-  sharedBy: string
-  sharedDate: string
+  content: string
+  owner: string
+  creation: string
+  channel_id: string
+  is_bot_message?: boolean
+  bot?: string
 }
 
 interface LinkResultProps {
   link: SearchLink
+  onLinkClick?: (url: string, link: SearchLink) => void
 }
 
-export const LinkResult = ({ link }: LinkResultProps) => {
+const linkResultStyles = {
+  container: `
+    group
+    hover:bg-gray-2
+    dark:hover:bg-gray-4
+    p-3
+    rounded-lg
+    border
+    border-transparent
+    hover:border-gray-6
+    dark:hover:border-gray-6
+    transition-all
+    duration-200
+    cursor-pointer
+  `,
+  urlText: `
+    text-blue-11
+    hover:text-blue-12
+    underline
+    decoration-dotted
+    underline-offset-2
+    hover:decoration-solid
+    transition-colors
+    duration-150
+    cursor-pointer
+    break-all
+  `,
+  channelText: `
+    text-gray-11
+    text-xs
+    font-medium
+  `,
+  dateText: `
+    text-gray-10
+    text-xs
+  `,
+  contentText: `
+    text-gray-12
+    text-sm
+    leading-relaxed
+    line-clamp-2
+  `
+}
+
+const isValidUrl = (url: string): boolean => {
+  try {
+    new URL(url)
+    return true
+  } catch {
+    return false
+  }
+}
+
+const openUrl = (url: string): void => {
+  if (isValidUrl(url)) {
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+}
+
+export const LinkResult = ({ link, onLinkClick }: LinkResultProps) => {
+  const { owner, creation, channel_id, url, content } = link
+  const users = useGetUserRecords()
+
+  const user = useGetUser(link.is_bot_message && link.bot ? link.bot : owner)
+  const { channel } = useCurrentChannelData(channel_id)
+  const channelData = channel?.channelData
+
+  const channelName = useMemo(() => {
+    if (!channelData) return 'Unknown Channel'
+
+    if (channelData.is_direct_message) {
+      const dmChannel = channelData as DMChannelListItem
+      const peerUserName = users[dmChannel.peer_user_id]?.full_name ?? dmChannel.peer_user_id
+      return `DM with ${peerUserName}`
+    }
+
+    return channelData.channel_name || 'Unnamed Channel'
+  }, [channelData, users])
+
+  const handleUrlClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+
+      if (onLinkClick) {
+        onLinkClick(url, link)
+      } else {
+        openUrl(url)
+      }
+    },
+    [url, link, onLinkClick]
+  )
+
+  const handleContainerClick = useCallback(() => {
+    openUrl(url)
+  }, [url])
+
+  if (!user) {
+    return null
+  }
+
   return (
-    <div className='group p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-sm dark:hover:bg-gray-800/50 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900'>
-      <div className='flex items-start gap-3'>
-        <div className='w-10 h-10 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-lg flex items-center justify-center flex-shrink-0'>
-          <BiLink className='w-5 h-5 text-white' />
-        </div>
-        <div className='flex-1 min-w-0'>
-          <h4 className='font-medium text-blue-600 dark:text-blue-400 text-sm hover:text-blue-700 dark:hover:text-blue-300 truncate mb-1'>
-            <a href={link.url} target='_blank' rel='noreferrer'>
-              {link.label}
-            </a>
-          </h4>
-          <p className='text-sm text-gray-600 dark:text-gray-300 line-clamp-1 mb-2'>{link.description}</p>
-          <div className='flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500 mb-1'>
-            <span>Shared by {link.sharedBy}</span>
-            <span>•</span>
-            <span>{link.sharedDate}</span>
-          </div>
-          <p className='text-xs text-gray-400 dark:text-gray-500 truncate'>{link.url}</p>
-        </div>
-      </div>
-    </div>
+    <Flex
+      direction='column'
+      gap='3'
+      className={linkResultStyles.container}
+      onClick={handleContainerClick}
+      role='button'
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleContainerClick()
+        }
+      }}
+    >
+      {/* Header with channel and date */}
+      <Flex align='center' gap='2'>
+        <Text className={linkResultStyles.channelText}>{channelName}</Text>
+        <Separator orientation='vertical' size='1' />
+        <Text className={linkResultStyles.dateText}>
+          <DateMonthYear date={creation} />
+        </Text>
+      </Flex>
+
+      {/* Main content */}
+      <Flex gap='3' align='start'>
+        <MessageSenderAvatar userID={owner} user={user} isActive={false} />
+
+        <Flex direction='column' gap='1' style={{ flex: 1, minWidth: 0 }}>
+          {/* User info */}
+          <Box>
+            <UserHoverCard user={user} userID={owner} isActive={false} />
+          </Box>
+
+          {/* URL - clickable */}
+          <Text size='2' className={linkResultStyles.urlText} onClick={handleUrlClick} title={url}>
+            {url}
+          </Text>
+
+          {/* Content/Description */}
+          {content && <Text className={linkResultStyles.contentText}>{content}</Text>}
+        </Flex>
+      </Flex>
+    </Flex>
   )
 }
