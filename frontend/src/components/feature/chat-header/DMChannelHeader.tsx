@@ -16,6 +16,7 @@ import VideoCall from '../call-stringee/CallStringee'
 import ChannelLabelBadge from '../channels/ChannelLabelBadge'
 import { ViewPinnedMessagesButton } from '../pinned-messages/ViewPinnedMessagesButton'
 import ChannelHeaderMenu from './ChannelHeaderMenu'
+import { useGlobalStringee } from '../call-stringee/GlobalStringeeProvider'
 
 interface DMChannelHeaderProps {
   channelData: DMChannelListItem
@@ -24,6 +25,7 @@ interface DMChannelHeaderProps {
 export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
   const { currentUser } = useContext(UserContext)
   const isTablet = useIsTablet()
+  const { client: globalClient } = useGlobalStringee()
 
   const peerUserId = channelData.peer_user_id
   const peerUser = useGetUser(peerUserId || '')
@@ -118,8 +120,8 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
       </Flex>
 
       <Flex className='mr-3' gap='4' align='center'>
+        {peerUserId && <VideoCall toUserId={peerUserId} channelId={channelData.name} globalClient={globalClient}/>}
         <ChannelHeaderMenu channelData={channelData} />
-        {peerUserId && <VideoCall toUserId={peerUserId} channelId={channelData.name} />}
       </Flex>
     </PageHeader>
   )

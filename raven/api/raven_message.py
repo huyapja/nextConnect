@@ -1033,22 +1033,19 @@ def send_call_history_message(channel_id, call_type, call_status, duration=None)
         icon = "📹" 
         call_type_text = "Video"
     
-    # Format thời gian gọi
-    call_time = frappe.utils.now_datetime().strftime("%H:%M")
-    
     if call_status == "missed":
         # Cuộc gọi nhỡ - màu đỏ
-        content = f'<div style="color: #e74c3c; font-weight: 500;">{icon} Cuộc gọi {call_type_text.lower()} nhỡ - {call_time}</div>'
-        text_content = f"{icon} Cuộc gọi {call_type_text.lower()} nhỡ - {call_time}"
+        content = f'<div style="color: #e74c3c; font-weight: 500;">{icon} Cuộc gọi {call_type_text.lower()} nhỡ</div>'
+        text_content = f"{icon} Cuộc gọi {call_type_text.lower()} nhỡ"
     elif call_status in ["completed", "ended"] and duration:
-        # Cuộc gọi thành công - màu xanh lá
+        # Cuộc gọi thành công - màu xanh lá  
         duration_formatted = format_call_duration(duration)
         content = f'<div style="color: #27ae60; font-weight: 500;">{icon} Gọi {call_type_text.lower()} - {duration_formatted}</div>'
         text_content = f"{icon} Gọi {call_type_text.lower()} - {duration_formatted}"
     else:
         # Cuộc gọi bị từ chối hoặc kết thúc - màu xám
-        content = f'<div style="color: #7f8c8d; font-weight: 500;">{icon} Cuộc gọi {call_type_text.lower()} đã kết thúc - {call_time}</div>'
-        text_content = f"{icon} Cuộc gọi {call_type_text.lower()} đã kết thúc - {call_time}"
+        content = f'<div style="color: #7f8c8d; font-weight: 500;">{icon} Cuộc gọi {call_type_text.lower()} đã kết thúc</div>'
+        text_content = f"{icon} Cuộc gọi {call_type_text.lower()} đã kết thúc"
 
     # Tạo tin nhắn với type System để không tính vào unread count
     doc_fields = {
@@ -1102,4 +1099,48 @@ def format_call_duration(duration_seconds):
     minutes = int(duration_seconds // 60)
     seconds = int(duration_seconds % 60)
     return f"{minutes:02d}:{seconds:02d}"
+
+@frappe.whitelist(methods=["POST"])
+def find_dm_channel_between_users(user1, user2):
+    """
+    Tìm DM channel giữa 2 user, tự động convert Raven User ID sang Frappe User ID nếu cần
+    
+    Args:
+        user1: User ID (có thể là Raven User ID hoặc Frappe User ID)
+        user2: User ID (có thể là Raven User ID hoặc Frappe User ID)
+    
+    Returns:
+        channel_id hoặc None nếu không tìm thấy
+    """
+    def get_frappe_user_id(user_id):
+        """Convert Raven User ID to Frappe User ID if needed"""
+        # Nếu đã là Frappe User ID (có @ hoặc là Administrator), trả về nguyên
+        if '@' in user_id or user_id == 'Administrator' or user_id == 'Guest':
+            return user_id
+            
+        # Nếu là Raven User ID, tìm Frappe User ID tương ứng
+        frappe_user = frappe.db.get_value("Raven User", user_id, "user")
+        return frappe_user if frappe_user else user_id
+    
+    # Convert cả 2 user ID sang Frappe User ID
+    frappe_user1 = get_frappe_user_id(user1)
+    frappe_user2 = get_frappe_user_id(user2)
+    
+    if not frappe_user1 or not frappe_user2:
+        return None
+    
+    # Tìm channel với 2 format có thể có
+    channel_id = frappe.db.get_value(
+        "Raven Channel",
+        filters={
+            "is_direct_message": 1,
+            "channel_name": [
+                "in",
+                [frappe_user1 + " _ " + frappe_user2, frappe_user2 + " _ " + frappe_user1],
+            ],
+        },
+        fieldname="name",
+    )
+    
+    return channel_id
 
