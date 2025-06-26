@@ -22,7 +22,7 @@ export const SearchButton = ({ open, setOpen }: { open: boolean; setOpen: (open:
         >
           <Suspense
             fallback={
-              <Flex align='center' justify='center' className='h-full bg-white dark:bg-gray-900'>
+              <Flex align='center' justify='center' className='h-full'>
                 <div className='text-center'>
                   <Loader />
                   <p className='text-sm text-gray-500 dark:text-gray-400 mt-3'>Loading search...</p>
@@ -41,7 +41,7 @@ export const SearchButton = ({ open, setOpen }: { open: boolean; setOpen: (open:
         <DrawerContent className='h-[90vh] max-h-[700px]'>
           <Suspense
             fallback={
-              <Flex align='center' justify='center' className='h-full bg-white dark:bg-gray-900'>
+              <Flex align='center' justify='center' className='h-full'>
                 <div className='text-center'>
                   <Loader />
                   <p className='text-sm text-gray-500 dark:text-gray-400 mt-3'>Loading search...</p>

@@ -25,7 +25,7 @@ export const SearchPanel = ({ onClose }: { onClose: () => void }) => {
   const { results, isLoading, error } = useSearchResults(activeTab, debouncedQuery, channelID)
 
   return (
-    <div className='flex flex-col h-full overflow-hidden bg-white dark:bg-gray-900'>
+    <div className='flex flex-col h-full overflow-hidden'>
       <SearchHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
       <div className='flex-1 flex flex-col min-h-0'>
