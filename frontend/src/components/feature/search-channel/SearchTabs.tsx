@@ -38,14 +38,8 @@ export const SearchTabs = ({ tabs, activeTab, onTabChange }: SearchTabsProps) =>
                   'cursor-pointer select-none'
                 )}
               >
-                <Icon className='w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0' />
+                <Icon className='w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 mr-2' />
                 <span className='hidden xs:block sm:hidden lg:block'>{tab.label}</span>
-                <span className='block xs:hidden sm:block lg:hidden'>{tab.label.split(' ')[0]}</span>
-                {tab.count > 0 && (
-                  <span className='bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs px-1.5 py-0.5 rounded-full min-w-[18px] text-center'>
-                    {tab.count > 99 ? '99+' : tab.count}
-                  </span>
-                )}
               </Tabs.Trigger>
             )
           })}

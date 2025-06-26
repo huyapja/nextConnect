@@ -23,7 +23,7 @@ export const FileResult = ({ file }: FileResultProps) => {
           <BiFile className='w-5 h-5 text-white' />
         </div>
         <div className='flex-1 min-w-0'>
-          <h4 className='font-medium text-gray-900 dark:text-white text-sm truncate mb-1'>{file.content}</h4>
+          <h4 className='font-medium text-gray-900 dark:text-white text-sm truncate'>{file.content}</h4>
           <div className='flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400'>
             <span className='bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full'>{file.message_type}</span>
             <span>{formatBytes(file.file_size)}</span>

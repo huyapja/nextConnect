@@ -10,10 +10,10 @@ import { SearchTabs, TabConfig } from './SearchTabs'
 import { useSearchResults } from './useSearchResults'
 
 const TABS: TabConfig[] = [
-  { key: 'Messages', label: 'Messages', icon: BiMessageRounded, count: 0 },
-  { key: 'Files', label: 'Files', icon: BiFolder, count: 0 },
-  { key: 'Images & Videos', label: 'Media', icon: BiImage, count: 0 },
-  { key: 'Links', label: 'Links', icon: BiLink, count: 0 }
+  { key: 'Messages', label: 'Tin nhắn', icon: BiMessageRounded, count: 0 },
+  { key: 'Files', label: 'Tệp', icon: BiFolder, count: 0 },
+  { key: 'Images & Videos', label: 'Ảnh', icon: BiImage, count: 0 },
+  { key: 'Links', label: 'Liên kết', icon: BiLink, count: 0 }
 ]
 
 export const SearchPanel = () => {
