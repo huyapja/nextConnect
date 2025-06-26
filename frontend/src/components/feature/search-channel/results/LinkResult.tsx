@@ -3,9 +3,11 @@ import { useGetUser } from '@/hooks/useGetUser'
 import { useGetUserRecords } from '@/hooks/useGetUserRecords'
 import { DMChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { DateMonthYear } from '@/utils/dateConversions'
-import { Box, Flex, Separator, Text } from '@radix-ui/themes'
-import { useCallback, useMemo } from 'react'
+import { Box, Flex, Separator, Text, Tooltip } from '@radix-ui/themes'
+import { useCallback, useMemo, useState } from 'react'
+import { BiCheck, BiCopy, BiLinkExternal } from 'react-icons/bi'
 import { MessageSenderAvatar, UserHoverCard } from '../../chat/ChatMessage/MessageItem'
+import { useScrollToMessage } from '../useScrollToMessage'
 
 export interface SearchLink {
   id: number
@@ -18,27 +20,35 @@ export interface SearchLink {
   channel_id: string
   is_bot_message?: boolean
   bot?: string
+  name: string
+  workspace: string
+  channel: string
+  file: string
 }
 
 interface LinkResultProps {
   link: SearchLink
   onLinkClick?: (url: string, link: SearchLink) => void
+  onClose: () => void
 }
 
 const linkResultStyles = {
   container: `
     group
-    hover:bg-gray-2
-    dark:hover:bg-gray-4
-    p-3
-    rounded-lg
+    p-4
+    rounded-xl
     border
-    border-transparent
+    border-gray-3
+    dark:border-gray-7
     hover:border-gray-6
     dark:hover:border-gray-6
+    hover:shadow-md
+    dark:hover:bg-gray-2
     transition-all
     duration-200
     cursor-pointer
+    bg-white
+    dark:bg-gray-1
   `,
   urlText: `
     text-blue-11
@@ -84,8 +94,9 @@ const openUrl = (url: string): void => {
   }
 }
 
-export const LinkResult = ({ link, onLinkClick }: LinkResultProps) => {
-  const { owner, creation, channel_id, url, content } = link
+export const LinkResult = ({ link, onClose }: LinkResultProps) => {
+  const [copied, setCopied] = useState(false)
+  const { owner, creation, channel_id, url } = link
   const users = useGetUserRecords()
 
   const user = useGetUser(link.is_bot_message && link.bot ? link.bot : owner)
@@ -104,22 +115,53 @@ export const LinkResult = ({ link, onLinkClick }: LinkResultProps) => {
     return channelData.channel_name || 'Unnamed Channel'
   }, [channelData, users])
 
-  const handleUrlClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-
-      if (onLinkClick) {
-        onLinkClick(url, link)
-      } else {
-        openUrl(url)
-      }
-    },
-    [url, link, onLinkClick]
-  )
-
   const handleContainerClick = useCallback(() => {
     openUrl(url)
   }, [url])
+
+  const { handleScrollToMessage } = useScrollToMessage(onClose)
+
+  const handleIconClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    handleScrollToMessage(link.name, link.channel_id || '', link.workspace)
+  }
+
+  const extractFirstUrl = (content: string): string | null => {
+    const match = content.match(/https?:\/\/[^\s]+/)
+    return match ? match[0] : null
+  }
+
+  const handleCopyLink = (e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    const url = extractFirstUrl(link.content)
+    if (url) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+      navigator.clipboard.writeText(url)
+    }
+  }
+
+  const renderContentWithLinks = (content: string) => {
+    const parts = content.split(/(https?:\/\/[^\s]+)/g)
+
+    return parts.map((part, index) => {
+      if (part.match(/https?:\/\/[^\s]+/)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-800 hover:decoration-solid transition-colors duration-150 break-all'
+          >
+            {part}
+          </a>
+        )
+      }
+      return <span key={index}>{part}</span>
+    })
+  }
 
   if (!user) {
     return null
@@ -141,32 +183,41 @@ export const LinkResult = ({ link, onLinkClick }: LinkResultProps) => {
       }}
     >
       {/* Header with channel and date */}
-      <Flex align='center' gap='2'>
-        <Text className={linkResultStyles.channelText}>{channelName}</Text>
-        <Separator orientation='vertical' size='1' />
-        <Text className={linkResultStyles.dateText}>
+      <Flex gap='2'>
+        <Text as='span' size='1'>
+          {channelName}
+        </Text>
+        <Separator orientation='vertical' />
+        <Text as='span' size='1' color='gray'>
           <DateMonthYear date={creation} />
         </Text>
       </Flex>
 
-      {/* Main content */}
-      <Flex gap='3' align='start'>
+      <Flex gap='3'>
         <MessageSenderAvatar userID={owner} user={user} isActive={false} />
+        <div className='flex flex-1 min-w-0 justify-between'>
+          <Flex direction='column' gap='0' justify='center'>
+            <Box>
+              <UserHoverCard user={user} userID={owner} isActive={false} />
+            </Box>
+            <Text size={'2'} color='gray'>
+              {renderContentWithLinks(link.content)}
+            </Text>
+          </Flex>
 
-        <Flex direction='column' gap='1' style={{ flex: 1, minWidth: 0 }}>
-          {/* User info */}
-          <Box>
-            <UserHoverCard user={user} userID={owner} isActive={false} />
-          </Box>
-
-          {/* URL - clickable */}
-          <Text size='2' className={linkResultStyles.urlText} onClick={handleUrlClick} title={url}>
-            {url}
-          </Text>
-
-          {/* Content/Description */}
-          {content && <Text className={linkResultStyles.contentText}>{content}</Text>}
-        </Flex>
+          <div className='flex items-center gap-2'>
+            <Tooltip content='Sao chép link'>
+              <div onClick={handleCopyLink}>
+                {copied ? <BiCheck className='w-4 h-4' /> : <BiCopy className='w-4 h-4' />}
+              </div>
+            </Tooltip>
+            <Tooltip content='Xem tin nhắn gốc'>
+              <div onClick={handleIconClick}>
+                <BiLinkExternal className='w-4 h-4' />
+              </div>
+            </Tooltip>
+          </div>
+        </div>
       </Flex>
     </Flex>
   )

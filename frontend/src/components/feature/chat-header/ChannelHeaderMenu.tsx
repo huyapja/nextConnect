@@ -4,13 +4,11 @@ import { UserContext } from '@/utils/auth/UserProvider'
 import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { DropdownMenu, Flex, IconButton } from '@radix-ui/themes'
 import { useContext, useMemo } from 'react'
-import { BiDotsVerticalRounded, BiFile, BiSearch } from 'react-icons/bi'
+import { BiDotsVerticalRounded, BiSearch } from 'react-icons/bi'
 import { SlSettings } from 'react-icons/sl'
 import { TbUsersPlus } from 'react-icons/tb'
-import { useParams } from 'react-router-dom'
 import AddChannelMembersModal from '../channel-member-details/add-members/AddChannelMembersModal'
 import ViewChannelDetailsModal from '../channels/ViewChannelDetailsModal'
-import { ViewFilesButton } from '../files/ViewFilesButton'
 import { SearchButton } from '../search-channel/SearchButton'
 
 type Props = {
@@ -20,12 +18,9 @@ type Props = {
 const ICON_SIZE = '16'
 
 const ChannelHeaderMenu = ({ channelData }: Props) => {
-  const { channelID } = useParams()
-
   const { currentUser } = useContext(UserContext)
   const { channelMembers } = useFetchChannelMembers(channelData.name)
 
-  const [isFileOpen, { on: onFileOpen }, onFileChange] = useBoolean(false)
   const [isSearchOpen, { on: onSearchOpen }, onSearchChange] = useBoolean(false)
   const [isAddMembersOpen, { on: onAddMembersOpen }, onAddMembersChange] = useBoolean(false)
   const [isChannelDetailsOpen, { on: onChannelDetailsOpen }, onChannelDetailsChange] = useBoolean(false)
@@ -54,12 +49,6 @@ const ChannelHeaderMenu = ({ channelData }: Props) => {
               Tìm kiếm
             </Flex>
           </DropdownMenu.Item>
-          <DropdownMenu.Item onClick={onFileOpen}>
-            <Flex gap='2' align='center'>
-              <BiFile size={ICON_SIZE} />
-              Xem tập tin
-            </Flex>
-          </DropdownMenu.Item>
           {channelData.is_direct_message === 0 && (
             <>
               <DropdownMenu.Separator />
@@ -82,7 +71,6 @@ const ChannelHeaderMenu = ({ channelData }: Props) => {
           )}
         </DropdownMenu.Content>
       </DropdownMenu.Root>
-      <ViewFilesButton open={isFileOpen} setOpen={onFileChange} />
       <SearchButton open={isSearchOpen} setOpen={onSearchChange} />
       <AddChannelMembersModal open={isAddMembersOpen} setOpen={onAddMembersChange} />
 
