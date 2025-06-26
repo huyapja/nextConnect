@@ -3,7 +3,7 @@ import { useGetUser } from '@/hooks/useGetUser'
 import { useGetUserRecords } from '@/hooks/useGetUserRecords'
 import { DMChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { DateMonthYear } from '@/utils/dateConversions'
-import { Flex, Separator, Text } from '@radix-ui/themes'
+import { Box, Flex, Separator, Text } from '@radix-ui/themes'
 import { useMemo } from 'react'
 import { MessageSenderAvatar, UserHoverCard } from '../../chat/ChatMessage/MessageItem'
 
@@ -64,19 +64,16 @@ export const MessageResult = ({ message }: MessageResultProps) => {
       </div>
 
       {/* Message content */}
-      <Flex gap='2 sm:gap-3' align='start'>
-        <div className='flex-shrink-0'>
-          <MessageSenderAvatar userID={owner} user={user} isActive={false} />
-        </div>
-
-        <div className='flex-1 min-w-0'>
-          <div className='mb-1'>
+      <Flex gap='3'>
+        <MessageSenderAvatar userID={owner} user={user} isActive={false} />
+        <Flex direction='column' gap='0' justify='center'>
+          <Box>
             <UserHoverCard user={user} userID={owner} isActive={false} />
-          </div>
-          <Text size='2' className='text-gray-700 dark:text-gray-300 leading-relaxed break-words'>
+          </Box>
+          <Text size={'2'} color='gray'>
             {message.content}
           </Text>
-        </div>
+        </Flex>
       </Flex>
     </div>
   )
