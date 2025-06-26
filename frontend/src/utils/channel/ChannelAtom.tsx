@@ -178,7 +178,7 @@ export const useUpdateChannelLabels = () => {
 
   const removeLabelFromChannel = (channelID: string | '*', labelID: string) => {
     if (channelID === '*') {
-      // ✅ Xoá label khỏi tất cả các channel
+      // ✅ Xoá label khỏi tất cả các channel trong sortedChannelsAtom
       setSortedChannels((prev) =>
         prev?.map((channel) => {
           if (!Array.isArray(channel.user_labels)) return channel
@@ -190,32 +190,39 @@ export const useUpdateChannelLabels = () => {
         })
       )
 
-      // ✅ Update overrideLabelsAtom
+      // ✅ Xoá label khỏi tất cả các overrideLabels
       setOverrideLabels((prev) => {
-        const newMap = new Map(prev)
-        newMap.forEach((labels, chID) => {
+        const newMap = new Map()
+        for (const [channelID, labels] of prev.entries()) {
           const filtered = labels.filter((l) => l.label_id !== labelID)
           if (filtered.length > 0) {
-            newMap.set(chID, filtered)
-          } else {
-            newMap.delete(chID)
+            newMap.set(channelID, filtered)
           }
-        })
+        }
         return newMap
       })
     } else {
-      // ✅ Update sortedChannelsAtom
-      updateChannelLabels(channelID, (prev) => prev.filter((l) => l.label_id !== labelID))
+      // ✅ Cập nhật sortedChannelsAtom
+      setSortedChannels((prev) =>
+        prev?.map((channel) =>
+          channel.name === channelID
+            ? {
+                ...channel,
+                user_labels: (channel.user_labels || []).filter((l) => l.label_id !== labelID)
+              }
+            : channel
+        )
+      )
 
-      // ✅ Update overrideLabelsAtom
+      // ✅ Cập nhật overrideLabelsAtom
       setOverrideLabels((prev) => {
-        const newMap = new Map(prev)
+        const newMap = new Map(prev) // luôn tạo map mới
         const current = newMap.get(channelID) || []
         const filtered = current.filter((l) => l.label_id !== labelID)
         if (filtered.length > 0) {
           newMap.set(channelID, filtered)
         } else {
-          newMap.delete(channelID)
+          newMap.delete(channelID) // xoá key nếu rỗng
         }
         return newMap
       })

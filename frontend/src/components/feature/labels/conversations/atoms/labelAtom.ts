@@ -32,9 +32,6 @@ export const useLabelList = () => {
     }
   }, [call, setLabelList, labelList])
 
-  useEffect(() => {
-    refreshLabelList()
-  }, [])
 
   return {
     labelList,

@@ -5,7 +5,7 @@ import { useGetUser } from '@/hooks/useGetUser'
 import { useIsUserActive } from '@/hooks/useIsUserActive'
 import { useIsDesktop, useIsTablet } from '@/hooks/useMediaQuery'
 import { UserContext } from '@/utils/auth/UserProvider'
-import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
+import { sortedChannelsAtom, useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
 import { DMChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { replaceCurrentUserFromDMChannelName } from '@/utils/operations'
 import { Badge, Flex, Heading } from '@radix-ui/themes'
@@ -15,6 +15,7 @@ import { Link } from 'react-router-dom'
 import ChannelLabelBadge from '../channels/ChannelLabelBadge'
 import { ViewPinnedMessagesButton } from '../pinned-messages/ViewPinnedMessagesButton'
 import ChannelHeaderMenu from './ChannelHeaderMenu'
+import { useAtomValue } from 'jotai'
 
 interface DMChannelHeaderProps {
   channelData: DMChannelListItem
@@ -36,13 +37,13 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
 
   const lastWorkspace = localStorage.getItem('ravenLastWorkspace')
 
-  const enrichedChannels = useEnrichedSortedChannels()
-  const enrichedChannel = useMemo(
-    () => enrichedChannels.find((ch) => ch.name === channelData.name),
-    [enrichedChannels, channelData.name]
+  const channels = useAtomValue(sortedChannelsAtom)
+  const currentChannel = useMemo(
+    () => channels.find((ch) => ch.name === channelData.name),
+    [channels, channelData.name]
   )
 
-  const userLabels = enrichedChannel?.user_labels || []
+  const userLabels = currentChannel?.user_labels || []
 
   return (
     <PageHeader>
