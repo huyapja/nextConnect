@@ -49,17 +49,17 @@ const CreateBot = () => {
         <FormProvider {...methods}>
           <SettingsContentContainer>
             <SettingsPageHeader
-              title='Create an Agent'
-              // description='Bots can be used to send reminders, run AI assistants, and more.'
+              title='Tạo Agent mới'
+              description='Bots có thể được sử dụng để gửi nhắc nhở, vận hành trợ lý AI và nhiều hơn nữa.'
               actions={
                 <Button type='submit' disabled={loading}>
                   {loading && <Loader className='text-white' />}
-                  {loading ? 'Creating' : 'Create'}
+                  {loading ? 'Đang tạo...' : 'Tạo'}
                 </Button>
               }
               breadcrumbs={[
-                { label: 'Agents', href: '../' },
-                { label: 'New Agent', href: '' }
+                { label: 'Danh sách Agent', href: '../' },
+                { label: 'Tạo mới', href: '' }
               ]}
             />
             <ErrorBanner error={error} />
