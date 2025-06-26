@@ -22,7 +22,7 @@ export default function CallButton({ onMakeCall, isGlobalCall = false }: CallBut
         setShowCallMenu(false)
       }
     }
-    
+
     if (showCallMenu) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => {
@@ -38,8 +38,8 @@ export default function CallButton({ onMakeCall, isGlobalCall = false }: CallBut
 
   return (
     <div style={{ position: 'relative' }} data-call-menu>
-      <button 
-        onClick={() => setShowCallMenu(!showCallMenu)} 
+      <button
+        onClick={() => setShowCallMenu(!showCallMenu)}
         disabled={globalIsInCall}
         title={globalIsInCall ? "Cuộc gọi đang diễn ra" : "Call"}
         className={`
@@ -68,8 +68,8 @@ export default function CallButton({ onMakeCall, isGlobalCall = false }: CallBut
           transform: 'translateX(-50%)',
           background: appearance === 'light' ? '#ffffff' : '#2a2a2a',
           borderRadius: '12px',
-          boxShadow: appearance === 'light' 
-            ? '0 8px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05)' 
+          boxShadow: appearance === 'light'
+            ? '0 8px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05)'
             : '0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
           padding: '8px',
           minWidth: '140px',
@@ -107,7 +107,7 @@ export default function CallButton({ onMakeCall, isGlobalCall = false }: CallBut
             <FiPhoneCall size={16} style={{ color: '#10b981' }} />
             <span>Gọi Audio</span>
           </button>
-          
+
           {/* Video Call Option */}
           <button
             onClick={() => {
