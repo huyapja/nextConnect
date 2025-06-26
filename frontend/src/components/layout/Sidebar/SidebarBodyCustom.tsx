@@ -7,6 +7,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useContext, useEffect } from 'react'
 import { DirectMessageList } from '../../feature/direct-messages/DirectMessageListCustom'
 import IsTabletSidebarNav from './IsTabletSidebarNav'
+import { useSidebarMode } from '@/utils/layout/sidebar'
 // import BeatLoader from '../Loaders/BeatLoader'
 
 export const SidebarBody = () => {
@@ -25,19 +26,25 @@ export const SidebarBody = () => {
 
   const isTablet = useIsTablet()
 
-  // const isLoaded = !isLoading && !isValidating
+  const { title } = useSidebarMode()
 
-  // if (!isLoaded) return <BeatLoader text='Đang tải danh sách tin nhắn...' />
+  const content = (
+    <Flex direction='column' gap='2' className='overflow-hidden pb-12 sm:pb-0' px='2'>
+      <Flex direction='column' gap='1' className='pb-0.5'></Flex>
+      {/* <CircleUserList /> */}
+      {isTablet && <IsTabletSidebarNav />}
+      {/* <PinnedChannels unread_count={unread_count?.message} /> */}
+      <DirectMessageList />
+    </Flex>
+  )
+
+  if (title === 'Chủ đề') {
+    return content
+  }
 
   return (
     <ScrollArea type='hover' scrollbars='vertical' className='h-[calc(100vh-4rem)] sidebar-scroll'>
-      <Flex direction='column' gap='2' className='overflow-x-hidden pb-12 sm:pb-0' px='2'>
-        <Flex direction='column' gap='1' className='pb-0.5'></Flex>
-        {/* <CircleUserList /> */}
-        {isTablet && <IsTabletSidebarNav />}
-        {/* <PinnedChannels unread_count={unread_count?.message} /> */}
-        <DirectMessageList />
-      </Flex>
+      {content}
     </ScrollArea>
   )
 }

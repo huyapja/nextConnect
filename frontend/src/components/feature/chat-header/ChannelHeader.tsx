@@ -1,17 +1,18 @@
 import { PageHeader } from '@/components/layout/Heading/PageHeader'
+import { useIsTablet } from '@/hooks/useMediaQuery'
+import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
+import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { ChannelIcon } from '@/utils/layout/channelIcon'
-import { ChannelListItem, UserLabel } from '@/utils/channel/ChannelListProvider'
-import { EditChannelNameButton } from '../channel-details/rename-channel/EditChannelNameButton'
 import { Flex, Heading } from '@radix-ui/themes'
-import ChannelHeaderMenu from './ChannelHeaderMenu'
-import { ViewChannelMemberAvatars } from './ViewChannelMemberAvatars'
+import { useMemo, useState } from 'react'
 import { BiChevronLeft } from 'react-icons/bi'
 import { Link } from 'react-router-dom'
-import { ViewPinnedMessagesButton } from '../pinned-messages/ViewPinnedMessagesButton'
-import ViewChannelDetailsModal from '../channels/ViewChannelDetailsModal'
-import { useState } from 'react'
+import { EditChannelNameButton } from '../channel-details/rename-channel/EditChannelNameButton'
 import ChannelLabelBadge from '../channels/ChannelLabelBadge'
-import { useIsTablet } from '@/hooks/useMediaQuery'
+import ViewChannelDetailsModal from '../channels/ViewChannelDetailsModal'
+import { ViewPinnedMessagesButton } from '../pinned-messages/ViewPinnedMessagesButton'
+import ChannelHeaderMenu from './ChannelHeaderMenu'
+import { ViewChannelMemberAvatars } from './ViewChannelMemberAvatars'
 
 interface ChannelHeaderProps {
   channelData: ChannelListItem
@@ -22,7 +23,13 @@ export const ChannelHeader = ({ channelData }: ChannelHeaderProps) => {
 
   const isTablet = useIsTablet()
 
-  const userLabels = channelData.user_labels as UserLabel[]
+  const enrichedChannels = useEnrichedSortedChannels()
+  const enrichedChannel = useMemo(
+    () => enrichedChannels.find((ch) => ch.name === channelData.name),
+    [enrichedChannels, channelData.name]
+  )
+
+  const userLabels = enrichedChannel?.user_labels || []
 
   return (
     <PageHeader>

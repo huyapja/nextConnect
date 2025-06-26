@@ -30,7 +30,7 @@ export const EditMessageModal = ({ onClose, message }: EditMessageModalProps) =>
       return
     }
 
-    return updateDoc('Raven Message', message.name, { text: html, json }).then((d) => {
+    return updateDoc('Raven Message', message.name, { text: html, json }).then(() => {
       onClose(true)
       toast.info('Message updated')
     })

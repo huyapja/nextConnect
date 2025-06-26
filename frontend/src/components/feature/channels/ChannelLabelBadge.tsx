@@ -1,17 +1,15 @@
 import { useState } from 'react'
 import { Badge, Dialog, Flex, Text, Button } from '@radix-ui/themes'
 import { useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
-import { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
 import { useSetAtom } from 'jotai'
 import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
-import { refreshLabelListAtom } from '../labels/conversations/atoms/labelAtom'
+import { labelListAtom } from '../labels/conversations/atoms/labelAtom'
 
 const ChannelLabelBadge = ({
   channelID,
   labelID,
-  labelName,
-  onRemoveLocally
+  labelName
 }: {
   channelID: string
   labelID: string
@@ -19,9 +17,7 @@ const ChannelLabelBadge = ({
   onRemoveLocally?: (channelID: string) => void
 }) => {
   const { removeChannel, loading: isLoading } = useRemoveChannelFromLabel()
-  const { updateChannelLabels } = useUpdateChannelLabels()
-  const { mutate } = useSWRConfig()
-  const setRefreshKey = useSetAtom(refreshLabelListAtom)
+  const { removeLabelFromChannel } = useUpdateChannelLabels()
 
   const [isHovered, setIsHovered] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -31,17 +27,30 @@ const ChannelLabelBadge = ({
     setShowModal(true)
   }
 
+  const setLabelList = useSetAtom(labelListAtom)
+
   const handleConfirmRemove = async () => {
     try {
       await removeChannel(labelID, channelID)
 
-      onRemoveLocally?.(channelID)
-      updateChannelLabels(channelID, (prevLabels) => prevLabels.filter((l) => l.label_id !== labelID))
-      setRefreshKey((prev) => prev + 1)
+      // ✅ Xoá local overrideLabels + sortedChannelsAtom
+      removeLabelFromChannel(channelID, labelID)
+
+      // ✅ Xoá local labelListAtom
+      setLabelList((prev) =>
+        prev.map((l) => {
+          if (l.label_id === labelID) {
+            return {
+              ...l,
+              channels: l.channels.filter((c) => c.channel_id !== channelID)
+            }
+          }
+          return l
+        })
+      )
 
       toast.success(`Đã xoá thành công`)
       setShowModal(false)
-      mutate('channel_list')
     } catch (err) {
       console.error('Xoá thất bại:', err)
       toast.error('Xoá channel khỏi nhãn thất bại')

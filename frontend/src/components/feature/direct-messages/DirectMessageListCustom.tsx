@@ -181,13 +181,15 @@ export const DirectMessageItemElement = ({ channel }: { channel: UnifiedChannel 
   }, [workspaceID, channel.name, clearManualMark, navigate])
 
   const bgClass = `
-    ${isSelectedChannel ? 'bg-gray-300 dark:bg-gray-700' : ''}
-    hover:bg-gray-100 dark:hover:bg-gray-600
-  `
+  ${isSelectedChannel ? 'bg-gray-300 dark:bg-gray-700' : ''}
+  ${!isTablet ? 'hover:bg-gray-100 dark:hover:bg-gray-600' : ''}
+`
 
   // ✅ Moved after hook calls to avoid hook mismatch
   const shouldRender = isGroupChannel || (isDM && peerUserId && peerUser?.enabled)
   if (!shouldRender) return null
+
+  const { title, labelID } = useSidebarMode()
 
   return (
     <div
@@ -232,18 +234,21 @@ export const DirectMessageItemElement = ({ channel }: { channel: UnifiedChannel 
         </Text>
       </Flex>
 
-      {channel.last_message_details && (
+      {((isTablet && !channel.last_message_details) ||
+        (channel.last_message_details && !(title === 'Nhãn' || labelID))) && (
         <Tooltip content={isChannelDone ? 'Đánh dấu chưa xong' : 'Đánh dấu đã xong'} side='bottom'>
           <button
             onClick={(e) => {
               e.preventDefault()
-              if (isDesktop) {
-                e.stopPropagation()
-              }
-              // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+              e.stopPropagation() // luôn stopPropagation
               isChannelDone ? markAsNotDone(channel.name) : markAsDone(channel.name)
             }}
-            className='absolute z-99 right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 rounded-full bg-gray-200 hover:bg-gray-300 h-[20px] w-[20px] flex items-center justify-center cursor-pointer'
+            className={`
+        absolute z-99 right-2 top-1/2 transform -translate-y-1/2
+        ${isTablet ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
+        p-1 rounded-full bg-gray-200 hover:bg-gray-300
+        h-[20px] w-[20px] flex items-center justify-center cursor-pointer
+      `}
             title={isChannelDone ? 'Chưa xong' : 'Đã xong'}
           >
             <HiCheck

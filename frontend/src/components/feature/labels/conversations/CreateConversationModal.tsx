@@ -10,6 +10,7 @@ interface CreateConversationModalProps {
   label: string
   isOpen: boolean
   setIsOpen: (value: boolean) => void
+  channels: any[]
 }
 
 const CreateConversationModal = ({ name, label, isOpen, setIsOpen }: CreateConversationModalProps) => {

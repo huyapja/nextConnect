@@ -19,7 +19,7 @@ import { RiPushpinFill, RiRobot2Fill, RiShareForwardFill } from 'react-icons/ri'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useDoubleTap } from 'use-double-tap'
-import { Message, MessageBlock } from '../../../../../../types/Messaging/Message'
+import { Message, MessageBlock, TextMessage } from '../../../../../../types/Messaging/Message'
 import { generateAvatarColor } from '../../selectDropdowns/GenerateAvatarColor'
 import { getStatusText } from '../../userSettings/AvailabilityStatus/SetUserAvailabilityMenu'
 import { LeftRightLayout } from './LeftRightLayout/LeftRightLayout'
@@ -36,6 +36,7 @@ import { ThreadMessage } from './Renderers/ThreadMessage'
 import { TiptapRenderer } from './Renderers/TiptapRenderer/TiptapRenderer'
 import { ReplyMessageBox } from './ReplyMessageBox/ReplyMessageBox'
 import RetractedMessage from './RetractedMessage'
+import { TextMessageBlock } from './Renderers/TextMessage'
 
 interface SeenUser {
   name: string
@@ -317,8 +318,7 @@ export const MessageItem = React.memo(
                         : '',
                     // Đổi màu nền khi mở emoji picker
                     isEmojiPickerOpen ? 'bg-gray-2 dark:bg-gray-3' : '',
-                    isThinking && 'animate-pulse',
-                    isPending && 'animate-pulse'
+                    isThinking && 'animate-pulse'
                   )}
                 >
                   {/* Nội dung chính của tin nhắn */}
@@ -824,19 +824,34 @@ export const MessageContent = ({
   return (
     <Box {...props}>
       {displayText ? (
-        <TiptapRenderer
-          message={{
-            ...message,
-            message_type: 'Text',
-            text: displayText
-          }}
+        // <TiptapRenderer
+        //   message={{
+        //     ...message,
+        //     message_type: 'Text',
+        //     text: displayText
+        //   }}
+        //   user={user}
+        //   currentUser={currentUser}
+        //   showLinkPreview={forceHideLinkPreview ? false : message.hide_link_preview ? false : true}
+        //   onRetry={(id) => sendOnePendingMessage(id)}
+        //   onRemove={(id) => removePendingMessage(id)}
+        // />
+        <TextMessageBlock
+          message={message as TextMessage}
           user={user}
-          currentUser={currentUser}
-          showLinkPreview={forceHideLinkPreview ? false : message.hide_link_preview ? false : true}
+          onRetry={(id) => sendOnePendingMessage(id)}
+          onRemove={(id) => removePendingMessage(id)}
         />
       ) : null}
 
-      {message.message_type === 'Image' && <ImageMessageBlock message={message} user={user} />}
+      {message.message_type === 'Image' && (
+        <ImageMessageBlock
+          onRetry={(id) => sendOnePendingMessage(id)}
+          onRemove={(id) => removePendingMessage(id)}
+          message={message}
+          user={user}
+        />
+      )}
 
       {message.message_type === 'File' && (
         <FileMessageBlock

@@ -1,6 +1,7 @@
 import { Label } from '@/components/common/Form'
 import { HStack, Stack } from '@/components/layout/Stack'
 import useFetchChannelMembers, { Member } from '@/hooks/fetchers/useFetchChannelMembers'
+import { useCurrentChannelData } from '@/hooks/useCurrentChannelData'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useUserData } from '@/hooks/useUserData'
 import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
@@ -233,6 +234,8 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
 
   const { threadID } = useParams()
 
+  const { channel } = useCurrentChannelData(channelData.name)
+
   return (
     <ChatBoxBodyContainer>
       <FileDrop // Component cho phép kéo thả file.
@@ -274,6 +277,7 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
               sessionStorageKey={`tiptap-${channelData.name}`}
               onMessageSend={sendMessage}
               messageSending={loading}
+              channelType={channel?.type}
               slotBefore={
                 <Flex direction='column' justify='center' hidden={!selectedMessage && !files?.length}>
                   {selectedMessage && <PreviousMessagePreview selectedMessage={selectedMessage} />}

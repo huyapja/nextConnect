@@ -5,6 +5,7 @@ import { useChannelSeenUsers } from '@/hooks/useChannelSeenUsers'
 import { useCurrentChannelData } from '@/hooks/useCurrentChannelData'
 import { useDebounceDynamic } from '@/hooks/useDebounce'
 import { useUserData } from '@/hooks/useUserData'
+import { getFileExtension } from '@/utils/operations'
 import { virtuosoSettings } from '@/utils/VirtuosoSettings'
 import {
   forwardRef,
@@ -20,15 +21,14 @@ import {
 import { useLocation } from 'react-router-dom'
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso'
 import { Message } from '../../../../../../types/Messaging/Message'
+import { PendingMessage } from '../ChatInput/useSendMessage'
+import { isImageFile } from '../ChatMessage/Renderers/FileMessage'
 import ChatDialogs from './ChatDialogs'
 import ChatStreamLoader from './ChatStreamLoader'
 import { MessageItemRenderer } from './MessageListRenderer'
 import ScrollToBottomButtons from './ScrollToBottomButtons'
 import useChatStream from './useChatStream'
 import { useChatStreamActions } from './useChatStreamActions'
-import { PendingMessage } from '../ChatInput/useSendMessage'
-import { getFileExtension } from '@/utils/operations'
-import { isImageFile } from '../ChatMessage/Renderers/FileMessage'
 
 type Props = {
   channelID: string
@@ -37,9 +37,9 @@ type Props = {
   pinnedMessagesString?: string
   onModalClose?: () => void
   virtuosoRef: MutableRefObject<VirtuosoHandle>
-  pendingMessages: PendingMessage[]
-  removePendingMessage: (id: string) => void
-  sendOnePendingMessage: (id: string) => void
+  pendingMessages?: PendingMessage[]
+  removePendingMessage?: (id: string) => void
+  sendOnePendingMessage?: (id: string) => void
 }
 
 interface ScrollState {
@@ -215,19 +215,11 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
       clearAllNewMessages
     } = useChatStream(channelID, virtuosoRef, pinnedMessagesString, scrollState.isAtBottom)
 
-    // useEffect(() => {
-    //   if (messages && messages?.length > 0 && !renderState.isInitialLoadComplete) {
-    //     setTimeout(() => {
-    //       dispatchRenderState({ type: 'SET_INITIAL_LOAD_COMPLETE', payload: true })
-    //     }, 100)
-    //     setTimeout(() => dispatchRenderState({ type: 'SET_VIRTUOSO_READY', payload: true }), 200)
-    //     setTimeout(() => dispatchRenderState({ type: 'SET_CONTENT_MEASURED', payload: true }), 300)
-    //     setTimeout(() => dispatchRenderState({ type: 'SET_INITIAL_RENDER_COMPLETE', payload: true }), 500)
-    //   }
-    // }, [messages, renderState.isInitialLoadComplete])
-
     useEffect(() => {
-      if (((messages && messages?.length > 0) || pendingMessages?.length > 0) && !renderState.isInitialLoadComplete) {
+      if (
+        ((messages && messages?.length > 0) || (pendingMessages?.length ?? 0) > 0) &&
+        !renderState.isInitialLoadComplete
+      ) {
         setTimeout(() => {
           dispatchRenderState({ type: 'SET_INITIAL_LOAD_COMPLETE', payload: true })
         }, 100)
@@ -362,28 +354,33 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
     }, [messages, userID, editActions.setEditMessage])
 
     const combinedMessages = useMemo(() => {
-      const baseMessages = messages ?? []
-      const pending = pendingMessages ?? []
+      const baseMessages = (messages ?? []).map((m: any) => ({
+        ...m,
+        sort_time: m.resend_at ? m.resend_at : new Date(m.modified || m.creation || 0).getTime()
+      }))
 
-      return [
-        ...baseMessages,
-        ...pending.map((m) => {
-          const ext = m.fileMeta?.name ? getFileExtension(m.fileMeta.name) : ''
-          const fixedType = m.message_type === 'File' && isImageFile(ext) ? 'Image' : m.message_type
+      const pending = (pendingMessages ?? []).map((m) => {
+        const ext = m.fileMeta?.name ? getFileExtension(m.fileMeta.name) : ''
+        const fixedType = m.message_type === 'File' && isImageFile(ext) ? 'Image' : m.message_type
 
-          return {
-            name: m.id,
-            message_type: fixedType,
-            content: m.content,
-            owner: userID,
-            is_pending: true,
-            is_error: m.status === 'error',
-            file: m.file,
-            fileMeta: m.fileMeta,
-            modified: m.createdAt ? new Date(m.createdAt).toISOString() : new Date(0).toISOString()
-          }
-        })
-      ]
+        return {
+          name: m.id,
+          message_type: fixedType,
+          content: m.content,
+          owner: userID,
+          is_pending: true,
+          is_error: m.status === 'error',
+          file: m.file,
+          fileMeta: m.fileMeta,
+          modified: m.createdAt ? new Date(m.createdAt).toISOString() : new Date(0).toISOString(),
+          sort_time: m.createdAt || 0
+        }
+      })
+
+      const all = [...baseMessages, ...pending]
+
+      // Sort theo sort_time
+      return all.sort((a, b) => a.sort_time - b.sort_time)
     }, [messages, pendingMessages, userID])
 
     const itemRenderer = useCallback(
@@ -404,9 +401,9 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
             setReactionMessage={reactionActions.setReactionMessage}
             seenUsers={seenUsers}
             channel={channel}
-            isPending={!!message.is_pending}
-            sendOnePendingMessage={sendOnePendingMessage}
-            removePendingMessage={removePendingMessage}
+            isPending={!!(message as any).is_pending}
+            sendOnePendingMessage={sendOnePendingMessage as any}
+            removePendingMessage={removePendingMessage as any}
           />
         )
       },
@@ -544,13 +541,13 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
 
         {error && <ErrorBanner error={error} />}
 
-        {((messages && messages?.length > 0) || pendingMessages?.length > 0) && (
+        {((messages && messages?.length > 0) || (pendingMessages?.length ?? 0) > 0) && (
           <Virtuoso
             ref={virtuosoRef}
             data={combinedMessages}
             itemContent={itemRenderer}
             followOutput={scrollState.isAtBottom ? 'auto' : false}
-            initialTopMostItemIndex={!isSavedMessage ? messages?.length - 1 : targetIndex}
+            initialTopMostItemIndex={!isSavedMessage ? (messages?.length ?? 0) - 1 : targetIndex}
             atTopStateChange={handleAtTopStateChange}
             atBottomStateChange={handleAtBottomStateChange}
             rangeChanged={handleRangeChanged}

@@ -1,12 +1,10 @@
 import clsx from 'clsx'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { MdLabelOutline } from 'react-icons/md'
 import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
 import { truncateText } from '@/utils/textUtils/truncateText'
 import { useSidebarMode } from '@/utils/layout/sidebar'
-import { useFrappeGetCall } from 'frappe-react-sdk'
-import { labelListAtom, refreshLabelListAtom } from './conversations/atoms/labelAtom'
+import { useLabelList } from './conversations/atoms/labelAtom'
 
 type Props = {
   visible: boolean
@@ -14,12 +12,8 @@ type Props = {
 }
 
 export default function LabelList({ visible, onClickLabel }: Props) {
-  const labelList = useAtomValue(labelListAtom)
-  const setLabelList = useSetAtom(labelListAtom)
-  const refreshKey = useAtomValue(refreshLabelListAtom)
+  const { labelList } = useLabelList()
   const { title, setLabelID } = useSidebarMode()
-
-  const { data, isLoading, error, mutate } = useFrappeGetCall('raven.api.user_label.get_my_labels')
 
   const enrichedChannels = useEnrichedSortedChannels()
 
@@ -38,30 +32,7 @@ export default function LabelList({ visible, onClickLabel }: Props) {
     return map
   }, [enrichedChannels])
 
-  // Luôn gọi mutate mỗi khi sidebar mở ra
-  useEffect(() => {
-    if (visible && labelList?.length === 0) {
-      mutate()
-    }
-  }, [visible, labelList?.length])
-
-  // Gọi lại API nếu có thay đổi từ nơi khác (refreshKey tăng)
-  useEffect(() => {
-    if (refreshKey > 0) {
-      mutate()
-    }
-  }, [refreshKey])
-
-  // Cập nhật atom sau khi có kết quả từ API
-  useEffect(() => {
-    if (data?.message) {
-      setLabelList(data.message)
-    }
-  }, [data])
-
   if (!visible) return null
-  if (isLoading && labelList?.length === 0) return <div className='text-sm text-gray-500 px-3'>Đang tải...</div>
-  if (error && labelList?.length === 0) return <div className='text-sm text-red-500 px-3'>Lỗi tải nhãn</div>
 
   return (
     <ul className='mt-1 space-y-1'>
