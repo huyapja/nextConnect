@@ -39,8 +39,10 @@ import { useFrappePostCall } from 'frappe-react-sdk'
 
 type UnifiedChannel = ChannelWithUnreadCount | DMChannelWithUnreadCount | any
 
+
 export const DirectMessageList = () => {
   const { labelID } = useSidebarMode()
+
   const enriched = useEnrichedSortedChannels(labelID ? undefined : 0)
 
   return (
@@ -54,6 +56,7 @@ export const DirectMessageList = () => {
 
 export const DirectMessageItemList = ({ channel_list }: any) => {
   const { title, labelID } = useSidebarMode()
+
   // Ưu tiên các component đặc biệt trước
   if (title === 'Đã gắn cờ') return <MessageSaved />
   if (title === 'Nhắc đến') return <MentionList />
@@ -98,11 +101,11 @@ export const DirectMessageItemList = ({ channel_list }: any) => {
 
   const filteredChannels = getFilteredChannels()
 
-  if (filteredChannels.length === 0) {
-    return <div className='text-gray-500 text-sm italic p-4 text-center'>Không có cuộc trò chuyện nào</div>
+  if (filteredChannels.length === 0 && title !== 'Trò chuyện') {
+    return <div className='text-gray-500 text-sm italic p-4 text-center'>Không có kết quả</div>
   }
 
-  return filteredChannels?.map((channel) => <DirectMessageItem key={channel.name} dm_channel={channel} />)
+  return <>{filteredChannels?.map((channel) => <DirectMessageItem key={channel.name} dm_channel={channel} />)}</>
 }
 
 export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnreadCount }) => {

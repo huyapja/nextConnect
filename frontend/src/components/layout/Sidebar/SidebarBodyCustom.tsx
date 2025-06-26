@@ -8,7 +8,6 @@ import { useContext, useEffect } from 'react'
 import { DirectMessageList } from '../../feature/direct-messages/DirectMessageListCustom'
 import IsTabletSidebarNav from './IsTabletSidebarNav'
 import { useSidebarMode } from '@/utils/layout/sidebar'
-import { useLabelList } from '@/components/feature/labels/conversations/atoms/labelAtom'
 // import BeatLoader from '../Loaders/BeatLoader'
 
 export const SidebarBody = () => {
@@ -17,14 +16,6 @@ export const SidebarBody = () => {
   const setSortedChannels = useSetAtom(setSortedChannelsAtom)
 
   const currentChannelIsDone = useAtomValue(channelIsDoneAtom)
-
-  const { refreshLabelList, labelList } = useLabelList()
-
-  useEffect(() => {
-    if (!labelList || labelList.length === 0) {
-      refreshLabelList()
-    }
-  }, [])
 
   useEffect(() => {
     if (channels?.length === 0 && dm_channels?.length === 0) return
