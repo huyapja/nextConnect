@@ -107,21 +107,49 @@ class RavenMessage(Document):
 		"""
 		self.mentions = []
 		unique_mentions = set()
+
 		for d in soup.find_all("span", attrs={"data-type": "userMention"}):
 			mention_id = d.get("data-id")
-			if mention_id and mention_id not in unique_mentions:
-				self.append("mentions", {"user": mention_id})
 
-				frappe.publish_realtime(
-					"raven_mention",
-					{
-						"channel_id": self.channel_id,
-						"user_id": mention_id,
-					},
-					user=mention_id,
-					after_commit=True,
+			if not mention_id:
+				continue
+
+			# Handle @All Members
+			if mention_id == "all":
+				members = frappe.get_all(
+					"Raven Channel Member",
+					filters={"channel_id": self.channel_id},
+					pluck="user_id",
 				)
-				unique_mentions.add(mention_id)
+
+				for user_id in members:
+					if user_id not in unique_mentions:
+						self.append("mentions", {"user": user_id})
+
+						frappe.publish_realtime(
+							"raven_mention",
+							{
+								"channel_id": self.channel_id,
+								"user_id": user_id,
+							},
+							user=user_id,
+							after_commit=True,
+						)
+						unique_mentions.add(user_id)
+			# Handle normal user mentions
+			elif mention_id not in unique_mentions:
+					self.append("mentions", {"user": mention_id})
+
+					frappe.publish_realtime(
+						"raven_mention",
+						{
+							"channel_id": self.channel_id,
+							"user_id": mention_id,
+						},
+						user=mention_id,
+						after_commit=True,
+					)
+					unique_mentions.add(mention_id)
 
 	def remove_empty_trailing_paragraphs(self, soup):
 		"""

@@ -2,13 +2,13 @@ import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
 import { UserContext } from '@/utils/auth/UserProvider'
 import { useUpdateLastMessageDetails } from '@/utils/channel/ChannelListProvider'
 import { useFrappePostCall } from 'frappe-react-sdk'
-import { useContext, useState, useEffect, useRef } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { Message } from '../../../../../../types/Messaging/Message'
 // import { useOnlineStatus } from '../../network/useNetworkStatus'
+import { get as idbGet, set as idbSet } from 'idb-keyval'
+import { useAtom } from 'jotai'
 import { CustomFile } from '../../file-upload/FileDrop'
 import { isImageFile } from '../ChatMessage/Renderers/FileMessage'
-import { set as idbSet, get as idbGet } from 'idb-keyval'
-import { useAtom } from 'jotai'
 
 export type PendingMessage = {
   id: string
@@ -245,7 +245,16 @@ export const useSendMessage = (
         if (file) {
           const result = await uploadOneFile(file, selectedMessage)
           if (result.message) {
-            onMessageSent([result.message])
+            // Gửi xuống cuối bằng cách thêm resend_at
+            const resendAt = Date.now()
+
+            onMessageSent([
+              {
+                ...result.message,
+                resend_at: resendAt
+              } as any
+            ])
+
             updateSidebarMessage(result.message)
             removePendingMessage(id)
           } else {
@@ -254,8 +263,6 @@ export const useSendMessage = (
         } else {
           console.warn('Cannot retry file: missing file in RAM and IndexedDB')
         }
-      } else {
-        console.warn('Cannot retry file: unknown type')
       }
     } catch (err) {
       console.error('sendOnePendingMessage error', err)

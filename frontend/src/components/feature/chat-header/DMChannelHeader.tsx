@@ -12,9 +12,10 @@ import { Badge, Flex, Heading } from '@radix-ui/themes'
 import { Key, useContext, useMemo } from 'react'
 import { BiChevronLeft } from 'react-icons/bi'
 import { Link } from 'react-router-dom'
-import ChannelLabelBadge from '../channels/ChannelLabelBadge'
-import ChannelHeaderMenu from './ChannelHeaderMenu'
 import VideoCall from '../call-stringee/CallStringee'
+import ChannelLabelBadge from '../channels/ChannelLabelBadge'
+import { ViewPinnedMessagesButton } from '../pinned-messages/ViewPinnedMessagesButton'
+import ChannelHeaderMenu from './ChannelHeaderMenu'
 import { useGlobalStringee } from '../call-stringee/GlobalStringeeProvider'
 
 interface DMChannelHeaderProps {
@@ -114,11 +115,14 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
             )}
           </div>
         </Heading>
+
+        <ViewPinnedMessagesButton pinnedMessagesString={channelData.pinned_messages_string ?? ''} />
       </Flex>
 
       <Flex className='mr-3' gap='4' align='center'>
         {peerUserId && <VideoCall toUserId={peerUserId} channelId={channelData.name} globalClient={globalClient}/>}
         <ChannelHeaderMenu channelData={channelData} />
+        {peerUserId && <VideoCall toUserId={peerUserId} channelId={channelData.name}/>}
       </Flex>
     </PageHeader>
   )

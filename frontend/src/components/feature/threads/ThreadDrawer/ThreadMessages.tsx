@@ -1,10 +1,11 @@
-import { Stack, HStack } from '@/components/layout/Stack'
+import { Label } from '@/components/common/Form'
+import { HStack, Stack } from '@/components/layout/Stack'
 import useFetchChannelMembers from '@/hooks/fetchers/useFetchChannelMembers'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useUserData } from '@/hooks/useUserData'
 import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
 import { UserContext } from '@/utils/auth/UserProvider'
-import { Box, Flex, IconButton, Checkbox } from '@radix-ui/themes'
+import { Box, Checkbox, Flex, IconButton } from '@radix-ui/themes'
 import { useSWRConfig } from 'frappe-react-sdk'
 import { MutableRefObject, useCallback, useContext, useMemo, useRef, useState } from 'react'
 import { BiX } from 'react-icons/bi'
@@ -23,7 +24,6 @@ import { JoinChannelBox } from '../../chat/chat-footer/JoinChannelBox'
 import { CustomFile, FileDrop } from '../../file-upload/FileDrop'
 import { FileListItem } from '../../file-upload/FileListItem'
 import ThreadFirstMessage from './ThreadFirstMessage'
-import { Label } from '@/components/common/Form'
 
 export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) => {
   const threadID = threadMessage.name
@@ -49,29 +49,28 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
   const onMessageSendCompleted = (messages: RavenMessage[]) => {
     mutate(
       { path: `get_messages_for_channel_${threadID}` },
-      (data?: GetMessagesResponse) => {
-        if (data && data?.message.has_new_messages) return data
+      (data?: GetMessagesResponse): GetMessagesResponse | undefined => {
+        if (!data) return undefined
 
-        const existingMessages = data?.message.messages ?? []
+        if (data.message.has_new_messages) return data
+
+        const existingMessages = data.message.messages ?? []
         const newMessages = [...existingMessages]
 
         messages.forEach((message) => {
           const messageIndex = existingMessages.findIndex((m) => m.name === message.name)
 
+          const baseMessage = {
+            ...message,
+            _liked_by: '',
+            is_pinned: 0,
+            is_continuation: 0
+          }
+
           if (messageIndex !== -1) {
-            newMessages[messageIndex] = {
-              ...message,
-              _liked_by: '',
-              is_pinned: 0,
-              is_continuation: 0
-            }
+            newMessages[messageIndex] = baseMessage as any
           } else {
-            newMessages.push({
-              ...message,
-              _liked_by: '',
-              is_pinned: 0,
-              is_continuation: 0
-            })
+            newMessages.push(baseMessage as Message)
           }
         })
 
@@ -81,7 +80,7 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
               return new Date(b.creation).getTime() - new Date(a.creation).getTime()
             }),
             has_new_messages: false,
-            has_old_messages: data?.message.has_old_messages ?? false
+            has_old_messages: data.message.has_old_messages ?? false
           }
         }
       },
@@ -256,5 +255,5 @@ const CompressImageCheckbox = ({
 }
 
 const ThreadMessagesContainer = ({ children }: { children: React.ReactNode }) => {
-  return <div className='flex flex-col overflow-hidden px-2 pt-16 justify-end h-full'>{children}</div>
+  return <div className='flex flex-col overflow-hidden px-2 pt-5 justify-end h-full'>{children}</div>
 }

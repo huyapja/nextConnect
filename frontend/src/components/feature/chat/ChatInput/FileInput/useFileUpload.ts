@@ -1,4 +1,5 @@
 import { CustomFile } from '@/components/feature/file-upload/FileDrop'
+import { getErrorMessage } from '@/components/layout/AlertBanner/ErrorBanner'
 import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
 import { FrappeConfig, FrappeContext } from 'frappe-react-sdk'
 import { useContext, useRef, useState } from 'react'
@@ -42,24 +43,23 @@ export default function useFileUploadV2(channelID: string) {
     })
   }
 
-  const uploadOneFile = async (
-    f: CustomFile,
-    selectedMessage?: Message | null
-  ): Promise<{ client_id: string; message: RavenMessage | null; file: CustomFile }> => {
+  const uploadOneFile = async (f: CustomFile, selectedMessage?: Message | null) => {
     const client_id = createClientId()
+    const isVideo = f.type.startsWith('video/')
 
     try {
       const res = await file.uploadFile(
         f,
         {
-          isPrivate: true,
+          isPrivate: isVideo ? false : true, // Video để public, image/file giữ private
           doctype: 'Raven Message',
           otherData: {
             channelID: channelID,
-            compressImages: compressImages,
+            compressImages: isVideo ? false : compressImages,
             is_reply: selectedMessage ? 1 : 0,
             linked_message: selectedMessage ? selectedMessage.name : null,
-            text: ''
+            text: '',
+            fileType: f.type
           },
           fieldname: 'file'
         },
@@ -77,7 +77,6 @@ export default function useFileUploadV2(channelID: string) {
         'raven.api.upload_file.upload_file_with_message'
       )
 
-      // ✅ Upload thành công
       setFiles((prev) => prev.filter((file) => file.fileID !== f.fileID))
       setFileUploadProgress((p) => ({
         ...p,
@@ -91,10 +90,8 @@ export default function useFileUploadV2(channelID: string) {
     } catch (e) {
       console.error('uploadFile error', e)
 
-      // ❌ Không cần toast nhiều nếu mất mạng
-      toast.error('Hãy kiểm tra lại internet của bạn')
+      toast.error('Hãy kiểm tra lại internet của bạn hoặc thử lại sau')
 
-      // ✅ Phải return message: null → để `sendFileMessages` cập nhật status: 'error'
       return {
         client_id,
         message: null,
