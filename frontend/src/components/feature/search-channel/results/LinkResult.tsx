@@ -34,21 +34,7 @@ interface LinkResultProps {
 
 const linkResultStyles = {
   container: `
-    group
-    p-4
-    rounded-xl
-    border
-    border-gray-3
-    dark:border-gray-7
-    hover:border-gray-6
-    dark:hover:border-gray-6
-    hover:shadow-md
-    dark:hover:bg-gray-2
-    transition-all
-    duration-200
-    cursor-pointer
-    bg-white
-    dark:bg-gray-1
+    group p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md dark:hover:bg-gray-800/50 transition-all duration-200 cursor-pointer
   `,
   urlText: `
     text-blue-11

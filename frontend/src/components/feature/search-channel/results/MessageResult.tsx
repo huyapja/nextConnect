@@ -58,7 +58,7 @@ export const MessageResult = ({ message, onClose }: MessageResultProps) => {
 
   return (
     <div
-      className='group p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md dark:hover:bg-gray-800/50 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900'
+      className='group p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md dark:hover:bg-gray-800/50 transition-all duration-200 cursor-pointer'
       onClick={() => handleScrollToMessage(message.name, channel_id, workspaceID)}
     >
       {/* Header with channel and date */}

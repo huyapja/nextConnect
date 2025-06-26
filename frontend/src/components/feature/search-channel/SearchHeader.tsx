@@ -8,7 +8,7 @@ interface SearchHeaderProps {
 
 export const SearchHeader = ({ searchQuery, onSearchChange }: SearchHeaderProps) => {
   return (
-    <div className='sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800'>
+    <div className='sticky top-0 z-10 border-b border-gray-100 dark:border-gray-800'>
       <div className='sm:p-4 lg:p-6 lg:pb-4'>
         <div className='mb-3 sm:mb-4'>
           <h2 className='text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-1'>Tìm kiếm</h2>
