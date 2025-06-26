@@ -84,6 +84,7 @@ def get_search_result(
             message.text,
             message.content,
             channel.workspace,
+            file_doc.file_size
         )
         .join(channel, JoinType.left)
         .on(message.channel_id == channel.name)

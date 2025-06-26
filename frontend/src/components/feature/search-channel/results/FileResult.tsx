@@ -1,11 +1,14 @@
+import { StandardDate } from '@/utils/dateConversions'
+import { formatBytes } from '@/utils/operations'
 import { BiFile } from 'react-icons/bi'
 export interface SearchFile {
-  id: number
-  name: string
-  size: string
-  type: string
-  uploadedBy: string
-  uploadDate: string
+  id: string
+  file: string
+  file_size: number
+  message_type: string
+  owner: string
+  creation: string
+  content: string
 }
 
 interface FileResultProps {
@@ -20,14 +23,14 @@ export const FileResult = ({ file }: FileResultProps) => {
           <BiFile className='w-5 h-5 text-white' />
         </div>
         <div className='flex-1 min-w-0'>
-          <h4 className='font-medium text-gray-900 dark:text-white text-sm truncate mb-1'>{file.name}</h4>
+          <h4 className='font-medium text-gray-900 dark:text-white text-sm truncate mb-1'>{file.content}</h4>
           <div className='flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400'>
-            <span className='bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full'>{file.type}</span>
-            <span>{file.size}</span>
+            <span className='bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full'>{file.message_type}</span>
+            <span>{formatBytes(file.file_size)}</span>
             <span>•</span>
-            <span>By {file.uploadedBy}</span>
+            <span>{file.owner}</span>
             <span>•</span>
-            <span>{file.uploadDate}</span>
+            <StandardDate date={file.creation} />
           </div>
         </div>
       </div>
