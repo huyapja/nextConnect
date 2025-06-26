@@ -9,7 +9,7 @@ interface SearchHeaderProps {
 
 export const SearchHeader = ({ searchQuery, onSearchChange }: SearchHeaderProps) => {
   return (
-    <div className='sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 p-6 pb-4'>
+    <div className='sticky top-0 border-b border-gray-100 dark:border-gray-800 p-6 pb-4'>
       <div className='mb-4'>
         <h2 className='text-xl font-semibold text-gray-900 dark:text-white mb-1'>Search</h2>
         <p className='text-sm text-gray-500 dark:text-gray-400'>Find messages, files, and more across your workspace</p>

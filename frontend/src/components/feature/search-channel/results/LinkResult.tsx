@@ -28,17 +28,20 @@ interface LinkResultProps {
 const linkResultStyles = {
   container: `
     group
-    hover:bg-gray-2
-    dark:hover:bg-gray-4
-    p-3
-    rounded-lg
+    p-4
+    rounded-xl
     border
-    border-transparent
+    border-gray-3
+    dark:border-gray-7
     hover:border-gray-6
     dark:hover:border-gray-6
+    hover:shadow-md
+    dark:hover:bg-gray-2
     transition-all
     duration-200
     cursor-pointer
+    bg-white
+    dark:bg-gray-1
   `,
   urlText: `
     text-blue-11
@@ -84,8 +87,8 @@ const openUrl = (url: string): void => {
   }
 }
 
-export const LinkResult = ({ link, onLinkClick }: LinkResultProps) => {
-  const { owner, creation, channel_id, url, content } = link
+export const LinkResult = ({ link }: LinkResultProps) => {
+  const { owner, creation, channel_id, url } = link
   const users = useGetUserRecords()
 
   const user = useGetUser(link.is_bot_message && link.bot ? link.bot : owner)
@@ -103,19 +106,6 @@ export const LinkResult = ({ link, onLinkClick }: LinkResultProps) => {
 
     return channelData.channel_name || 'Unnamed Channel'
   }, [channelData, users])
-
-  const handleUrlClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-
-      if (onLinkClick) {
-        onLinkClick(url, link)
-      } else {
-        openUrl(url)
-      }
-    },
-    [url, link, onLinkClick]
-  )
 
   const handleContainerClick = useCallback(() => {
     openUrl(url)
@@ -141,31 +131,25 @@ export const LinkResult = ({ link, onLinkClick }: LinkResultProps) => {
       }}
     >
       {/* Header with channel and date */}
-      <Flex align='center' gap='2'>
-        <Text className={linkResultStyles.channelText}>{channelName}</Text>
-        <Separator orientation='vertical' size='1' />
-        <Text className={linkResultStyles.dateText}>
+      <Flex gap='2'>
+        <Text as='span' size='1'>
+          {channelName}
+        </Text>
+        <Separator orientation='vertical' />
+        <Text as='span' size='1' color='gray'>
           <DateMonthYear date={creation} />
         </Text>
       </Flex>
 
-      {/* Main content */}
-      <Flex gap='3' align='start'>
+      <Flex gap='3'>
         <MessageSenderAvatar userID={owner} user={user} isActive={false} />
-
-        <Flex direction='column' gap='1' style={{ flex: 1, minWidth: 0 }}>
-          {/* User info */}
+        <Flex direction='column' gap='0' justify='center'>
           <Box>
             <UserHoverCard user={user} userID={owner} isActive={false} />
           </Box>
-
-          {/* URL - clickable */}
-          <Text size='2' className={linkResultStyles.urlText} onClick={handleUrlClick} title={url}>
-            {url}
+          <Text size={'2'} color='gray'>
+            {link.content}
           </Text>
-
-          {/* Content/Description */}
-          {content && <Text className={linkResultStyles.contentText}>{content}</Text>}
         </Flex>
       </Flex>
     </Flex>

@@ -16,7 +16,7 @@ interface SearchTabsProps {
 export const SearchTabs = ({ tabs }: SearchTabsProps) => {
   return (
     <div className='px-6 py-2 border-b border-gray-50 dark:border-gray-800'>
-      <Tabs.List className='flex gap-1 bg-gray-50 dark:bg-gray-800 rounded-lg p-1'>
+      <Tabs.List className='flex gap-1 rounded-lg p-1'>
         {tabs.map((tab) => {
           const Icon = tab.icon
           return (
@@ -26,7 +26,6 @@ export const SearchTabs = ({ tabs }: SearchTabsProps) => {
               className={clsx(
                 'flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200',
                 'hover:bg-white dark:hover:bg-gray-700 hover:shadow-sm',
-                'data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm',
                 'text-gray-600 dark:text-gray-300 cursor-pointer'
               )}
             >

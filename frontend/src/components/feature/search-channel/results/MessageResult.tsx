@@ -50,11 +50,7 @@ export const MessageResult = ({ message }: MessageResultProps) => {
     <Flex
       direction='column'
       gap='2'
-      className='group
-        hover:bg-gray-100
-                            dark:hover:bg-gray-4
-                            p-2
-                            rounded-md'
+      className='group p-4 rounded-xl border border-gray-3 dark:border-gray-7 hover:border-gray-6 dark:hover:border-gray-6 hover:shadow-md dark:hover:bg-gray-2 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-1'
     >
       <Flex gap='2'>
         <Text as='span' size='1'>

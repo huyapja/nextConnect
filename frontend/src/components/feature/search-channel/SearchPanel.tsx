@@ -1,4 +1,5 @@
 // SearchPanel.tsx
+import { useDebounce } from '@/hooks/useDebounce'
 import { Tabs } from '@radix-ui/themes'
 import { useState } from 'react'
 import { BiFolder, BiImage, BiLink, BiMessageRounded } from 'react-icons/bi'
@@ -8,7 +9,6 @@ import { SearchHeader } from './SearchHeader'
 import { SearchResults } from './SearchResults'
 import { SearchTabs, TabConfig } from './SearchTabs'
 import { useSearchResults } from './useSearchResults'
-import { useDebounce } from '@/hooks/useDebounce'
 
 const TABS: TabConfig[] = [
   { key: 'Messages', label: 'Messages', icon: BiMessageRounded, count: 0 },
@@ -27,7 +27,7 @@ export const SearchPanel = () => {
   const { results, isLoading, error } = useSearchResults(activeTab, debouncedQuery, channelID)
 
   return (
-    <div className='flex flex-col h-full bg-white dark:bg-gray-900 overflow-hidden'>
+    <div className='flex flex-col h-full overflow-hidden'>
       <SearchHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
       <div className='flex-1 flex flex-col min-h-0'>

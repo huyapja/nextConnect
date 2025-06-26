@@ -17,7 +17,7 @@ interface FileResultProps {
 
 export const FileResult = ({ file }: FileResultProps) => {
   return (
-    <div className='group p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-sm dark:hover:bg-gray-800/50 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900'>
+    <div className='group p-4 rounded-xl border border-gray-3 dark:border-gray-7 hover:border-gray-6 dark:hover:border-gray-6 hover:shadow-md dark:hover:bg-gray-2 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-1'>
       <div className='flex items-center gap-3'>
         <div className='w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0'>
           <BiFile className='w-5 h-5 text-white' />
