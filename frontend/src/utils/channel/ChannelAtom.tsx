@@ -74,7 +74,7 @@ export const prepareSortedChannels = (
 export const useEnrichedSortedChannels = (filter?: 0 | 1 | string) => {
   const channels = useAtomValue(sortedChannelsAtom) ?? []
   const channelIsDone = useAtomValue(channelIsDoneAtom) ?? {}
-  const unreadList = useUnreadCount().message ?? []
+  const { message: unreadList = [] } = useUnreadCount() ?? {}
 
   const enriched = useMemo(() => {
     return (channels ?? [])
@@ -111,7 +111,7 @@ export const useEnrichedSortedChannels = (filter?: 0 | 1 | string) => {
 
 export const useEnrichedLabelChannels = (labelID: string): ChannelWithGroupType[] => {
   const channels = useAtomValue(sortedChannelsAtom) ?? []
-  const unreadList = useUnreadCount().message ?? []
+  const { message: unreadList = [] } = useUnreadCount() ?? {}
 
   const enriched = useMemo(() => {
     return (channels ?? [])

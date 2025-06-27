@@ -5,14 +5,15 @@ import * as ContextMenu from '@radix-ui/react-context-menu'
 import clsx from 'clsx'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useMemo, useState } from 'react'
-import { FaUsers } from 'react-icons/fa6'
+import { FaAngleDown, FaAngleUp, FaUsers } from 'react-icons/fa6'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
 import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
 import { useGetUser } from '@/hooks/useGetUser'
 import { useIsMobile } from '@/hooks/useMediaQuery'
-import { FaRegTimesCircle } from 'react-icons/fa'
+import { FaAngleDoubleDown, FaAngleDoubleUp, FaRegTimesCircle } from 'react-icons/fa'
+import { UserAvatar } from '@/components/common/UserAvatar'
 
 export const useClickWithoutDrag = (onClick: () => void, threshold = 5) => {
   const [start, setStart] = useState<{ x: number; y: number } | null>(null)
@@ -60,12 +61,12 @@ const SortablePinnedItem = ({ channel }: { channel: any }) => {
       </ContextMenu.Trigger>
 
       <ContextMenu.Portal>
-        <ContextMenu.Content className='z-50 bg-white dark:bg-gray-800 text-black dark:text-white rounded shadow-md p-1'>
+        <ContextMenu.Content className='z-20 w-30 bg-white dark:bg-gray-800 text-black dark:text-white rounded shadow-md p-1'>
           <ContextMenu.Item
-            className='px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer'
+            className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer p-1'
             onClick={() => togglePin(channel.name)}
           >
-            bỏ ghim khỏi danh sách
+            <span>Bỏ ghim khỏi danh sách</span>
           </ContextMenu.Item>
         </ContextMenu.Content>
       </ContextMenu.Portal>
@@ -96,6 +97,9 @@ const PinnedChannelItem = ({ channel }: Props) => {
     navigate(`/${workspaceID}/${channel.name}`)
   })
 
+  console.log(channel);
+  
+
   return (
     <div
       className={clsx(
@@ -112,30 +116,28 @@ const PinnedChannelItem = ({ channel }: Props) => {
               e.stopPropagation()
               togglePin(channel.name)
             }}
-            className='absolute -top-2 -right-2 z-10'
+            className='absolute -top-2 -right-3 z-9'
           >
             <FaRegTimesCircle
-              className='bg-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-white'
-              size={10}
+              className='bg-white dark:bg-gray-800 text-[10px] font-bold w-4 h-4 flex items-center justify-center 
+             rounded-full border border-white dark:border-gray-800 text-gray-800 dark:text-gray-100'
+              size={8}
             />
           </div>
 
           {/* Avatar */}
-          <div
-            className={clsx(
-              'rounded-full flex items-center justify-center',
-              isDM
-                ? 'w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-500 text-white'
-                : 'border-2 border-teal-400 text-teal-600 w-7 h-7'
-            )}
-          >
+          <div className='w-8 h-8'>
             {isDM ? (
-              <span className='text-[12px] font-semibold'>{displayName?.slice(0, 2).toUpperCase()}</span>
+              <UserAvatar
+                src={userInfo?.user_image}
+                alt={userInfo?.full_name ?? channel.peer_user_id}
+              />
             ) : (
-              <FaUsers className='w-4 h-4 text-teal-500' />
+              <div className='border-2 border-teal-400 text-teal-600 w-7 h-7 rounded-full flex items-center justify-center'>
+                <FaUsers className='w-4 h-4 text-teal-500' />
+              </div>
             )}
           </div>
-
           {/* Noti */}
           {channel.unread_count > 0 && (
             <div className='absolute -bottom-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-white'>
@@ -145,7 +147,7 @@ const PinnedChannelItem = ({ channel }: Props) => {
         </div>
 
         {/* Tên */}
-        <div className='text-xs truncate max-w-full h-[16px] leading-[16px]'>{shortName}</div>
+        <div className='text-xs mt-1 truncate max-w-full h-[16px] leading-[16px]'>{shortName}</div>
       </div>
     </div>
   )
@@ -157,7 +159,7 @@ export const PinnedChannels = () => {
   const pinnedIDs = useAtomValue(pinnedChannelsAtom)
   const setPinned = useSetAtom(pinnedChannelsAtom)
   const enrichedSorted = useEnrichedSortedChannels()
-  const pinnedChannels = pinnedIDs.map((id) => enrichedSorted.find((c) => c.name === id)).filter(Boolean)
+  const pinnedChannels = pinnedIDs?.map((id) => enrichedSorted.find((c) => c.name === id)).filter(Boolean)
 
   const [showAll, setShowAll] = useState(false)
   const maxVisible = 6
@@ -188,29 +190,21 @@ export const PinnedChannels = () => {
       <div className='text-xs text-gray-500 px-2 mb-1'>Đã ghim</div>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={pinnedChannels.map((c) => c.name)} strategy={rectSortingStrategy}>
+        <SortableContext items={pinnedChannels?.map((c) => c.name)} strategy={rectSortingStrategy}>
           {/* Hàng đầu tiên: topRowChannels + toggle */}
-          <div className={`grid ${pinnedChannels.length > 5 ? 'grid-cols-6' : 'grid-cols-5'} gap-3 px-2`}>
-            {topRowChannels.map((channel) => (
-              <SortablePinnedItem key={channel.name} channel={channel} />
-            ))}
+          <div
+            className={`grid ${pinnedChannels.length > 5 ? 'grid-cols-6' : 'grid-cols-5'} gap-3 px-2 justify-items-center`}
+          >
+            {topRowChannels?.map((channel) => <SortablePinnedItem key={channel.name} channel={channel} />)}
 
             {pinnedChannels.length > 5 && (
               <div
                 onClick={() => setShowAll((prev) => !prev)}
                 className='w-[32px] h-[32px] rounded-full flex items-center justify-center cursor-pointer
-             bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600
+             bg-gray-100 dark:bg-white-700 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600
              place-self-center'
               >
-                {showAll ? (
-                  <svg className='w-4 h-4' viewBox='0 0 24 24'>
-                    <path fill='currentColor' d='M7 14l5-5 5 5z' />
-                  </svg>
-                ) : (
-                  <svg className='w-4 h-4' viewBox='0 0 24 24'>
-                    <path fill='currentColor' d='M7 10l5 5 5-5z' />
-                  </svg>
-                )}
+                {showAll ? <FaAngleUp className='text-dark-600' /> : <FaAngleDown className='text-dark-600' />}
               </div>
             )}
           </div>
@@ -218,9 +212,7 @@ export const PinnedChannels = () => {
           {/* Hàng thứ 2 nếu showAll */}
           {showAll && extraChannels.length > 0 && (
             <div className='grid grid-cols-6 gap-3 px-2 mt-2'>
-              {extraChannels.map((channel) => (
-                <SortablePinnedItem key={channel.name} channel={channel} />
-              ))}
+              {extraChannels?.map((channel) => <SortablePinnedItem key={channel.name} channel={channel} />)}
             </div>
           )}
         </SortableContext>
