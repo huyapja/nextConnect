@@ -6,12 +6,14 @@ import { useChannelList } from '@/utils/channel/ChannelListProvider'
 import { UserListContext } from '@/utils/users/UserListProvider'
 import { Badge, Box, Flex, Text } from '@radix-ui/themes'
 import clsx from 'clsx'
-import { useFrappePostCall } from 'frappe-react-sdk'
+import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
 import { useContext } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import ChannelItem from './ChannelItem'
 import { useIsUserActive } from '@/hooks/useIsUserActive'
+import { User } from '@/types/Core/User'
+import { Channel } from '@/utils/textUtils/formatLastMessage'
 
 const UserChannelList = () => {
   const { dm_channels } = useChannelList()
@@ -66,7 +68,7 @@ const UserChannelList = () => {
           <>
             <h5 className={`text-sm ${usersWithoutChannels.length > 0 ? 'mt-5' : 'mt-0'} font-medium`}>Bot</h5>
             {bots.map((item) => (
-              <BotItem key={'name' in item ? item.name : item.peer_user_id} item={item} />
+              <BotItem key={item.name} item={item} />
             ))}
           </>
         )}
@@ -75,7 +77,70 @@ const UserChannelList = () => {
   )
 }
 
-const BotItem = ({ item }: { item: User | Channel }) => {
+const UserWithoutDMItem = ({ userID }: { userID: string }) => {
+  const { workspaceID } = useParams()
+  const user = useGetUser(userID)
+  const isActive = useIsUserActive(userID)
+  const navigate = useNavigate()
+
+  const { call, loading } = useFrappePostCall<{ message: string }>(
+    'raven.api.raven_channel.create_direct_message_channel'
+  )
+
+  const { mutate } = useSWRConfig()
+
+  const onClick = () => {
+    call({ user_id: userID })
+      .then((res) => {
+        mutate('channel_list')
+        if (workspaceID) {
+          navigate(`/${workspaceID}/${res?.message}`)
+        } else {
+          navigate(`/channel/${res?.message}`)
+        }
+      })
+      .catch((err) => {
+        toast.error('Không thể tạo được đoạn chat', {
+          description: getErrorMessage(err)
+        })
+      })
+  }
+
+  return (
+    <Box
+      onClick={onClick}
+      className={clsx('w-full text-left p-2 rounded cursor-pointer', 'hover:bg-gray-100 dark:hover:bg-gray-700')}
+    >
+      <Flex width='100%' justify='between' align='center'>
+        <Flex gap='2' align='center'>
+          <Box className='relative'>
+            <UserAvatar
+              isActive={isActive}
+              src={user?.user_image}
+              isBot={user?.type === 'Bot'}
+              alt={user?.full_name ?? userID}
+              availabilityStatus={user?.availability_status}
+            />
+          </Box>
+
+          <Text as='span' className={clsx('line-clamp-1 text-ellipsis', 'text-base md:text-sm xs:text-xs')}>
+            {user?.full_name ?? userID}
+          </Text>
+        </Flex>
+
+        {loading ? <Loader /> : null}
+
+        {!user?.enabled && (
+          <Badge color='gray' variant='soft'>
+            Disabled
+          </Badge>
+        )}
+      </Flex>
+    </Box>
+  )
+}
+
+const BotItem = ({ item }: { item: any }) => {
   const { workspaceID } = useParams()
   const navigate = useNavigate()
   const { call, loading } = useFrappePostCall<{ message: string }>(
@@ -124,73 +189,13 @@ const BotItem = ({ item }: { item: User | Channel }) => {
       <Flex width='100%' justify='between' align='center'>
         <Flex gap='2' align='center'>
           <Box className='relative'>
-            <UserAvatar src={avatar} isBot alt={fullName ?? userID} availabilityStatus={user?.availability_status} />
+            <UserAvatar src={avatar} isBot alt={fullName ?? userID} />
           </Box>
           <Text as='span' className={clsx('line-clamp-1 text-ellipsis', 'text-base md:text-sm xs:text-xs')}>
             {fullName ?? userID}
           </Text>
         </Flex>
         {loading ? <Loader /> : null}
-      </Flex>
-    </Box>
-  )
-}
-
-const UserWithoutDMItem = ({ userID }: { userID: string }) => {
-  const { workspaceID } = useParams()
-  const user = useGetUser(userID)
-  const isActive = useIsUserActive(userID)
-  const navigate = useNavigate()
-
-  const { call, loading } = useFrappePostCall<{ message: string }>(
-    'raven.api.raven_channel.create_direct_message_channel'
-  )
-
-  const onClick = () => {
-    call({ user_id: userID })
-      .then((res) => {
-        if (workspaceID) {
-          navigate(`/${workspaceID}/${res?.message}`)
-        } else {
-          navigate(`/channel/${res?.message}`)
-        }
-      })
-      .catch((err) => {
-        toast.error('Không thể tạo được đoạn chat', {
-          description: getErrorMessage(err)
-        })
-      })
-  }
-
-  return (
-    <Box
-      onClick={onClick}
-      className={clsx('w-full text-left p-2 rounded cursor-pointer', 'hover:bg-gray-100 dark:hover:bg-gray-700')}
-    >
-      <Flex width='100%' justify='between' align='center'>
-        <Flex gap='2' align='center'>
-          <Box className='relative'>
-            <UserAvatar
-              isActive={isActive}
-              src={user?.user_image}
-              isBot={user?.type === 'Bot'}
-              alt={user?.full_name ?? userID}
-              availabilityStatus={user?.availability_status}
-            />
-          </Box>
-
-          <Text as='span' className={clsx('line-clamp-1 text-ellipsis', 'text-base md:text-sm xs:text-xs')}>
-            {user?.full_name ?? userID}
-          </Text>
-        </Flex>
-
-        {loading ? <Loader /> : null}
-
-        {!user?.enabled && (
-          <Badge color='gray' variant='soft'>
-            Disabled
-          </Badge>
-        )}
       </Flex>
     </Box>
   )

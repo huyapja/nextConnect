@@ -99,8 +99,8 @@ export const DirectMessageItemList = ({ channel_list }: any) => {
 
   const filteredChannels = getFilteredChannels()
 
-  if (filteredChannels.length === 0 && title !== 'Trò chuyện') {
-    return <div className='text-gray-500 text-sm italic p-4 text-center'>Không có kết quả</div>
+  if (filteredChannels.length === 0) {
+    return <div className='text-gray-500 text-sm italic p-4 text-center'>Không có cuộc trò chuyện nào</div>
   }
 
   return <>{filteredChannels?.map((channel) => <DirectMessageItem key={channel.name} dm_channel={channel} />)}</>

@@ -133,4 +133,5 @@ export interface User {
   api_key?: string
   /**	API Secret : Password	*/
   api_secret?: string
+  availability_status?: boolean
 }
