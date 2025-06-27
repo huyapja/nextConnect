@@ -71,19 +71,19 @@ function App() {
         <CallProvider>
           <GlobalStringeeProvider>
             <GroupCallProvider>
-              <Toaster position='top-right' richColors />
-              <ThemeProvider
-                appearance={appearance}
-                // grayColor='slate'
-                accentColor='iris'
-                panelBackground='translucent'
-                setAppearance={setAppearance}
-              >
-                <Suspense fallback={<></>}>
-                  <RouterProvider router={router} />
-                </Suspense>
-                <AppUpdateProvider />
-              </ThemeProvider>
+          <Toaster position='top-right' richColors />
+          <ThemeProvider
+            appearance={appearance}
+            // grayColor='slate'
+            accentColor='iris'
+            panelBackground='translucent'
+            setAppearance={setAppearance}
+          >
+            <Suspense fallback={<></>}>
+              <RouterProvider router={router} />
+            </Suspense>
+            <AppUpdateProvider />
+          </ThemeProvider>
             </GroupCallProvider>
           </GlobalStringeeProvider>
         </CallProvider>

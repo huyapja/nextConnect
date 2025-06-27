@@ -98,7 +98,6 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
               label: 'Gọi lại',
               onClick: () => {
                 // Set up callback when current call ends
-                console.log('📞 Callback scheduled for:', callerId)
                 setMissedCalls(prev => prev.filter(id => id !== callerId))
                 
                 // Show notification that callback is scheduled
@@ -107,8 +106,7 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
             }
           }
         )
-        
-        console.log('📞 Displayed busy notification for:', callerName)
+
       } else {
         // Fallback notification if can't get caller info
         toast.info(
@@ -120,7 +118,7 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
         )
       }
     } catch (error) {
-      console.error('❌ Error showing busy notification:', error)
+      // Error showing busy notification
       // Fallback notification
       toast.info(
         '📞 Cuộc gọi nhỡ',
@@ -153,33 +151,25 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
       setClient(stringeeClient)
 
       stringeeClient.on('connect', () => {
-        console.log('🌐 Global Stringee connected')
         setIsConnected(true)
       })
       
       stringeeClient.on('disconnect', () => {
-        console.log('🌐 Global Stringee disconnected')
         setIsConnected(false)
       })
 
       // 🎯 Global incoming call handler with busy check
       stringeeClient.on('incomingcall2', (incomingCall: any) => {
-        console.log('🌐 Global incoming call received:', incomingCall)
-        console.log('🌐 Current call status - isInCall:', isInCall)
-        
         const caller = incomingCall.fromNumber
         const callee = data.message.user_id
         
         // 🚫 Check if user is currently busy with another call
         if (isInCall) {
-          console.log('📞 User is busy - auto rejecting incoming call from:', caller)
-          
           // Auto reject the incoming call
           try {
             incomingCall.reject()
-            console.log('✅ Successfully auto-rejected incoming call')
           } catch (error) {
-            console.error('❌ Error auto-rejecting call:', error)
+            // Error auto-rejecting call
           }
           
           // Track missed call
@@ -207,9 +197,6 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
         // ✅ User is available - show call modal normally
         const channelId = caller < callee ? `${caller} _ ${callee}` : `${callee} _ ${caller}`
         
-        console.log('🌐 User available - showing call modal for:', caller)
-        console.log('🌐 Generated channelId for global call:', channelId)
-        
         setGlobalIncomingCall(incomingCall)
         setGlobalCallData({
           toUserId: caller,
@@ -222,13 +209,9 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
 
   // Listen for call status updates
   useFrappeEventListener('call_status_update', (eventData: any) => {
-    console.log('🔄 Global call status update:', eventData.status)
-    
-    if (eventData.status === 'connecting' || eventData.status === 'initiated') {
-      console.log('📞 Setting isInCall to true - call started')
+    if (eventData.status === 'connecting' || eventData.status === 'initiated' || eventData.status === 'answered') {
       setIsInCall(true)
     } else if (eventData.status === 'ended' || eventData.status === 'rejected') {
-      console.log('📞 Setting isInCall to false - call ended')
       setIsInCall(false)
       setShowGlobalCall(false)
       setGlobalIncomingCall(null)
@@ -237,7 +220,6 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
       // Show missed calls reminder when call ends
       handleCallEndedMissedCallsReminder()
     } else if (eventData.status === 'connected') {
-      console.log('📞 Call connected - keeping isInCall true')
       setIsInCall(true)
     }
   })
@@ -247,8 +229,6 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
     if (missedCalls.length === 0) return
     
     try {
-      console.log('📞 Showing missed calls reminder for:', missedCalls)
-      
       if (missedCalls.length === 1) {
         // Single missed call
         const callerId = missedCalls[0]
@@ -297,7 +277,6 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
             action: {
               label: 'Xem',
               onClick: () => {
-                console.log('📞 Multiple missed calls:', missedCalls)
                 setMissedCalls([]) // Clear missed calls
               }
             }
@@ -305,15 +284,12 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
         )
       }
     } catch (error) {
-      console.error('❌ Error showing missed calls reminder:', error)
+      // Error showing missed calls reminder
     }
   }
 
-  // Listen for incoming calls to set call status
-  useFrappeEventListener('incoming_call', (eventData: any) => {
-    console.log('📞 Incoming call detected - setting isInCall to true')
-    setIsInCall(true)
-  })
+  // Note: Removed problematic incoming_call listener that was causing auto-rejection
+  // The isInCall state should only be set when call is actually answered/initiated
 
   // Check for ongoing calls when app starts
   useEffect(() => {
@@ -321,8 +297,6 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
       if (!data?.message?.user_id) return
       
       try {
-        console.log('🔍 Checking for ongoing calls on app start...')
-        
         const response = await fetch('/api/method/raven.api.stringee_token.check_ongoing_calls', {
           method: 'GET',
           headers: {
@@ -334,15 +308,12 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
         const result = await response.json()
         
         if (result.message?.has_ongoing_call && result.message?.call_info) {
-          console.log('🔍 Found ongoing call:', result.message.call_info)
           setOngoingCallInfo(result.message.call_info)
           setShowRejoinDialog(true)
-          setIsInCall(true) // Set in call status
-        } else {
-          console.log('🔍 No ongoing calls found')
+          // Note: Don't set isInCall here - only set when user actually rejoins
         }
       } catch (error) {
-        console.error('🔍 Error checking ongoing calls:', error)
+        // Error checking ongoing calls
       }
     }
     
@@ -356,8 +327,6 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
   useEffect(() => {
     const handleCallBack = (event: CustomEvent) => {
       const { toUserId, isVideoCall, callerName } = event.detail
-      
-      console.log('📞 Triggering call back to:', toUserId, 'isVideo:', isVideoCall)
       
       // Set up call data for callback
       const currentUserId = data?.message?.user_id
@@ -405,8 +374,6 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
     if (!ongoingCallInfo) return
     
     try {
-      console.log('🔄 Rejoining call:', ongoingCallInfo.session_id)
-      
       await rejoinCall({ session_id: ongoingCallInfo.session_id })
       
              // Set up call data for rejoining
@@ -423,11 +390,10 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
       setGlobalCallData(rejoinCallData)
       setShowGlobalCall(true)
       setShowRejoinDialog(false)
-      
-      console.log('🔄 Successfully rejoined call')
+      setIsInCall(true) // Set in call status when actually rejoining
       
     } catch (error) {
-      console.error('🔄 Error rejoining call:', error)
+      // Error rejoining call
       setShowRejoinDialog(false)
       setOngoingCallInfo(null)
       setIsInCall(false)
@@ -439,18 +405,14 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
     if (!ongoingCallInfo) return
     
     try {
-      console.log('❌ Declining to rejoin call:', ongoingCallInfo.session_id)
-      
       await declineRejoin({ session_id: ongoingCallInfo.session_id })
       
       setShowRejoinDialog(false)
       setOngoingCallInfo(null)
       setIsInCall(false)
       
-      console.log('❌ Successfully declined rejoin')
-      
     } catch (error) {
-      console.error('❌ Error declining rejoin:', error)
+              // Error declining rejoin
       // Still close dialog even if API fails
       setShowRejoinDialog(false)
       setOngoingCallInfo(null)

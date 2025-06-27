@@ -146,18 +146,13 @@ export default function StringeeCallComponent({
       // Reset speaker state for mobile (default to earpiece)
       if (isMobile) {
         setIsSpeakerOn(false)
-        console.log('🔊 Reset speaker state to OFF (earpiece) for mobile')
       }
-      
-      console.log('🔄 Reset call states for new call - callHistorySaved: false, isEndingCall: false')
     }
   }, [call, incoming, isMobile])
 
   // 📹 Force refresh local video when call state changes
   useEffect(() => {
     if (isVideoCall && localStreamRef.current && localVideoRef.current && (callStatus === 'connected' || callStatus === 'connecting')) {
-      console.log('🔄 Refreshing local video due to call state change...')
-      
       const refreshLocalVideo = async () => {
         try {
           if (localVideoRef.current && localStreamRef.current) {
@@ -166,10 +161,9 @@ export default function StringeeCallComponent({
             localVideoRef.current.autoplay = true
             localVideoRef.current.playsInline = true
             await localVideoRef.current.play()
-            console.log('✅ Local video refreshed successfully')
           }
         } catch (error) {
-          console.log('❌ Local video refresh failed:', error)
+          // Video refresh failed silently
         }
       }
       
@@ -179,21 +173,7 @@ export default function StringeeCallComponent({
 
   // Monitor API errors for debugging
   useEffect(() => {
-    if (createCallError) {
-      console.error('❌ Create call session error:', createCallError)
-    }
-    if (updateCallError) {
-      console.error('❌ Update call status error:', updateCallError)
-    }
-    if (videoUpgradeError) {
-      console.error('❌ Video upgrade request error:', videoUpgradeError)
-    }
-    if (respondVideoError) {
-      console.error('❌ Respond video upgrade error:', respondVideoError)
-    }
-    if (checkBusyError) {
-      console.error('❌ Check busy status error:', checkBusyError)
-    }
+    // Errors are handled silently
   }, [createCallError, updateCallError, videoUpgradeError, respondVideoError, checkBusyError])
 
   // Get helper values using utility functions
@@ -220,14 +200,10 @@ export default function StringeeCallComponent({
     }
     
     if (!callerId || !calleeId) {
-      console.error('❌ Missing caller or callee ID for channel lookup')
       return null
     }
     
     try {
-      console.log('📝 Finding DM channel between:', callerId, '<->', calleeId)
-      console.log('📝 Call direction:', incoming ? 'incoming' : 'outgoing')
-      
       // Gọi API để tìm channel ID đúng
       const result = await findDMChannel({
         user1: callerId,
@@ -235,10 +211,8 @@ export default function StringeeCallComponent({
       })
       
       const channelId = result?.message || result
-      console.log('📝 Found DM channel ID:', channelId)
       return channelId
     } catch (error) {
-      console.error('❌ Failed to find DM channel:', error)
       return null
     }
   }, [data?.message?.user_id, toUserId, incoming, findDMChannel])
@@ -247,7 +221,6 @@ export default function StringeeCallComponent({
   const saveCallHistoryToChat = async (callType: 'audio' | 'video', callStatus: 'completed' | 'missed' | 'rejected' | 'ended', duration?: number) => {
     // Double check để tránh duplicate
     if (callHistorySaved) {
-      console.log('⚠️ Call history already saved - skipping duplicate save attempt')
       return
     }
     
@@ -257,13 +230,10 @@ export default function StringeeCallComponent({
     try {
       const dmChannelId = await getDMChannelId()
       if (!dmChannelId) {
-        console.error('❌ Cannot save call history - no valid channel ID')
         // Reset flag nếu failed
         setCallHistorySaved(false)
         return
       }
-      
-      console.log('💾 Saving call history to channel:', dmChannelId, 'Call type:', callType, 'Status:', callStatus, 'Duration:', duration)
       
       await saveCallHistory({
         channel_id: dmChannelId,
@@ -271,10 +241,7 @@ export default function StringeeCallComponent({
         call_status: callStatus,
         duration: duration
       })
-      
-      console.log('✅ Call history saved successfully to:', dmChannelId)
     } catch (error) {
-      console.error('❌ Failed to save call history:', error)
       // Reset flag nếu failed để có thể retry
       setCallHistorySaved(false)
     }
@@ -287,13 +254,9 @@ export default function StringeeCallComponent({
   // Cleanup on component unmount
   useEffect(() => {
     return () => {
-      console.log('🧹 Component unmounting - performing final cleanup')
-      
       // 📹 Safety guard: Force stop any remaining media tracks
       if (localStreamRef.current) {
-        console.log('🔴 [UNMOUNT] Stopping remaining local media tracks:', localStreamRef.current.getTracks().length)
         localStreamRef.current.getTracks().forEach((track, index) => {
-          console.log(`🔴 [UNMOUNT] Stopping track ${index}:`, track.kind, track.readyState)
           track.stop()
         })
         localStreamRef.current = null
@@ -312,7 +275,6 @@ export default function StringeeCallComponent({
       
       // Call comprehensive cleanup
       performCleanup()
-      console.log('✅ Component cleanup completed')
     }
   }, [])
 
@@ -369,7 +331,6 @@ export default function StringeeCallComponent({
   useEffect(() => {
     const handleMakeCallFromMissed = (event: CustomEvent) => {
       const { isVideoCall } = event.detail
-      console.log('📞 Making call from missed calls:', isVideoCall)
       
       // Small delay to ensure call modal is ready
       setTimeout(() => {
@@ -388,14 +349,11 @@ export default function StringeeCallComponent({
 
     // Listen for realtime call status updates using frappe-react-sdk hook
   useFrappeEventListener('call_status_update', (data: any) => {
-    console.log('🔄 Received call_status_update:', data, 'currentSessionId:', currentSessionId)
-    
     // Match by session ID to ensure we only handle our call
     if (data.session_id === currentSessionId) {
       
       // Handle call connected notification - chỉ cho outgoing calls
       if (data.status === 'connected' && callStatus === 'connecting' && !incoming) {
-        console.log('✅ Received call connected notification via realtime for outgoing call')
         
         // Aggressive audio stop
         stopAllAudio()
@@ -417,7 +375,6 @@ export default function StringeeCallComponent({
       
       // Handle call ended notification
       if (data.status === 'ended') {
-        console.log('🔚 Received call ended notification via realtime')
         
         // AGGRESSIVE audio stop immediately - caller hangup
         stopAllAudio()
@@ -530,14 +487,7 @@ export default function StringeeCallComponent({
   // Listen for video status updates (tắt/bật video)
   useFrappeEventListener('video_status_update', (data: any) => {
     if (data.session_id === currentSessionId) {
-      console.log('📹 Received video status update:', data)
       setIsRemoteVideoEnabled(data.video_enabled)
-      
-      if (data.video_enabled) {
-        console.log('📹 Remote user enabled video')
-      } else {
-        console.log('📹 Remote user disabled video')
-      }
     }
   })
 
@@ -575,26 +525,24 @@ export default function StringeeCallComponent({
       phoneRingRef.current.loop = true
 
       stringeeClient.on('connect', () => {
-        console.log('Stringee connected')
+        // Stringee connected
       })
       
       stringeeClient.on('disconnect', () => {
-        console.log('Stringee disconnected')
+        // Stringee disconnected
       })
       
       stringeeClient.on('authen', (res: any) => {
-        console.log('Stringee authentication:', res)
         if (res.r !== 0) {
-          console.error('Stringee authentication failed:', res)
+          // Stringee authentication failed
         }
       })
       
       stringeeClient.on('otherdeviceauthen', (data: any) => {
-        console.log('Other device authentication:', data)
+        // Other device authentication
       })
       
       stringeeClient.on('requestnewtoken', () => {
-        console.log('Stringee token expired, need refresh')
         // Token expired, you might want to refresh here
       })
 
@@ -657,7 +605,7 @@ export default function StringeeCallComponent({
   // 🌐 Xử lý global incoming call
   useEffect(() => {
     if (globalIncomingCall && isGlobalCall) {
-      console.log('🌐 Processing global incoming call:', globalIncomingCall)
+
       
       // Set call type từ global incoming call
       const incomingIsVideo = globalIncomingCall.isVideoCall === true
@@ -678,11 +626,9 @@ export default function StringeeCallComponent({
   }, [globalIncomingCall, isGlobalCall])
 
   const setupCallEvents = (callObj: any) => {
-    console.log('🔧 Setting up call events for call:', callObj?.callId || 'unknown')
-    
     // Add error handling for call events
     callObj.on('error', (error: any) => {
-      console.error('❌ Stringee call error:', error)
+      // Stringee call error
       // Don't auto-hangup on error, let user decide
     })
     
@@ -744,7 +690,6 @@ export default function StringeeCallComponent({
                 }
                 
                 await remoteAudioRef.current.play()
-                console.log(`🔊 Remote audio playing with speaker ${isSpeakerOn ? 'ON' : 'OFF'}`)
               }
             } catch (error) {
               if (attempt < 5) {
@@ -775,7 +720,6 @@ export default function StringeeCallComponent({
                 }
                 
                 await remoteVideoRef.current.play()
-                console.log(`🔊 Remote audio via video playing with speaker ${isSpeakerOn ? 'ON' : 'OFF'}`)
               }
             } catch (error) {
               if (attempt < 5) {
@@ -793,20 +737,16 @@ export default function StringeeCallComponent({
     })
 
     callObj.on('addlocalstream', (stream: MediaStream) => {
-      console.log('📹 Local stream received:', stream, 'Video tracks:', stream.getVideoTracks().length)
-      
       // Store local stream for mute/unmute control
       localStreamRef.current = stream
       
       if (localVideoRef.current) {
-        console.log('📹 Setting local video stream...')
         localVideoRef.current.srcObject = null
         
         // Multiple aggressive attempts to set and play local video
         const setLocalVideo = async (attempt = 1) => {
           try {
             if (localVideoRef.current && stream) {
-              console.log(`📹 Local video attempt ${attempt}`)
               localVideoRef.current.srcObject = stream
               localVideoRef.current.muted = true
               localVideoRef.current.autoplay = true
@@ -814,10 +754,8 @@ export default function StringeeCallComponent({
               
               // Force play with multiple retries
               await localVideoRef.current.play()
-              console.log('✅ Local video playing successfully')
             }
           } catch (error) {
-            console.log(`❌ Local video attempt ${attempt} failed:`, error)
             if (attempt < 5) {
               setTimeout(() => setLocalVideo(attempt + 1), 200 * attempt)
             }
@@ -833,18 +771,12 @@ export default function StringeeCallComponent({
     })
 
     callObj.on('signalingstate', (state: any) => {
-      console.log('🔄 Stringee signalingstate:', state, 'callStatus:', callStatus, 'call:', !!call, 'incoming:', !!incoming)
-      
       // Khi cuộc gọi được trả lời/kết nối
       if (state.code === 3 || state.reason === 'Answered' || state.reason === 'CALL_ANSWERED') {
         
         // Xử lý signal Answered cho cả incoming và outgoing calls
         // Logic đơn giản: Nếu chưa connected thì set connected
-        console.log('📞 Processing Answered signal, isCallConnected:', isCallConnected)
-        
         if (!isCallConnected) {
-          console.log('✅ Setting call connected from Stringee signal...')
-          console.log('📊 State before signalingstate update - callStatus:', callStatus, 'isCallConnected:', isCallConnected, 'call:', !!call, 'incoming:', !!incoming)
           
           // AGGRESSIVE audio cleanup on call connected
           stopAllAudio()
@@ -894,8 +826,6 @@ export default function StringeeCallComponent({
           
           // Start network monitoring when call is connected
           startNetworkMonitoring(call)
-        } else {
-          console.log('⏳ Call already connected, skipping duplicate signal')
         }
       }
       
@@ -926,13 +856,9 @@ export default function StringeeCallComponent({
       
       // Khi cuộc gọi kết thúc (chỉ xử lý nếu chưa có callStatus là 'ended')
       if ((state.code === 6 || state.reason === 'Ended' || state.reason === 'CALL_ENDED' || state.reason === 'CALL_BUSY') && callStatus !== 'ended') {
-        console.log('🔚 Call ended via signaling state - stopping media tracks immediately')
-        
         // 📹 FORCE STOP media tracks ngay lập tức khi call ends từ signaling
         if (localStreamRef.current) {
-          console.log('🔴 Stopping local stream from signaling end:', localStreamRef.current.getTracks().length)
           localStreamRef.current.getTracks().forEach((track, index) => {
-            console.log(`🔴 Stopping track ${index} from signaling:`, track.kind, track.readyState)
             track.stop()
           })
           localStreamRef.current = null
@@ -971,7 +897,6 @@ export default function StringeeCallComponent({
         
         // 🌐 FORCE global media cleanup when call ends via signaling
         setTimeout(() => {
-          console.log('🌐 Performing delayed global cleanup after signaling end...')
           forceStopAllMediaStreams()
         }, 500)
         
@@ -1022,7 +947,7 @@ export default function StringeeCallComponent({
       return true
       
     } catch (error: any) {
-      console.error('❌ Device access error:', error)
+      // Device access error
       
       // Xử lý các loại lỗi cụ thể
       if (error.name === 'NotAllowedError') {
@@ -1047,7 +972,6 @@ export default function StringeeCallComponent({
     }
 
     const newVideoEnabled = !isLocalVideoEnabled
-    console.log('📹 Toggling local video:', isLocalVideoEnabled, '->', newVideoEnabled)
 
     try {
       if (newVideoEnabled) {
@@ -1066,14 +990,11 @@ export default function StringeeCallComponent({
           localVideoRef.current.play().catch(() => {})
         }
         
-        console.log('📹 Video enabled successfully')
-        
       } else {
         // Tắt video - stop video tracks nhưng giữ audio
         if (localStreamRef.current) {
           const videoTracks = localStreamRef.current.getVideoTracks()
           videoTracks.forEach(track => {
-            console.log('📹 Stopping video track:', track.kind)
             track.stop()
           })
           
@@ -1089,8 +1010,6 @@ export default function StringeeCallComponent({
           if (localVideoRef.current) {
             localVideoRef.current.srcObject = null
           }
-          
-          console.log('📹 Video disabled successfully')
         }
       }
 
@@ -1107,16 +1026,12 @@ export default function StringeeCallComponent({
             video_enabled: newVideoEnabled
           })
           
-          console.log('📹 Video status sent successfully:', newVideoEnabled)
-          
         } catch (error) {
-          console.error('❌ Failed to send video status:', error)
           // Không block việc toggle local video
         }
       }
 
     } catch (error) {
-      console.error('❌ Error toggling video:', error)
       toast.error('Không thể tắt/bật camera')
     }
   }, [isVideoCall, isLocalVideoEnabled, localStreamRef.current, call, currentSessionId, data?.message?.user_id, toUserId, sendVideoStatus])
@@ -1124,8 +1039,6 @@ export default function StringeeCallComponent({
   // Function to toggle speaker on/off for mobile
   const toggleSpeaker = useCallback(async () => {
     try {
-      console.log('🔊 Toggling speaker:', isSpeakerOn, '->', !isSpeakerOn)
-      
       const newSpeakerState = !isSpeakerOn
       setIsSpeakerOn(newSpeakerState)
       
@@ -1146,11 +1059,10 @@ export default function StringeeCallComponent({
               
               if (targetDevice) {
                 await remoteAudioRef.current.setSinkId(targetDevice.deviceId)
-                console.log('✅ Speaker switched via setSinkId to:', targetDevice.label)
               }
             }
           } catch (error) {
-            console.log('⚠️ setSinkId not supported or failed:', error)
+            // setSinkId not supported or failed
           }
         }
         
@@ -1185,20 +1097,20 @@ export default function StringeeCallComponent({
             
             if (track.applyConstraints) {
               track.applyConstraints(constraints).catch(err => {
-                console.log('⚠️ Could not apply audio constraints:', err)
+                // Could not apply audio constraints
               })
             }
           })
         }
       } catch (error) {
-        console.log('⚠️ Audio routing constraint failed:', error)
+        // Audio routing constraint failed
       }
       
              // Show user feedback
        toast.success(newSpeakerState ? 'Đã chuyển sang loa ngoài' : 'Đã chuyển về loa trong')
       
     } catch (error) {
-      console.error('❌ Error toggling speaker:', error)
+      // Error toggling speaker
       toast.error('Không thể chuyển đổi loa')
     }
   }, [isSpeakerOn])
@@ -1206,7 +1118,7 @@ export default function StringeeCallComponent({
   // Apply speaker settings when remote audio changes
   useEffect(() => {
     if (isMobile && remoteAudioRef.current && hasRemoteAudio) {
-      console.log('🔊 Applying speaker settings to new remote audio stream')
+      
       
       // Apply current speaker state to new audio stream
       remoteAudioRef.current.volume = isSpeakerOn ? 1.0 : 0.8
@@ -1222,9 +1134,9 @@ export default function StringeeCallComponent({
         } else {
           remoteAudioRef.current.setAttribute('webkit-playsinline', 'true')
         }
-      } catch (error) {
-        console.log('⚠️ Could not set webkit-playsinline attribute:', error)
-      }
+              } catch (error) {
+          // Could not set webkit-playsinline attribute
+        }
     }
   }, [isMobile, hasRemoteAudio, isSpeakerOn])
 
@@ -1236,52 +1148,44 @@ export default function StringeeCallComponent({
     initAudioContext()
     
     if (!client || !data?.message.user_id || !toUserId || !window.StringeeCall2) {
-      console.error('❌ Cannot make call - missing requirements:', {
-        client: !!client,
-        userId: !!data?.message.user_id,
-        toUserId: !!toUserId,
-        StringeeCall2: !!window.StringeeCall2
-      })
+      // Cannot make call - missing requirements
+
       return
     }
 
     // 🚫 Không thể gọi cho chính mình
     if (data.message.user_id === toUserId) {
       toast.error('Bạn không thể gọi cho chính mình')
-      console.log('❌ Cannot call yourself')
+
       return
     }
 
     // 📞 Kiểm tra người nhận có đang bận không
     try {
-      console.log('📞 Checking if user is busy:', toUserId)
+
       const busyResult = await checkUserBusyStatus({ user_id: toUserId })
       
       if (busyResult?.is_busy) {
         toast.error('Người dùng đang trong cuộc gọi khác')
-        console.log('📞 User is busy:', toUserId)
+
         return // Dừng cuộc gọi nếu người nhận đang bận
       }
       
-      console.log('📞 User is available:', toUserId)
+      
     } catch (error) {
-      console.warn('⚠️ Could not check busy status, proceeding with call:', error)
+              // Could not check busy status, proceeding with call
       // Vẫn tiếp tục gọi nếu không check được busy status
     }
 
     // ✅ Kiểm tra thiết bị mic/camera trước khi gọi
     const deviceAvailable = await checkDeviceAvailability(isVideoCall)
     if (!deviceAvailable) {
-      console.log('❌ Device check failed - canceling call')
       return // Dừng thực hiện cuộc gọi nếu thiếu thiết bị
     }
     
     // Check if client is connected and authenticated
     if (!client.connected || !client.authenticated) {
-      console.warn('⚠️ Stringee client not ready:', {
-        connected: client.connected,
-        authenticated: client.authenticated
-      })
+      // Stringee client not ready
       // Still proceed but log the warning
     }
 
@@ -1293,17 +1197,13 @@ export default function StringeeCallComponent({
         call_type: isVideoCall ? 'video' : 'audio'
       })
       
-      console.log('📞 Create call session result:', result)
-      
       if (result && result.session_id) {
         setCurrentSessionId(result.session_id)
       } else {
-        console.warn('⚠️ No session_id in API response, using fallback')
         const fallbackSessionId = `outgoing_${data.message.user_id}_${toUserId}_${Date.now()}`
         setCurrentSessionId(fallbackSessionId)
       }
     } catch (error) {
-      console.error('❌ Failed to create call session:', error)
       // Create fallback session ID on error
       const fallbackSessionId = `outgoing_${data.message.user_id}_${toUserId}_${Date.now()}`
       setCurrentSessionId(fallbackSessionId)
@@ -1316,16 +1216,7 @@ export default function StringeeCallComponent({
     setProgressKey(prev => prev + 1)
     
     // Create call with explicit video parameter
-    console.log('📞 Creating StringeeCall2 with params:', {
-      client: !!client,
-      from: data.message.user_id,
-      to: toUserId,
-      isVideo: isVideoCall
-    })
-    
     const newCall = new window.StringeeCall2(client, data.message.user_id, toUserId, isVideoCall)
-    
-    console.log('📞 StringeeCall2 created with ID:', newCall?.callId || 'unknown')
     
     setCall(newCall)
     setupCallEvents(newCall)
@@ -1348,14 +1239,10 @@ export default function StringeeCallComponent({
     })
 
     newCall.makeCall((res: any) => {
-      console.log('📞 Call initiated, result:', res)
-      
       // 📹 Force get local stream for video call immediately
       if (isVideoCall) {
-        console.log('📹 Requesting local video stream for outgoing call...')
         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
           .then(stream => {
-            console.log('📹 Got local stream for outgoing call:', stream)
             localStreamRef.current = stream
             
             // 🌐 Store in global window for emergency cleanup
@@ -1368,25 +1255,19 @@ export default function StringeeCallComponent({
             }
           })
           .catch(error => {
-            console.log('❌ Failed to get local stream for outgoing call:', error)
+            // Failed to get local stream
           })
       }
       
       // Start 30 second timeout - independent timeout to ensure it works
       const timeoutId = setTimeout(async () => {
-        console.log('Call timeout after 30 seconds - force hangup START')
-        
         // Force hangup by simulating button click
         try {
           // If call is still connecting, force hangup
           if (newCall && (callStatus === 'connecting' || !isCallConnected)) {
-            console.log('Forcing hangup due to timeout...')
-            
             // 📹 FORCE STOP media tracks on timeout
-            console.log('🔴 Stopping media tracks due to timeout')
             if (localStreamRef.current) {
               localStreamRef.current.getTracks().forEach((track, index) => {
-                console.log(`🔴 Stopping track ${index} on timeout:`, track.kind, track.readyState)
                 track.stop()
               })
               localStreamRef.current = null
@@ -1406,25 +1287,22 @@ export default function StringeeCallComponent({
                   callee_id: toUserId,
                   call_type: isVideoCall ? 'video' : 'audio'
                 })
-                console.log('📞 Created missed call record for timeout')
               } catch (error) {
-                console.error('❌ Failed to create missed call:', error)
+                // Failed to create missed call
               }
             }
             
             // Directly hangup the StringeeCall
             newCall.hangup(() => {
-              console.log('StringeeCall hangup completed')
+              // Hangup completed
             })
             
             // Also call our hangup function (không cần lưu lịch sử nữa vì đã lưu ở trên)
             await hangupCall()
           }
         } catch (error) {
-          console.error('Error during timeout hangup:', error)
+          // Error during timeout hangup
         }
-        
-        console.log('Call timeout after 30 seconds - force hangup END')
       }, 30000) // 30 seconds
       
       // Store the timeout ID
@@ -1474,27 +1352,22 @@ export default function StringeeCallComponent({
 
   // 🌐 GLOBAL Media Stream Cleanup - Force stop ALL active media streams
   const forceStopAllMediaStreams = useCallback(() => {
-    console.log('🌐 FORCE STOPPING ALL MEDIA STREAMS globally...')
-    
     try {
       // Method 1: Stop all tracks through navigator.mediaDevices
       if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
         navigator.mediaDevices.enumerateDevices().then(devices => {
-          console.log('📱 Found devices:', devices.length)
+          // Devices enumerated
         }).catch(err => {
-          console.log('❌ Device enumeration failed:', err)
+          // Device enumeration failed
         })
       }
       
       // Method 2: Force stop all video/audio elements in DOM
       const allVideoElements = document.querySelectorAll('video, audio')
-      console.log('🎥 Found media elements:', allVideoElements.length)
       
       allVideoElements.forEach((element: any, index) => {
         if (element.srcObject && element.srcObject.getTracks) {
-          console.log(`🔴 Stopping tracks from media element ${index}:`, element.srcObject.getTracks().length)
           element.srcObject.getTracks().forEach((track: MediaStreamTrack, trackIndex: number) => {
-            console.log(`🔴 Force stopping track ${trackIndex} from element ${index}:`, track.kind, track.readyState)
             track.stop()
           })
           element.srcObject = null
@@ -1504,51 +1377,38 @@ export default function StringeeCallComponent({
       // Method 3: Try to access and stop current getUserMedia streams
       // This is a hack but sometimes works
       if ((window as any).currentLocalStream) {
-        console.log('🔴 Stopping window.currentLocalStream')
         ;(window as any).currentLocalStream.getTracks().forEach((track: MediaStreamTrack) => {
           track.stop()
         })
         ;(window as any).currentLocalStream = null
       }
       
-      console.log('✅ Global media stream cleanup completed')
-      
     } catch (error) {
-      console.error('❌ Global media cleanup error:', error)
+      // Global media cleanup error
     }
   }, [])
 
   // Comprehensive cleanup function
   const performCleanup = useCallback(() => {
-    console.log('🧹 Performing comprehensive cleanup...')
-    
-    // Stop all media streams with detailed logging
+    // Stop all media streams
     if (localStreamRef.current) {
-      console.log('🔴 Stopping all local media tracks:', localStreamRef.current.getTracks().length)
       localStreamRef.current.getTracks().forEach((track, index) => {
-        console.log(`🔴 Stopping track ${index}:`, track.kind, track.readyState)
         track.stop()
       })
       localStreamRef.current = null
-      console.log('✅ Local stream ref cleared')
     } else {
-      console.log('ℹ️ No local stream to stop - trying global cleanup...')
-      
       // 🌐 Force global media cleanup when no local stream ref
       forceStopAllMediaStreams()
     }
     
     // Clear video sources
     if (localVideoRef.current) {
-      console.log('🔴 Clearing local video source')
       localVideoRef.current.srcObject = null
     }
     if (remoteVideoRef.current) {
-      console.log('🔴 Clearing remote video source')
       remoteVideoRef.current.srcObject = null
     }
     if (remoteAudioRef.current) {
-      console.log('🔴 Clearing remote audio source')
       remoteAudioRef.current.srcObject = null
     }
     
@@ -1569,7 +1429,6 @@ export default function StringeeCallComponent({
     // Reset speaker state
     if (isMobile) {
       setIsSpeakerOn(false)
-      console.log('🔊 Reset speaker state to default (OFF - earpiece) after cleanup')
     }
     
     // Stop network monitoring
@@ -1611,8 +1470,7 @@ export default function StringeeCallComponent({
     // ✅ Kiểm tra thiết bị mic/camera trước khi trả lời cuộc gọi
     const deviceAvailable = await checkDeviceAvailability(isVideoCall)
     if (!deviceAvailable) {
-      console.log('❌ Device check failed - cannot answer call')
-      return // Dừng trả lời cuộc gọi nếu thiếu thiết bị
+      return // Dừng trả lời cuộc gọi nếu thiết bị
     }
     
     // AGGRESSIVE audio stop BEFORE answering
@@ -1646,9 +1504,6 @@ export default function StringeeCallComponent({
     })
     
     incoming.answer((res: any) => {
-      console.log('✅ Incoming call answered:', res)
-      console.log('📊 State before answer - callStatus:', callStatus, 'isCallConnected:', isCallConnected, 'call:', !!call, 'incoming:', !!incoming)
-      
       setCall(incoming)
       setIncoming(null)
       // ✅ Set trạng thái tạm thời để UI update ngay, signalingstate sẽ confirm lại
@@ -1657,10 +1512,8 @@ export default function StringeeCallComponent({
       
       // 📹 Force get local stream for video call when answering
       if (isVideoCall) {
-        console.log('📹 Requesting local video stream for answered call...')
         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
           .then(stream => {
-            console.log('📹 Got local stream for answered call:', stream)
             localStreamRef.current = stream
             
             // 🌐 Store in global window for emergency cleanup
@@ -1673,11 +1526,9 @@ export default function StringeeCallComponent({
             }
           })
           .catch(error => {
-            console.log('❌ Failed to get local stream for answered call:', error)
+            // Failed to get local stream
           })
       }
-      
-      console.log('📊 State after answer - setting call to incoming, incoming to null, status to connected')
       
       // 🔄 Gửi realtime event để thông báo cho bên gọi biết cuộc gọi đã được chấp nhận
       if (currentSessionId && data?.message?.user_id) {
@@ -1686,9 +1537,9 @@ export default function StringeeCallComponent({
           status: 'connected',
           answered_at: new Date().toISOString()
         }).then(() => {
-          console.log('✅ Call answered notification sent successfully')
+          // Call answered notification sent successfully
         }).catch(error => {
-          console.error('❌ Failed to send call answered notification:', error)
+          // Failed to send call answered notification
           // Continue anyway - don't block the call flow
         })
       }
@@ -1723,20 +1574,17 @@ export default function StringeeCallComponent({
   const hangupCall = async () => {
     // Nếu call đã ended hoặc rejected, chỉ cần đóng modal - KHÔNG block
     if (callStatus === 'ended' || callStatus === 'rejected') {
-      console.log('📱 Closing modal for ended/rejected call')
       performCleanup()
       return
     }
     
     // Prevent spam clicking chỉ khi đang có active call
     if (isEndingCall) {
-      console.log('❌ Hangup already in progress - ignoring duplicate call')
       return
     }
     setIsEndingCall(true)
     
     if (!call) {
-      console.log('❌ No active call to hangup')
       performCleanup()
       return
     }
@@ -1761,15 +1609,13 @@ export default function StringeeCallComponent({
     // Gọi API để cập nhật trạng thái và gửi realtime TRƯỚC khi hangup
     if (currentSessionId) {
       try {
-        console.log('📞 Updating call status to ended for session:', currentSessionId)
         await updateCallStatus({
           session_id: currentSessionId,
           status: 'ended',
           end_time: new Date().toISOString()
         })
-        console.log('✅ Call status updated to ended successfully')
       } catch (error) {
-        console.error('❌ Failed to update call status to ended:', error)
+        // Failed to update call status to ended
         // Continue with hangup even if API fails
       }
     }
@@ -1791,11 +1637,8 @@ export default function StringeeCallComponent({
     }
     
     // 📹 FORCE STOP camera/media tracks NGAY LẬP TỨC
-    console.log('🔴 Stopping media tracks immediately...')
     if (localStreamRef.current) {
-      console.log('🔴 Stopping local stream tracks:', localStreamRef.current.getTracks().length)
       localStreamRef.current.getTracks().forEach((track, index) => {
-        console.log(`🔴 Stopping track ${index}:`, track.kind, track.readyState)
         track.stop()
       })
       localStreamRef.current = null
@@ -1803,11 +1646,9 @@ export default function StringeeCallComponent({
     
     // Clear video sources immediately
     if (localVideoRef.current) {
-      console.log('🔴 Clearing local video source')
       localVideoRef.current.srcObject = null
     }
     if (remoteVideoRef.current) {
-      console.log('🔴 Clearing remote video source') 
       remoteVideoRef.current.srcObject = null
     }
     if (remoteAudioRef.current) {
@@ -1816,12 +1657,11 @@ export default function StringeeCallComponent({
 
     // Hangup call
     call.hangup((res: any) => {
-      console.log('📞 Call hangup result:', res)
+      // Call hangup completed
     })
     
     // 🌐 FORCE global media cleanup after hangup
     setTimeout(() => {
-      console.log('🌐 Performing delayed global cleanup after hangup...')
       forceStopAllMediaStreams()
     }, 500)
     
@@ -1854,9 +1694,8 @@ export default function StringeeCallComponent({
           callee_id: calleeId,
           call_type: isVideoCall ? 'video' : 'audio'
         })
-        console.log('📞 Created missed call record for rejected call')
       } catch (error) {
-        console.error('❌ Failed to create missed call for rejected call:', error)
+        // Failed to create missed call
       }
     }
     
@@ -1897,10 +1736,8 @@ export default function StringeeCallComponent({
     })
     
     // 📹 FORCE STOP media tracks khi reject call
-    console.log('🔴 Stopping media tracks on reject...')
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track, index) => {
-        console.log(`🔴 Stopping track ${index} on reject:`, track.kind, track.readyState)
         track.stop()
       })
       localStreamRef.current = null
@@ -1918,12 +1755,11 @@ export default function StringeeCallComponent({
     }
 
     incoming.reject((res: any) => {
-      console.log('📞 Call rejected result:', res)
+      // Call rejected
     })
     
     // 🌐 FORCE global media cleanup after reject
     setTimeout(() => {
-      console.log('🌐 Performing delayed global cleanup after reject...')
       forceStopAllMediaStreams()
     }, 500)
     
@@ -1950,7 +1786,6 @@ export default function StringeeCallComponent({
     // ✅ Kiểm tra camera trước khi upgrade sang video call
     const deviceAvailable = await checkDeviceAvailability(true) // true = video call
     if (!deviceAvailable) {
-      console.log('❌ Camera check failed - cannot upgrade to video')
       return // Dừng upgrade nếu thiếu camera
     }
 
@@ -1975,19 +1810,11 @@ export default function StringeeCallComponent({
       }
       
       // Send video upgrade request to the other user using Frappe hook
-      console.log('📹 Sending video upgrade request:', {
-        session_id: sessionId,
-        from_user: data.message.user_id,
-        to_user: toUserId
-      })
-      
       await sendVideoUpgradeRequest({
         session_id: sessionId,
         from_user: data.message.user_id,
         to_user: toUserId
       })
-      
-      console.log('✅ Video upgrade request sent successfully')
       
     } catch (error) {
       // Try to upgrade locally even if API fails
@@ -2008,7 +1835,6 @@ export default function StringeeCallComponent({
     // ✅ Kiểm tra camera trước khi chấp nhận video upgrade
     const deviceAvailable = await checkDeviceAvailability(true) // true = video call
     if (!deviceAvailable) {
-      console.log('❌ Camera check failed - cannot accept video upgrade')
       return // Dừng chấp nhận video upgrade nếu thiếu camera
     }
     
