@@ -3,7 +3,7 @@ import { savedMessageStore } from '@/hooks/useSavedMessageStore'
 import { UserContext } from '@/utils/auth/UserProvider'
 import { updateSavedCount } from '@/utils/updateSavedCount'
 import { ContextMenu, Flex } from '@radix-ui/themes'
-import { FrappeConfig, FrappeContext } from 'frappe-react-sdk'
+import { FrappeConfig, FrappeContext, useSWRConfig } from 'frappe-react-sdk'
 import { useContext } from 'react'
 import { AiOutlineEdit } from 'react-icons/ai'
 import { BiBookmarkMinus, BiBookmarkPlus, BiCopy, BiDownload, BiLink, BiPaperclip, BiTrash } from 'react-icons/bi'
@@ -228,6 +228,7 @@ const SaveMessageAction = ({ message }: { message: Message }) => {
 const PinMessageAction = ({ message }: { message: Message }) => {
   const isPinned = message.is_pinned
   const { call } = useContext(FrappeContext) as FrappeConfig
+  const { mutate } = useSWRConfig()
 
   const handlePin = () => {
     call
@@ -236,6 +237,7 @@ const PinMessageAction = ({ message }: { message: Message }) => {
         message_id: message.name
       })
       .then(() => {
+        mutate('channel_list')
         toast.success(`Message ${isPinned ? 'unpinned' : 'pinned'}`)
       })
       .catch((e) => {
