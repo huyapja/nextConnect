@@ -586,6 +586,12 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
           attachDocProps={attachDocActions}
           reactionProps={reactionActions}
         />
+        {/* ✅ Overlay loading khi mới mount */}
+        {!renderState.initialRenderComplete && (
+          <div className='absolute inset-0 z-50 flex items-center justify-start bg-white dark:bg-gray-2 transition-opacity duration-300'>
+            <ChatStreamLoader />
+          </div>
+        )}
       </div>
     )
   }
