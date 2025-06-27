@@ -138,7 +138,7 @@ export const CreateLabelContent = () => {
   const setLabelList = useSetAtom(labelListAtom)
   const { addLabelToChannel } = useUpdateChannelLabels()
 
-  const {mutate} = useSWRConfig()
+  const { mutate } = useSWRConfig()
 
   const onSubmit = async (data: CreateLabelForm) => {
     try {

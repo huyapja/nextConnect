@@ -34,7 +34,9 @@ import { GoPlus } from 'react-icons/go'
 import { createLabelModalAtom } from '../labels/CreateLabelModal'
 import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
 import { toast } from 'sonner'
-import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
+import { useFrappePostCall } from 'frappe-react-sdk'
+
+import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
 
 type UnifiedChannel = ChannelWithUnreadCount | DMChannelWithUnreadCount | any
 
@@ -116,12 +118,14 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
   const { call: callCreateOrAssignLabel } = useFrappePostCall(
     'raven.api.user_channel_label.add_label_to_multiple_channels'
   )
-  // const { mutate } = useSWRConfig()
-  const { isPinned, togglePin, markAsUnread, isManuallyMarked } = useChannelActions()
 
   const selectedChannelRef = useRef<UnifiedChannel | null>(dm_channel)
-
   const channelID = dm_channel.name
+
+  // 👇 Pin state
+  const pinnedIDs = useAtomValue(pinnedChannelsAtom)
+  const togglePin = useSetAtom(togglePinnedChannelAtom)
+  const isPinned = pinnedIDs.includes(channelID)
 
   const handleToggleLabel = async (label: LabelType, isAssigned: boolean) => {
     const labelID = label.label_id
@@ -148,8 +152,6 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
           toast.error('Không thể gán nhãn')
         }
       }
-
-      // mutate('channel_list')
     } catch (err) {
       console.error('Xử lý nhãn thất bại:', err)
       toast.error('Không thể cập nhật nhãn')
@@ -240,18 +242,20 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
       </ContextMenu.Trigger>
 
       <ContextMenu.Content className='z-50 bg-white dark:bg-gray-800 border dark:border-gray-600 shadow rounded p-1 text-black dark:text-white'>
+        {/* Đánh dấu đã đọc / chưa đọc */}
         <ContextMenu.Item
-          onClick={() => markAsUnread(dm_channel)}
+          onClick={() => console.log('TODO: implement markAsUnread')}
           className='dark:hover:bg-gray-700 px-2 py-1 rounded cursor-pointer'
         >
-          {dm_channel.unread_count > 0 || isManuallyMarked(dm_channel.name) ? 'Đánh dấu đã đọc' : 'Đánh dấu chưa đọc'}
+          Đánh dấu đã đọc {/* hoặc "chưa đọc" nếu bạn xử lý được */}
         </ContextMenu.Item>
 
+        {/* Ghim / Bỏ ghim */}
         <ContextMenu.Item
-          onClick={() => togglePin(dm_channel)}
+          onClick={() => togglePin(dm_channel.name)}
           className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded'
         >
-          {isPinned(dm_channel.name) ? 'Bỏ ghim tin nhắn' : 'Ghim tin nhắn lên đầu'}
+          {isPinned ? 'Bỏ ghim tin nhắn' : 'Ghim tin nhắn lên đầu'}
         </ContextMenu.Item>
 
         {renderLabelMenu()}
