@@ -4,7 +4,8 @@ import { useGetUserRecords } from '@/hooks/useGetUserRecords'
 import { DMChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { DateMonthYear } from '@/utils/dateConversions'
 import { Box, Flex, Separator, Text } from '@radix-ui/themes'
-import { useMemo } from 'react'
+import React, { useMemo } from 'react'
+import Highlighter from 'react-highlight-words'
 import { useParams } from 'react-router-dom'
 import { MessageSenderAvatar, UserHoverCard } from '../../chat/ChatMessage/MessageItem'
 import { useScrollToMessage } from '../useScrollToMessage'
@@ -12,6 +13,7 @@ import { useScrollToMessage } from '../useScrollToMessage'
 interface MessageResultProps {
   message: SearchMessage
   onClose: () => void
+  searchQuery: string
 }
 
 export interface SearchMessage {
@@ -30,7 +32,7 @@ export interface SearchMessage {
   workspace: string
 }
 
-export const MessageResult = ({ message, onClose }: MessageResultProps) => {
+export const MessageResult = ({ message, onClose, searchQuery }: MessageResultProps) => {
   const { owner, creation, channel_id } = message
   const users = useGetUserRecords()
   const { workspaceID } = useParams()
@@ -80,7 +82,12 @@ export const MessageResult = ({ message, onClose }: MessageResultProps) => {
             <UserHoverCard user={user} userID={owner} isActive={false} />
           </Box>
           <Text size={'2'} color='gray'>
-            {message.content}
+            {React.createElement(Highlighter as any, {
+              highlightClassName: 'bg-yellow-200 dark:bg-yellow rounded px-1',
+              searchWords: [searchQuery],
+              autoEscape: true,
+              textToHighlight: message.content
+            })}
           </Text>
         </Flex>
       </Flex>

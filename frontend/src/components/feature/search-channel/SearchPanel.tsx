@@ -67,7 +67,7 @@ export const SearchPanel = ({ onClose }: { onClose: () => void }) => {
                   scrollableTarget='search-scroll-container' // ✅ đúng target
                   scrollThreshold={0.9}
                 >
-                  <SearchResults results={results} activeTab={activeTab} onClose={onClose} />
+                  <SearchResults results={results} activeTab={activeTab} onClose={onClose} searchQuery={searchQuery} />
                 </InfiniteScroll>
               )}
             </div>
