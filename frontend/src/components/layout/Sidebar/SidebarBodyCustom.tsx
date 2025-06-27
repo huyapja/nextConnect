@@ -45,7 +45,7 @@ export const SidebarBody: FC = () => {
     <Flex direction='column' gap='2' className='overflow-hidden pb-12 sm:pb-0' px='2'>
       <Flex direction='column' gap='1' className='pb-0.5'></Flex>
       {/* <CircleUserList /> */}
-      <PinnedChannels />
+      {/* <PinnedChannels /> */}
       {/* <p>hello</p> */}
       {isTablet && <IsTabletSidebarNav />}
       {/* <PinnedChannels unread_count={unread_count?.message} /> */}
