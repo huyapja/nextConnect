@@ -34,6 +34,7 @@ import { ImageMessageBlock } from './Renderers/ImageMessage'
 import { PollMessageBlock } from './Renderers/PollMessage'
 import { ThreadMessage } from './Renderers/ThreadMessage'
 import { TiptapRenderer } from './Renderers/TiptapRenderer/TiptapRenderer'
+import { GroupCallMessage } from './Renderers/GroupCallMessage'
 import { ReplyMessageBox } from './ReplyMessageBox/ReplyMessageBox'
 import RetractedMessage from './RetractedMessage'
 import { TextMessageBlock } from './Renderers/TextMessage'
@@ -865,6 +866,10 @@ export const MessageContent = ({
       
 
       {message.message_type === 'Poll' && <PollMessageBlock message={message} user={user} />}
+
+      {message.message_type === 'GroupCall' && (
+        <GroupCallMessage message={message} user={user} currentUser={currentUser} />
+      )}
     </Box>
   )
 }
