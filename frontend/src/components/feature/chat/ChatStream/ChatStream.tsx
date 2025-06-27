@@ -558,8 +558,7 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
             style={virtuosoStyles as any}
             {...virtuosoSettings}
             components={{
-              ...virtuosoComponents,
-              ScrollSeekPlaceholder: () => <ChatStreamLoader />
+              ...virtuosoComponents
             }}
             useWindowScroll={false}
             totalListHeightChanged={() => {
