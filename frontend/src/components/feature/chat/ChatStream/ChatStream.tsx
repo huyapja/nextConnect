@@ -17,7 +17,8 @@ import {
   useImperativeHandle,
   useMemo,
   useReducer,
-  useRef
+  useRef,
+  useState
 } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso'
@@ -26,7 +27,7 @@ import { PendingMessage } from '../ChatInput/useSendMessage'
 import { isImageFile } from '../ChatMessage/Renderers/FileMessage'
 import ChatDialogs from './ChatDialogs'
 import ChatStreamLoader from './ChatStreamLoader'
-import { MessageItemRenderer } from './MessageListRenderer'
+import { MemoizedMessageRow } from './MemoizedMessageRow'
 import ScrollToBottomButtons from './ScrollToBottomButtons'
 import useChatStream from './useChatStream'
 import { useChatStreamActions } from './useChatStreamActions'
@@ -43,26 +44,57 @@ type Props = {
   sendOnePendingMessage?: (id: string) => void
 }
 
-interface ScrollState {
+// Tách thành separate hooks để tránh re-render không cần thiết
+const useUrlParams = () => {
+  const location = useLocation()
+  return useMemo(() => {
+    const searchParams = new URLSearchParams(location.search)
+    return {
+      isSavedMessage: searchParams.has('message_id'),
+      messageId: searchParams.get('message_id')
+    }
+  }, [location.search])
+}
+
+// Tối ưu state management - gộp các state liên quan
+interface ChatState {
   isAtBottom: boolean
   hasScrolledToTarget: boolean
   isScrolling: boolean
-  lastScrollTop: number
-}
-
-interface RenderState {
   isVirtuosoReady: boolean
   isContentMeasured: boolean
   initialRenderComplete: boolean
   isInitialLoadComplete: boolean
-}
-
-interface LoadingState {
   isLoadingMessages: boolean
   hasInitialLoadedWithMessageId: boolean
 }
 
-const scrollStateReducer = (state: ScrollState, action: any): ScrollState => {
+const initialChatState: ChatState = {
+  isAtBottom: false,
+  hasScrolledToTarget: false,
+  isScrolling: false,
+  isVirtuosoReady: false,
+  isContentMeasured: false,
+  initialRenderComplete: false,
+  isInitialLoadComplete: false,
+  isLoadingMessages: false,
+  hasInitialLoadedWithMessageId: false
+}
+
+type ChatStateAction =
+  | { type: 'SET_AT_BOTTOM'; payload: boolean }
+  | { type: 'SET_SCROLLED_TO_TARGET'; payload: boolean }
+  | { type: 'SET_SCROLLING'; payload: boolean }
+  | { type: 'SET_VIRTUOSO_READY'; payload: boolean }
+  | { type: 'SET_CONTENT_MEASURED'; payload: boolean }
+  | { type: 'SET_INITIAL_RENDER_COMPLETE'; payload: boolean }
+  | { type: 'SET_INITIAL_LOAD_COMPLETE'; payload: boolean }
+  | { type: 'SET_LOADING_MESSAGES'; payload: boolean }
+  | { type: 'SET_INITIAL_LOADED_WITH_MESSAGE_ID'; payload: boolean }
+  | { type: 'BULK_UPDATE'; payload: Partial<ChatState> }
+  | { type: 'RESET' }
+
+const chatStateReducer = (state: ChatState, action: ChatStateAction): ChatState => {
   switch (action.type) {
     case 'SET_AT_BOTTOM':
       return { ...state, isAtBottom: action.payload }
@@ -70,22 +102,6 @@ const scrollStateReducer = (state: ScrollState, action: any): ScrollState => {
       return { ...state, hasScrolledToTarget: action.payload }
     case 'SET_SCROLLING':
       return { ...state, isScrolling: action.payload }
-    case 'SET_LAST_SCROLL_TOP':
-      return { ...state, lastScrollTop: action.payload }
-    case 'RESET':
-      return {
-        isAtBottom: false,
-        hasScrolledToTarget: false,
-        isScrolling: false,
-        lastScrollTop: 0
-      }
-    default:
-      return state
-  }
-}
-
-const renderStateReducer = (state: RenderState, action: any): RenderState => {
-  switch (action.type) {
     case 'SET_VIRTUOSO_READY':
       return { ...state, isVirtuosoReady: action.payload }
     case 'SET_CONTENT_MEASURED':
@@ -94,54 +110,93 @@ const renderStateReducer = (state: RenderState, action: any): RenderState => {
       return { ...state, initialRenderComplete: action.payload }
     case 'SET_INITIAL_LOAD_COMPLETE':
       return { ...state, isInitialLoadComplete: action.payload }
-    case 'RESET':
-      return {
-        isVirtuosoReady: false,
-        isContentMeasured: false,
-        initialRenderComplete: false,
-        isInitialLoadComplete: false
-      }
-    default:
-      return state
-  }
-}
-
-const loadingStateReducer = (state: LoadingState, action: any): LoadingState => {
-  switch (action.type) {
     case 'SET_LOADING_MESSAGES':
       return { ...state, isLoadingMessages: action.payload }
     case 'SET_INITIAL_LOADED_WITH_MESSAGE_ID':
       return { ...state, hasInitialLoadedWithMessageId: action.payload }
+    case 'BULK_UPDATE':
+      return { ...state, ...action.payload }
     case 'RESET':
-      return {
-        isLoadingMessages: false,
-        hasInitialLoadedWithMessageId: false
-      }
+      return { ...initialChatState }
     default:
       return state
   }
 }
 
-const useAnimationFrame = () => {
+// Tối ưu animation frame hook
+const useOptimizedAnimationFrame = () => {
   const rafRef = useRef<number>()
+  const callbackQueueRef = useRef<(() => void)[]>([])
+  const isProcessingRef = useRef(false)
 
-  const schedule = useCallback((callback: () => void) => {
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current)
-    }
-    rafRef.current = requestAnimationFrame(callback)
+  const processQueue = useCallback(() => {
+    if (isProcessingRef.current) return
+    isProcessingRef.current = true
+
+    rafRef.current = requestAnimationFrame(() => {
+      const callbacks = [...callbackQueueRef.current]
+      callbackQueueRef.current = []
+
+      callbacks.forEach((callback) => {
+        try {
+          callback()
+        } catch (error) {
+          console.error('Animation frame callback error:', error)
+        }
+      })
+
+      isProcessingRef.current = false
+
+      // Process next batch if queue has new items
+      if (callbackQueueRef.current.length > 0) {
+        processQueue()
+      }
+    })
   }, [])
+
+  const schedule = useCallback(
+    (callback: () => void) => {
+      callbackQueueRef.current.push(callback)
+      if (!isProcessingRef.current) {
+        processQueue()
+      }
+    },
+    [processQueue]
+  )
 
   useEffect(() => {
     return () => {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current)
       }
+      callbackQueueRef.current = []
+      isProcessingRef.current = false
     }
   }, [])
 
   return schedule
 }
+
+// Memoize các component con để tránh re-render
+const MemoizedHeader = memo(({ hasOlderMessages, isLoading }: { hasOlderMessages: boolean; isLoading: boolean }) => {
+  if (!hasOlderMessages || isLoading) return null
+
+  return (
+    <div className='flex w-full min-h-8 pb-4 justify-center items-center'>
+      <Loader />
+    </div>
+  )
+})
+
+const MemoizedFooter = memo(({ hasNewMessages }: { hasNewMessages: boolean }) => {
+  if (!hasNewMessages) return null
+
+  return (
+    <div className='flex w-full min-h-8 pb-4 justify-center items-center'>
+      <Loader />
+    </div>
+  )
+})
 
 const ChatStream = forwardRef<VirtuosoHandle, Props>(
   (
@@ -158,46 +213,43 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
     },
     ref
   ) => {
-    const location = useLocation()
-    const searchParams = new URLSearchParams(location.search)
-    const isSavedMessage = searchParams.has('message_id')
-    const messageId = searchParams.get('message_id')
+    const { isSavedMessage, messageId } = useUrlParams()
+    const [isInitialMounting, setIsInitialMounting] = useState(true)
+    const [chatState, dispatch] = useReducer(chatStateReducer, initialChatState)
 
-    const [scrollState, dispatchScrollState] = useReducer(scrollStateReducer, {
-      isAtBottom: false,
-      hasScrolledToTarget: false,
-      isScrolling: false,
-      lastScrollTop: 0
-    })
-
-    const [renderState, dispatchRenderState] = useReducer(renderStateReducer, {
-      isVirtuosoReady: false,
-      isContentMeasured: false,
-      initialRenderComplete: false,
-      isInitialLoadComplete: false
-    })
-
-    const [loadingState, dispatchLoadingState] = useReducer(loadingStateReducer, {
-      isLoadingMessages: false,
-      hasInitialLoadedWithMessageId: false
-    })
-
-    const scrollTimeoutRef = useRef<NodeJS.Timeout>()
+    const scheduleFrame = useOptimizedAnimationFrame()
     const initialRenderRef = useRef(true)
-    const measureTimeoutRef = useRef<NodeJS.Timeout>()
+    const hasProcessedInitialLoad = useRef(false)
 
-    const scheduleFrame = useAnimationFrame()
+    // Cleanup timeouts on unmount
+    const timeoutRefs = useRef<Set<NodeJS.Timeout>>(new Set())
+
+    const safeSetTimeout = useCallback((callback: () => void, delay: number) => {
+      const timeoutId = setTimeout(() => {
+        timeoutRefs.current.delete(timeoutId)
+        callback()
+      }, delay)
+      timeoutRefs.current.add(timeoutId)
+      return timeoutId
+    }, [])
 
     useEffect(() => {
-      dispatchScrollState({ type: 'RESET' })
-      dispatchRenderState({ type: 'RESET' })
-      dispatchLoadingState({ type: 'RESET' })
+      return () => {
+        timeoutRefs.current.forEach((timeoutId) => clearTimeout(timeoutId))
+        timeoutRefs.current.clear()
+      }
+    }, [])
 
+    // Reset state khi thay đổi channel hoặc messageId
+    useEffect(() => {
+      dispatch({ type: 'RESET' })
       initialRenderRef.current = true
+      hasProcessedInitialLoad.current = false
 
-      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
-      if (measureTimeoutRef.current) clearTimeout(measureTimeoutRef.current)
-    }, [channelID, messageId])
+      safeSetTimeout(() => {
+        setIsInitialMounting(false)
+      }, 1000)
+    }, [channelID, messageId, safeSetTimeout])
 
     const {
       messages,
@@ -214,67 +266,71 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
       newMessageIds,
       markMessageAsSeen,
       clearAllNewMessages
-    } = useChatStream(channelID, virtuosoRef, pinnedMessagesString, scrollState.isAtBottom)
+    } = useChatStream(channelID, virtuosoRef, pinnedMessagesString, chatState.isAtBottom)
 
+    // Tối ưu việc xử lý initial load
     useEffect(() => {
-      if (
-        ((messages && messages?.length > 0) || (pendingMessages?.length ?? 0) > 0) &&
-        !renderState.isInitialLoadComplete
-      ) {
-        setTimeout(() => {
-          dispatchRenderState({ type: 'SET_INITIAL_LOAD_COMPLETE', payload: true })
-        }, 100)
-        setTimeout(() => dispatchRenderState({ type: 'SET_VIRTUOSO_READY', payload: true }), 200)
-        setTimeout(() => dispatchRenderState({ type: 'SET_CONTENT_MEASURED', payload: true }), 300)
-        setTimeout(() => dispatchRenderState({ type: 'SET_INITIAL_RENDER_COMPLETE', payload: true }), 500)
-      }
-    }, [messages, pendingMessages, renderState.isInitialLoadComplete])
+      const hasMessages = (messages?.length ?? 0) > 0 || (pendingMessages?.length ?? 0) > 0
 
-    const debouncedRangeChanged = useDebounceDynamic(
+      if (hasMessages && !chatState.isInitialLoadComplete && !hasProcessedInitialLoad.current) {
+        hasProcessedInitialLoad.current = true
+
+        setTimeout(() => {
+          dispatch({ type: 'SET_INITIAL_LOAD_COMPLETE', payload: true })
+        }, 100)
+        setTimeout(() => dispatch({ type: 'SET_VIRTUOSO_READY', payload: true }), 200)
+        setTimeout(() => dispatch({ type: 'SET_CONTENT_MEASURED', payload: true }), 300)
+        setTimeout(() => dispatch({ type: 'SET_INITIAL_RENDER_COMPLETE', payload: true }), 500)
+      }
+    }, [messages, pendingMessages, chatState.isInitialLoadComplete, scheduleFrame])
+
+    // Tối ưu debounced range changed
+    const handleRangeChanged = useDebounceDynamic(
       useCallback(
         (range: any) => {
-          if (
-            !messages ||
-            !renderState.isInitialLoadComplete ||
-            !renderState.isVirtuosoReady ||
-            scrollState.isScrolling
-          )
+          if (!messages || !chatState.isInitialLoadComplete || !chatState.isVirtuosoReady || chatState.isScrolling)
             return
 
           const shouldLoadNewer =
             hasNewMessages &&
             range &&
-            range.endIndex >= messages?.length - 5 &&
-            !loadingState.isLoadingMessages &&
-            !loadingState.hasInitialLoadedWithMessageId
+            range.endIndex >= messages.length - 5 &&
+            !chatState.isLoadingMessages &&
+            !chatState.hasInitialLoadedWithMessageId
 
           if (shouldLoadNewer) {
-            dispatchLoadingState({ type: 'SET_LOADING_MESSAGES', payload: true })
+            dispatch({ type: 'SET_LOADING_MESSAGES', payload: true })
             loadNewerMessages().finally(() => {
-              setTimeout(() => dispatchLoadingState({ type: 'SET_LOADING_MESSAGES', payload: false }), 300)
+              safeSetTimeout(() => dispatch({ type: 'SET_LOADING_MESSAGES', payload: false }), 300)
             })
           }
 
+          // Batch process visible messages
           if (range && newMessageIds.size > 0) {
             const visibleMessages = messages.slice(range.startIndex, range.endIndex + 1)
-            visibleMessages?.forEach((message: any) => {
-              if (message.name && newMessageIds.has(message.name)) {
-                setTimeout(() => markMessageAsSeen(message.name), 2000)
-              }
-            })
+            const messagesToMark = visibleMessages
+              .filter((message: any) => message.name && newMessageIds.has(message.name))
+              .map((message: any) => message.name)
+
+            if (messagesToMark.length > 0) {
+              safeSetTimeout(() => {
+                messagesToMark.forEach((messageName) => markMessageAsSeen(messageName))
+              }, 2000)
+            }
           }
         },
         [
           hasNewMessages,
           loadNewerMessages,
           messages,
-          renderState.isInitialLoadComplete,
-          renderState.isVirtuosoReady,
-          scrollState.isScrolling,
-          loadingState.isLoadingMessages,
-          loadingState.hasInitialLoadedWithMessageId,
+          chatState.isInitialLoadComplete,
+          chatState.isVirtuosoReady,
+          chatState.isScrolling,
+          chatState.isLoadingMessages,
+          chatState.hasInitialLoadedWithMessageId,
           newMessageIds,
-          markMessageAsSeen
+          markMessageAsSeen,
+          safeSetTimeout
         ]
       ),
       300
@@ -284,9 +340,7 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
       useChatStreamActions(onModalClose)
 
     const { name: userID } = useUserData()
-    const { seenUsers } = useChannelSeenUsers({
-      channelId: channelID
-    })
+    const { seenUsers } = useChannelSeenUsers({ channelId: channelID })
     const { channel } = useCurrentChannelData(channelID)
 
     const onReplyMessageClick = useCallback(
@@ -296,46 +350,46 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
       [scrollToMessage, scheduleFrame]
     )
 
+    // Tối ưu target index calculation
     const targetIndex = useMemo(() => {
-      if (!messageId || !messages) return undefined
+      if (!messageId || !messages?.length) return undefined
       return messages.findIndex((msg) => msg.name === messageId)
     }, [messageId, messages])
 
+    // Tối ưu scroll to target
     useEffect(() => {
       if (
-        renderState.isInitialLoadComplete &&
+        chatState.isInitialLoadComplete &&
         messageId &&
-        messages &&
+        messages?.length &&
         targetIndex !== undefined &&
         targetIndex >= 0 &&
-        !scrollState.hasScrolledToTarget &&
-        !loadingState.isLoadingMessages &&
+        !chatState.hasScrolledToTarget &&
+        !chatState.isLoadingMessages &&
         virtuosoRef.current &&
-        renderState.isVirtuosoReady
+        chatState.isVirtuosoReady
       ) {
         scheduleFrame(() => {
-          if (virtuosoRef.current) {
-            virtuosoRef.current.scrollToIndex({
-              index: targetIndex,
-              behavior: 'auto',
-              align: 'center'
-            })
-            dispatchScrollState({ type: 'SET_SCROLLED_TO_TARGET', payload: true })
-          }
+          virtuosoRef.current?.scrollToIndex({
+            index: targetIndex,
+            behavior: 'auto',
+            align: 'center'
+          })
+          dispatch({ type: 'SET_SCROLLED_TO_TARGET', payload: true })
         })
       }
     }, [
-      renderState.isInitialLoadComplete,
-      renderState.isVirtuosoReady,
-      scrollState.hasScrolledToTarget,
-      loadingState.isLoadingMessages,
+      chatState.isInitialLoadComplete,
+      chatState.isVirtuosoReady,
+      chatState.hasScrolledToTarget,
+      chatState.isLoadingMessages,
       messageId,
       messages,
       targetIndex,
-      virtuosoRef,
       scheduleFrame
     ])
 
+    // Tối ưu imperative handle
     useImperativeHandle(ref, () => {
       if (!virtuosoRef.current) {
         return {} as VirtuosoHandle
@@ -344,20 +398,25 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
       return {
         ...virtuosoRef.current,
         onUpArrow: () => {
-          if (messages?.length) {
-            const lastMessage = messages[messages?.length - 1]
-            if (lastMessage.message_type === 'Text' && lastMessage.owner === userID && !lastMessage.is_bot_message) {
-              editActions.setEditMessage(lastMessage)
-            }
+          const lastMessage = messages?.[messages.length - 1]
+          if (lastMessage?.message_type === 'Text' && lastMessage.owner === userID && !lastMessage.is_bot_message) {
+            editActions.setEditMessage(lastMessage)
           }
         }
       }
     }, [messages, userID, editActions.setEditMessage])
 
-    const combinedMessages = useMemo(() => {
-      const baseMessages = (messages ?? []).map((m: any) => ({
+    // Tối ưu combined messages với better memoization
+    const getCombinedMessages = (
+      messages: Message[] | undefined | any,
+      pendingMessages: PendingMessage[] | undefined,
+      userID: string
+    ) => {
+      if (!messages && !pendingMessages) return []
+
+      const processedMessages = (messages ?? []).map((m: any) => ({
         ...m,
-        sort_time: m.resend_at ? m.resend_at : new Date(m.modified || m.creation || 0).getTime()
+        sort_time: m.resend_at ?? new Date(m.modified || m.creation || 0).getTime()
       }))
 
       const pending = (pendingMessages ?? []).map((m) => {
@@ -378,92 +437,92 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
         }
       })
 
-      const all = [...baseMessages, ...pending]
+      return [...processedMessages, ...pending].sort((a, b) => a.sort_time - b.sort_time)
+    }
 
-      // Sort theo sort_time
-      return all.sort((a, b) => a.sort_time - b.sort_time)
-    }, [messages, pendingMessages, userID])
+    const combinedMessages = useMemo(
+      () => getCombinedMessages(messages, pendingMessages, userID),
+      [messages, pendingMessages, userID]
+    )
+
+    // Tối ưu item renderer với stable references
+    const stableCallbacks = useMemo(
+      () => ({
+        onReplyMessageClick,
+        setEditMessage: editActions.setEditMessage,
+        replyToMessage,
+        setForwardMessage: forwardActions.setForwardMessage,
+        setAttachDocument: attachDocActions.setAttachDocument,
+        setDeleteMessage: deleteActions.setDeleteMessage,
+        setReactionMessage: reactionActions.setReactionMessage,
+        sendOnePendingMessage: sendOnePendingMessage as any,
+        removePendingMessage: removePendingMessage as any
+      }),
+      [
+        onReplyMessageClick,
+        editActions.setEditMessage,
+        replyToMessage,
+        forwardActions.setForwardMessage,
+        attachDocActions.setAttachDocument,
+        deleteActions.setDeleteMessage,
+        reactionActions.setReactionMessage,
+        sendOnePendingMessage,
+        removePendingMessage
+      ]
+    )
 
     const itemRenderer = useCallback(
       (index: number) => {
         const message = combinedMessages?.[index]
         if (!message) return null
+
         return (
-          <MessageItemRenderer
+          <MemoizedMessageRow
+            key={message.name}
+            index={index}
             message={message}
-            isHighlighted={highlightedMessage === message?.name}
-            onReplyMessageClick={onReplyMessageClick}
-            setEditMessage={editActions.setEditMessage}
-            replyToMessage={replyToMessage}
-            setForwardMessage={forwardActions.setForwardMessage}
+            highlightedMessage={highlightedMessage}
             showThreadButton={showThreadButton}
-            setAttachDocument={attachDocActions.setAttachDocument}
-            setDeleteMessage={deleteActions.setDeleteMessage}
-            setReactionMessage={reactionActions.setReactionMessage}
             seenUsers={seenUsers}
             channel={channel}
-            isPending={!!(message as any).is_pending}
-            sendOnePendingMessage={sendOnePendingMessage as any}
-            removePendingMessage={removePendingMessage as any}
+            callbacks={stableCallbacks}
           />
         )
       },
-      [
-        combinedMessages,
-        highlightedMessage,
-        onReplyMessageClick,
-        editActions.setEditMessage,
-        replyToMessage,
-        forwardActions.setForwardMessage,
-        showThreadButton,
-        attachDocActions.setAttachDocument,
-        deleteActions.setDeleteMessage,
-        reactionActions.setReactionMessage,
-        seenUsers,
-        channel
-      ]
+      [combinedMessages, highlightedMessage, showThreadButton, seenUsers, channel, stableCallbacks]
     )
 
-    const Header = useMemo(() => {
-      return hasOlderMessages && !isLoading
-        ? () => (
-            <div className='flex w-full min-h-8 pb-4 justify-center items-center'>
-              <Loader />
-            </div>
-          )
-        : undefined
-    }, [hasOlderMessages, isLoading])
-
-    const Footer = useMemo(() => {
-      return hasNewMessages
-        ? () => (
-            <div className='flex w-full min-h-8 pb-4 justify-center items-center'>
-              <Loader />
-            </div>
-          )
-        : undefined
-    }, [hasNewMessages])
-
+    // Tối ưu event handlers
     const handleAtTopStateChange = useCallback(
       (atTop: boolean) => {
-        if (atTop && hasOlderMessages && renderState.isInitialLoadComplete && !loadingState.isLoadingMessages) {
-          dispatchScrollState({ type: 'SET_SCROLLING', payload: true })
-          dispatchLoadingState({ type: 'SET_LOADING_MESSAGES', payload: true })
+        if (atTop && hasOlderMessages && chatState.isInitialLoadComplete && !chatState.isLoadingMessages) {
+          dispatch({
+            type: 'BULK_UPDATE',
+            payload: { isScrolling: true, isLoadingMessages: true }
+          })
 
           loadOlderMessages().finally(() => {
-            setTimeout(() => {
-              dispatchLoadingState({ type: 'SET_LOADING_MESSAGES', payload: false })
-              dispatchScrollState({ type: 'SET_SCROLLING', payload: false })
+            safeSetTimeout(() => {
+              dispatch({
+                type: 'BULK_UPDATE',
+                payload: { isLoadingMessages: false, isScrolling: false }
+              })
             }, 300)
           })
         }
       },
-      [hasOlderMessages, loadOlderMessages, renderState.isInitialLoadComplete, loadingState.isLoadingMessages]
+      [
+        hasOlderMessages,
+        loadOlderMessages,
+        chatState.isInitialLoadComplete,
+        chatState.isLoadingMessages,
+        safeSetTimeout
+      ]
     )
 
     const handleAtBottomStateChange = useCallback(
       (atBottom: boolean) => {
-        dispatchScrollState({ type: 'SET_AT_BOTTOM', payload: atBottom })
+        dispatch({ type: 'SET_AT_BOTTOM', payload: atBottom })
         if (atBottom) {
           scheduleFrame(() => clearAllNewMessages())
         }
@@ -471,18 +530,18 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
       [clearAllNewMessages, scheduleFrame]
     )
 
-    const handleRangeChanged = useCallback(
+    const handleRangeChangedWithCheck = useCallback(
       (range: any) => {
-        if (!messages || !renderState.isInitialLoadComplete || !renderState.isVirtuosoReady) return
+        if (!messages || !chatState.isInitialLoadComplete || !chatState.isVirtuosoReady) return
 
         if (initialRenderRef.current) {
           initialRenderRef.current = false
           return
         }
 
-        debouncedRangeChanged(range)
+        handleRangeChanged(range)
       },
-      [messages, renderState.isInitialLoadComplete, renderState.isVirtuosoReady, debouncedRangeChanged]
+      [messages, chatState.isInitialLoadComplete, chatState.isVirtuosoReady, handleRangeChanged]
     )
 
     const handleGoToLatestMessages = useCallback(() => {
@@ -492,49 +551,52 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
       })
     }, [clearAllNewMessages, goToLatestMessages, scheduleFrame])
 
+    // Stable virtuoso components
     const virtuosoComponents = useMemo(
       () => ({
-        Header: renderState.isInitialLoadComplete && hasOlderMessages ? Header : undefined,
-        Footer: hasNewMessages ? Footer : undefined
+        Header:
+          chatState.isInitialLoadComplete && hasOlderMessages
+            ? () => <MemoizedHeader hasOlderMessages={hasOlderMessages} isLoading={isLoading} />
+            : undefined,
+        Footer: hasNewMessages ? () => <MemoizedFooter hasNewMessages={hasNewMessages} /> : undefined
       }),
-      [renderState.isInitialLoadComplete, hasOlderMessages, hasNewMessages, Header, Footer]
+      [chatState.isInitialLoadComplete, hasOlderMessages, hasNewMessages, isLoading]
     )
 
     const scrollActionToBottom = useCallback(() => {
-      if (virtuosoRef.current && messages && messages?.length > 0) {
+      if (virtuosoRef.current && messages?.length) {
         scheduleFrame(() => {
           virtuosoRef.current?.scrollToIndex({
-            index: messages?.length - 1,
+            index: messages.length - 1,
             behavior: 'auto',
             align: 'end'
           })
         })
       }
-    }, [messages, virtuosoRef, scheduleFrame])
+    }, [messages?.length, scheduleFrame])
 
     const computeItemKey = useCallback((index: number, item: any) => {
-      if (item?.name) return item.name
-      return `fallback-${index >= 0 ? index : Math.random()}`
+      return item?.name || `fallback-${index >= 0 ? index : Math.random()}`
     }, [])
 
+    // Tối ưu styles với stable reference
     const virtuosoStyles = useMemo(
       () => ({
         height: '100%',
         willChange: 'transform',
-        opacity: renderState.initialRenderComplete ? 1 : 0,
-        transform: renderState.initialRenderComplete ? 'translateY(0)' : 'translateY(8px)',
+        opacity: chatState.initialRenderComplete ? 1 : 0,
+        transform: chatState.initialRenderComplete ? 'translateY(0)' : 'translateY(8px)',
         transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
-        scrollbarWidth: renderState.initialRenderComplete ? 'thin' : 'none',
-        scrollbarColor: renderState.initialRenderComplete
+        scrollbarWidth: chatState.initialRenderComplete ? 'thin' : 'none',
+        scrollbarColor: chatState.initialRenderComplete
           ? 'rgba(155, 155, 155, 0.5) transparent'
-          : 'transparent transparent',
-        '--scrollbar-width': renderState.initialRenderComplete ? '6px' : '0px',
-        '--scrollbar-opacity': renderState.initialRenderComplete ? '0.5' : '0'
+          : 'transparent transparent'
       }),
-      [renderState.initialRenderComplete]
+      [chatState.initialRenderComplete]
     )
 
     const isMobile = useIsMobile()
+    const hasMessages = combinedMessages?.length > 0
 
     return (
       <div className={`relative h-full flex flex-col overflow-hidden ${isMobile ? 'pb-4' : 'pb-16'} sm:pb-0`}>
@@ -544,38 +606,37 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
 
         {error && <ErrorBanner error={error} />}
 
-        {((messages && messages?.length > 0) || (pendingMessages?.length ?? 0) > 0) && (
+        {hasMessages && (
           <Virtuoso
             ref={virtuosoRef}
             data={combinedMessages}
             itemContent={itemRenderer}
-            followOutput={scrollState.isAtBottom ? 'auto' : false}
-            initialTopMostItemIndex={!isSavedMessage ? (messages?.length ?? 0) - 1 : targetIndex}
+            followOutput={chatState.isAtBottom || !chatState.initialRenderComplete ? 'auto' : false}
+            initialTopMostItemIndex={!isSavedMessage ? (combinedMessages?.length ?? 0) - 1 : targetIndex}
             atTopStateChange={handleAtTopStateChange}
             atBottomStateChange={handleAtBottomStateChange}
-            rangeChanged={handleRangeChanged}
+            rangeChanged={handleRangeChangedWithCheck}
             computeItemKey={computeItemKey}
             style={virtuosoStyles as any}
             {...virtuosoSettings}
-            components={{
-              ...virtuosoComponents
-            }}
+            components={virtuosoComponents}
             useWindowScroll={false}
             totalListHeightChanged={() => {
-              if (!renderState.isContentMeasured) {
-                measureTimeoutRef.current = setTimeout(() => {
-                  dispatchRenderState({ type: 'SET_CONTENT_MEASURED', payload: true })
+              if (!chatState.isContentMeasured) {
+                safeSetTimeout(() => {
+                  dispatch({ type: 'SET_CONTENT_MEASURED', payload: true })
                 }, 100)
               }
             }}
           />
         )}
+
         <ScrollToBottomButtons
           hasNewMessages={hasNewMessages}
           newMessageCount={newMessageCount}
           onGoToLatestMessages={handleGoToLatestMessages}
           onScrollToBottom={scrollActionToBottom}
-          isAtBottom={scrollState.isAtBottom}
+          isAtBottom={chatState.isAtBottom}
           hasMessageId={!!messageId}
         />
 
@@ -586,8 +647,8 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
           attachDocProps={attachDocActions}
           reactionProps={reactionActions}
         />
-        {/* ✅ Overlay loading khi mới mount */}
-        {!renderState.initialRenderComplete && (
+
+        {isInitialMounting && (
           <div className='absolute inset-0 z-50 flex items-center justify-start bg-white dark:bg-gray-2 transition-opacity duration-300'>
             <ChatStreamLoader />
           </div>
@@ -596,5 +657,7 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
     )
   }
 )
+
+ChatStream.displayName = 'ChatStream'
 
 export default memo(ChatStream)
