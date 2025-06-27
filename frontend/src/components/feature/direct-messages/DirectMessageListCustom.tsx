@@ -134,7 +134,7 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
         await removeChannel(labelID, channelID)
         removeLabelFromChannel(channelID, labelID)
         setLabelList((prev) =>
-          prev.map((l) =>
+          prev?.map((l) =>
             l.label_id === labelID ? { ...l, channels: l.channels.filter((c) => c.channel_id !== channelID) } : l
           )
         )
@@ -188,7 +188,7 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
         </ContextMenu.SubTrigger>
 
         <ContextMenu.SubContent className='dark:bg-gray-800 rounded px-1 py-1 w-48 z-50'>
-          {labelList.map((label) => {
+          {labelList?.map((label) => {
             const isAssigned = dm_channel.user_labels?.some((l) => l.label_id === label.label_id)
             return (
               <ContextMenu.Item
