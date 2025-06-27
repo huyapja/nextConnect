@@ -166,7 +166,7 @@ export const CreateLabelContent = () => {
             label: label_name
           })
         }
-        mutate("channel_list")
+        // mutate("channel_list")
         setLabelList((prev) => [...prev, { label_id, label: label_name, channels: [] }])
         toast.success('Đã tạo nhãn')
         reset()

@@ -189,12 +189,15 @@ const SaveMessageAction = ({ message }: { message: Message }) => {
   const isSaved = JSON.parse(message._liked_by ? message._liked_by : '[]').includes(currentUser)
   const { call } = useContext(FrappeContext) as FrappeConfig
 
+  const { threadID } = useParams() // 👈 lấy từ URL
+
   const handleLike = () => {
     call
       .post('raven.api.raven_message.save_message', {
         // doctype: 'Raven Message',
         message_id: message.name,
-        add: isSaved ? 'No' : 'Yes'
+        add: isSaved ? 'No' : 'Yes',
+        thread_id: threadID || null
       })
       .then((response) => {
         if (isSaved) {

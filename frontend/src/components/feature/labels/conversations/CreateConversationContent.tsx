@@ -134,7 +134,7 @@ const CreateConversationContent = ({ name, setIsOpen, label }: Props) => {
           return l
         })
       )
-      mutate('channel_list')
+      // mutate('channel_list')
       toast.success('Gán nhãn thành công')
       setIsOpen(false)
     } catch (err) {
