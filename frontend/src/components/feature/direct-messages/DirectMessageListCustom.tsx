@@ -3,16 +3,16 @@ import { UserAvatar } from '@/components/common/UserAvatar'
 import { useGetUser } from '@/hooks/useGetUser'
 import { useIsUserActive } from '@/hooks/useIsUserActive'
 import { Box, ContextMenu, Flex, Text, Tooltip } from '@radix-ui/themes'
-import { useCallback, useContext, useMemo, useRef, useState } from 'react'
+import { useContext, useMemo, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { UserContext } from '../../../utils/auth/UserProvider'
 
 import { ChannelWithUnreadCount, DMChannelWithUnreadCount } from '@/components/layout/Sidebar/useGetChannelUnreadCounts'
 import { useChannelActions } from '@/hooks/useChannelActions'
 import { useChannelDone } from '@/hooks/useChannelDone'
-import { useIsDesktop, useIsLaptop, useIsTablet } from '@/hooks/useMediaQuery'
+import { useIsLaptop, useIsTablet } from '@/hooks/useMediaQuery'
 import { manuallyMarkedAtom } from '@/utils/atoms/manuallyMarkedAtom'
-import { LabelType, sortedChannelsAtom, useEnrichedSortedChannels, useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
+import { LabelType, useEnrichedSortedChannels, useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
 import { useFormattedLastMessageParts } from '@/utils/channel/useFormatLastMessage'
 import { ChannelIcon } from '@/utils/layout/channelIcon'
 import { useSidebarMode } from '@/utils/layout/sidebar'
@@ -29,19 +29,15 @@ import ThreadsCustom from '../threads/ThreadsCustom'
 import { MessageSaved } from './DirectMessageSaved'
 import { MissedCallsList } from '../missed-calls/MissedCallsList'
 import clsx from 'clsx'
-import {
-  labelListAtom,
-  useLabelList,
-  useLabelListValue,
-  useRefreshLabelList
-} from '../labels/conversations/atoms/labelAtom'
+import { labelListAtom, useLabelListValue } from '../labels/conversations/atoms/labelAtom'
 import { MdLabelOutline } from 'react-icons/md'
 import { GoPlus } from 'react-icons/go'
-import { RxTriangleRight } from 'react-icons/rx'
-import { CreateLabelButton, createLabelModalAtom } from '../labels/CreateLabelModal'
+import { createLabelModalAtom } from '../labels/CreateLabelModal'
 import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
 import { toast } from 'sonner'
-import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
+import { useFrappePostCall } from 'frappe-react-sdk'
+
+import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
 
 type UnifiedChannel = ChannelWithUnreadCount | DMChannelWithUnreadCount | any
 
@@ -64,7 +60,7 @@ export const DirectMessageItemList = ({ channel_list }: any) => {
 
   // Ưu tiên các component đặc biệt trước
   if (title === 'Đã gắn cờ') return <MessageSaved />
-  if (title === 'Cuộc gọi nhỡ') return <MissedCallsList />
+  // if (title === 'Cuộc gọi nhỡ') return <MissedCallsList />
   if (title === 'Nhắc đến') return <MentionList />
   if (title === 'Xong') return <DoneChannelList key='done-list' />
   if (title === 'Chủ đề') return <ThreadsCustom />
@@ -107,8 +103,8 @@ export const DirectMessageItemList = ({ channel_list }: any) => {
 
   const filteredChannels = getFilteredChannels()
 
-  if (filteredChannels.length === 0 && title !== 'Trò chuyện') {
-    return <div className='text-gray-500 text-sm italic p-4 text-center'>Không có kết quả</div>
+  if (filteredChannels.length === 0) {
+    return <div className='text-gray-500 text-sm italic p-4 text-center'>Không có cuộc trò chuyện nào</div>
   }
 
   return <>{filteredChannels?.map((channel) => <DirectMessageItem key={channel.name} dm_channel={channel} />)}</>
@@ -116,37 +112,33 @@ export const DirectMessageItemList = ({ channel_list }: any) => {
 
 export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnreadCount }) => {
   const labelList = useLabelListValue()
-  const setShowCreateLabel = useSetAtom(createLabelModalAtom)
-  const selectedChannelRef = useRef<UnifiedChannel | null>(null)
-  const [selectedChannel, setSelectedChannel] = useState<UnifiedChannel | null>(null)
-
   const setLabelList = useSetAtom(labelListAtom)
-  const channels = useAtomValue(sortedChannelsAtom)
+  const setShowCreateLabel = useSetAtom(createLabelModalAtom)
+
   const { removeChannel } = useRemoveChannelFromLabel()
   const { addLabelToChannel, removeLabelFromChannel } = useUpdateChannelLabels()
   const { call: callCreateOrAssignLabel } = useFrappePostCall(
     'raven.api.user_channel_label.add_label_to_multiple_channels'
   )
-  const { mutate } = useSWRConfig()
-  const { isPinned, togglePin, markAsUnread, isManuallyMarked } = useChannelActions()
+
+  const selectedChannelRef = useRef<UnifiedChannel | null>(dm_channel)
+  const channelID = dm_channel.name
+
+  // 👇 Pin state
+  const pinnedIDs = useAtomValue(pinnedChannelsAtom)
+  const togglePin = useSetAtom(togglePinnedChannelAtom)
+  const isPinned = pinnedIDs.includes(channelID)
 
   const handleToggleLabel = async (label: LabelType, isAssigned: boolean) => {
-    const channelID = dm_channel.name
     const labelID = label.label_id
     try {
       if (isAssigned) {
         await removeChannel(labelID, channelID)
         removeLabelFromChannel(channelID, labelID)
         setLabelList((prev) =>
-          prev.map((l) => {
-            if (l.label_id === labelID) {
-              return {
-                ...l,
-                channels: l.channels.filter((c) => c.channel_id !== channelID)
-              }
-            }
-            return l
-          })
+          prev?.map((l) =>
+            l.label_id === labelID ? { ...l, channels: l.channels.filter((c) => c.channel_id !== channelID) } : l
+          )
         )
         toast.success(`Đã xoá nhãn "${label.label}" khỏi kênh`)
       } else {
@@ -162,11 +154,80 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
           toast.error('Không thể gán nhãn')
         }
       }
-      mutate('channel_list')
     } catch (err) {
       console.error('Xử lý nhãn thất bại:', err)
       toast.error('Không thể cập nhật nhãn')
     }
+  }
+
+  const renderLabelMenu = () => {
+    if (labelList.length === 0) {
+      return (
+        <ContextMenu.Item
+          onClick={() =>
+            setShowCreateLabel({
+              isOpen: true,
+              addUserToLabel: true,
+              selectedChannel: selectedChannelRef.current?.name
+            })
+          }
+          className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center gap-2'
+        >
+          <MdLabelOutline size={14} />
+          <span>Tạo nhãn</span>
+          <span className='ml-auto'>
+            <GoPlus size={14} />
+          </span>
+        </ContextMenu.Item>
+      )
+    }
+
+    return (
+      <ContextMenu.Sub>
+        <ContextMenu.SubTrigger className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center gap-2'>
+          <MdLabelOutline size={14} />
+          <span>Nhãn</span>
+        </ContextMenu.SubTrigger>
+
+        <ContextMenu.SubContent className='dark:bg-gray-800 rounded px-1 py-1 w-48 z-50'>
+          {labelList?.map((label) => {
+            const isAssigned = dm_channel.user_labels?.some((l) => l.label_id === label.label_id)
+            return (
+              <ContextMenu.Item
+                key={label.label_id}
+                onSelect={(e) => e.preventDefault()}
+                onClick={() => handleToggleLabel(label, isAssigned)}
+                className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center justify-between'
+              >
+                <div className='flex items-center gap-2'>
+                  <MdLabelOutline size={14} />
+                  <span className='truncate max-w-[70px]'>{label.label}</span>
+                </div>
+                {isAssigned && <HiCheck size={14} className='text-green-500' />}
+              </ContextMenu.Item>
+            )
+          })}
+
+          <ContextMenu.Separator className='h-px bg-gray-600 my-2' />
+
+          <ContextMenu.Item
+            onClick={() =>
+              setTimeout(() => {
+                setShowCreateLabel({
+                  isOpen: true,
+                  addUserToLabel: true,
+                  selectedChannel: dm_channel.name
+                })
+              }, 0)
+            }
+            className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center gap-2'
+          >
+            <GoPlus size={14} />
+            <span>Nhãn mới</span>
+          </ContextMenu.Item>
+        </ContextMenu.SubContent>
+      </ContextMenu.Sub>
+    )
   }
 
   return (
@@ -177,90 +238,29 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
             channel={dm_channel}
             onContextMenu={() => {
               selectedChannelRef.current = dm_channel
-              setSelectedChannel(dm_channel)
             }}
           />
         </div>
       </ContextMenu.Trigger>
 
       <ContextMenu.Content className='z-50 bg-white dark:bg-gray-800 border dark:border-gray-600 shadow rounded p-1 text-black dark:text-white'>
+        {/* Đánh dấu đã đọc / chưa đọc */}
         <ContextMenu.Item
-          onClick={() => markAsUnread(dm_channel)}
+          onClick={() => console.log('TODO: implement markAsUnread')}
           className='dark:hover:bg-gray-700 px-2 py-1 rounded cursor-pointer'
         >
-          {dm_channel.unread_count > 0 || isManuallyMarked(dm_channel.name) ? 'Đánh dấu đã đọc' : 'Đánh dấu chưa đọc'}
+          Đánh dấu đã đọc {/* hoặc "chưa đọc" nếu bạn xử lý được */}
         </ContextMenu.Item>
 
+        {/* Ghim / Bỏ ghim */}
         <ContextMenu.Item
-          onClick={() => togglePin(dm_channel)}
+          onClick={() => togglePin(dm_channel.name)}
           className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded'
         >
-          {isPinned(dm_channel.name) ? 'Bỏ ghim tin nhắn' : 'Ghim tin nhắn lên đầu'}
+          {isPinned ? 'Bỏ ghim tin nhắn' : 'Ghim tin nhắn lên đầu'}
         </ContextMenu.Item>
 
-        {labelList.length === 0 ? (
-          <ContextMenu.Item
-            onClick={() =>
-              setShowCreateLabel({
-                addUserToLabel: true,
-                isOpen: true,
-                selectedChannel: selectedChannelRef.current?.name
-              })
-            }
-            className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center gap-2'
-          >
-            <MdLabelOutline size={14} />
-            <span>Tạo nhãn</span>
-            <span className='ml-auto flex items-center justify-center'>
-              <GoPlus size={14} />
-            </span>
-          </ContextMenu.Item>
-        ) : (
-          <ContextMenu.Sub>
-            <ContextMenu.SubTrigger className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center gap-2'>
-              <MdLabelOutline size={14} />
-              <span>Nhãn</span>
-            </ContextMenu.SubTrigger>
-
-            <ContextMenu.SubContent side='right' align='start' className='dark:bg-gray-800 rounded px-1 py-1 w-48 z-50'>
-              {labelList.map((label) => {
-                const isAssigned = dm_channel.user_labels?.some((l) => l.label_id === label.label_id)
-                return (
-                  <ContextMenu.Item
-                    key={label.label_id}
-                    onSelect={(e) => e.preventDefault()}
-                    onClick={() => handleToggleLabel(label, isAssigned)}
-                    className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center gap-2 justify-between'
-                  >
-                    <div className='flex items-center gap-2'>
-                      <MdLabelOutline size={14} />
-                      <span className='truncate max-w-[70px]'>{label.label}</span>
-                    </div>
-                    {isAssigned && <HiCheck size={14} className='text-green-500' />}
-                  </ContextMenu.Item>
-                )
-              })}
-
-              <ContextMenu.Separator className='h-px bg-gray-600 my-2' />
-
-              <ContextMenu.Item
-                onClick={() =>
-                  setTimeout(() => {
-                    setShowCreateLabel({
-                      addUserToLabel: true,
-                      isOpen: true,
-                      selectedChannel: dm_channel.name
-                    })
-                  }, 0)
-                }
-                className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center gap-2'
-              >
-                <GoPlus size={14} />
-                <span>Nhãn mới</span>
-              </ContextMenu.Item>
-            </ContextMenu.SubContent>
-          </ContextMenu.Sub>
-        )}
+        {renderLabelMenu()}
       </ContextMenu.Content>
     </ContextMenu.Root>
   )
@@ -282,19 +282,24 @@ export const DirectMessageItemElement = ({
   const { currentUser } = useContext(UserContext)
   const navigate = useNavigate()
   const { workspaceID, channelID } = useParams<{ workspaceID: string; channelID: string }>()
+
   const manuallyMarked = useAtomValue(manuallyMarkedAtom)
   const { clearManualMark } = useChannelActions()
   const { markAsDone, markAsNotDone } = useChannelDone()
 
   const isDM = isDMChannel(channel)
-  const peerUserId = isDM ? channel.peer_user_id : ''
   const isGroupChannel = !channel.is_direct_message && !channel.is_self_message
-
-  const isChannelDone = channel.is_done === 1
+  const peerUserId = isDM ? channel.peer_user_id : ''
   const peerUser = useGetUser(peerUserId || '')
   const isActive = peerUserId ? useIsUserActive(peerUserId) : false
   const isSelectedChannel = channelID === channel.name
   const isManuallyMarked = manuallyMarked.has(channel.name)
+  const isChannelDone = channel.is_done === 1
+
+  const { title, labelID } = useSidebarMode()
+
+  // Loại bỏ nếu không render được
+  if (!(isGroupChannel || (isDM && peerUserId && peerUser?.enabled))) return null
 
   const lastOwner = useMemo(() => {
     try {
@@ -308,8 +313,8 @@ export const DirectMessageItemElement = ({
     }
   }, [channel.last_message_details])
 
-  const user = useGetUser(lastOwner)
-  const { senderLabel, contentLabel } = useFormattedLastMessageParts(channel, currentUser, user?.full_name)
+  const lastUser = useGetUser(lastOwner)
+  const { senderLabel, contentLabel } = useFormattedLastMessageParts(channel, currentUser, lastUser?.full_name)
 
   const rawName = peerUser
     ? peerUserId !== currentUser
@@ -317,37 +322,33 @@ export const DirectMessageItemElement = ({
       : `${peerUser.full_name} (You)`
     : channel.channel_name || channel.name
 
-  const truncateLength = isLaptop ? 20 : 28
-  const displayName = useMemo(() => truncateText(rawName, truncateLength), [rawName, truncateLength])
-
+  const displayName = truncateText(rawName, isLaptop ? 20 : 28)
   const shouldShowBadge = channel.unread_count > 0 || isManuallyMarked
 
-  const handleNavigate = useCallback(() => {
+  const handleNavigate = () => {
     navigate(`/${workspaceID}/${channel.name}`)
     clearManualMark(channel.name)
-  }, [workspaceID, channel.name, clearManualMark, navigate])
+  }
 
-  const bgClass = `
-  ${isSelectedChannel ? 'bg-gray-300 dark:bg-gray-700' : ''}
-  ${!isTablet ? 'hover:bg-gray-100 dark:hover:bg-gray-600' : ''}
-`
+  const handleMarkToggle = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    isChannelDone ? markAsNotDone(channel.name) : markAsDone(channel.name)
+  }
 
-  // ✅ Moved after hook calls to avoid hook mismatch
-  const shouldRender = isGroupChannel || (isDM && peerUserId && peerUser?.enabled)
-  if (!shouldRender) return null
-
-  const { title, labelID } = useSidebarMode()
+  const showDoneButton =
+    (isTablet && !channel.last_message_details) || (channel.last_message_details && !(title === 'Nhãn' || labelID))
 
   return (
     <div
       onClick={handleNavigate}
-      onContextMenu={() => {
-        onContextMenu?.(channel)
-      }}
+      onContextMenu={() => onContextMenu?.(channel)}
       className={clsx(
         'group relative cursor-pointer flex items-center p-1 mb-2',
         !isTablet && 'overflow-y-hidden',
-        bgClass
+        isSelectedChannel ? 'bg-gray-300 dark:bg-gray-700' : '',
+        !isTablet && 'hover:bg-gray-100 dark:hover:bg-gray-600'
       )}
     >
       <SidebarIcon>
@@ -374,7 +375,7 @@ export const DirectMessageItemElement = ({
 
       <Flex direction='column' justify='center' className='flex-1 ml-2'>
         <Flex justify='between' align='center'>
-          <Text size='2' as='span' className={`${shouldShowBadge ? 'font-bold' : 'font-medium'} truncate`}>
+          <Text size='2' as='span' className={clsx(shouldShowBadge ? 'font-bold' : 'font-medium', 'truncate')}>
             {displayName}
           </Text>
         </Flex>
@@ -384,25 +385,22 @@ export const DirectMessageItemElement = ({
         </Text>
       </Flex>
 
-      {((isTablet && !channel.last_message_details) ||
-        (channel.last_message_details && !(title === 'Nhãn' || labelID))) && (
+      {showDoneButton && (
         <Tooltip content={isChannelDone ? 'Đánh dấu chưa xong' : 'Đánh dấu đã xong'} side='bottom'>
           <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation() // luôn stopPropagation
-              isChannelDone ? markAsNotDone(channel.name) : markAsDone(channel.name)
-            }}
-            className={`
-        absolute z-99 right-2 top-1/2 transform -translate-y-1/2
-        ${isTablet ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
-        p-1 rounded-full bg-gray-200 hover:bg-gray-300
-        h-[20px] w-[20px] flex items-center justify-center cursor-pointer
-      `}
+            onClick={handleMarkToggle}
+            className={clsx(
+              'absolute z-99 right-2 top-1/2 transform -translate-y-1/2',
+              isTablet ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+              'p-1 rounded-full bg-gray-200 hover:bg-gray-300 h-[20px] w-[20px] flex items-center justify-center cursor-pointer'
+            )}
             title={isChannelDone ? 'Chưa xong' : 'Đã xong'}
           >
             <HiCheck
-              className={`h-3 w-3 transition-colors duration-150 ${isChannelDone ? 'text-green-600' : 'text-gray-800'}`}
+              className={clsx(
+                'h-3 w-3 transition-colors duration-150',
+                isChannelDone ? 'text-green-600' : 'text-gray-800'
+              )}
             />
           </button>
         </Tooltip>

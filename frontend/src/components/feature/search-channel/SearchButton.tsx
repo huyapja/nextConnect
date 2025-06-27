@@ -25,7 +25,6 @@ export const SearchButton = ({ open, setOpen }: { open: boolean; setOpen: (open:
               <Flex align='center' justify='center' className='h-full'>
                 <div className='text-center'>
                   <Loader />
-                  <p className='text-sm text-gray-500 dark:text-gray-400 mt-3'>Loading search...</p>
                 </div>
               </Flex>
             }
@@ -44,7 +43,6 @@ export const SearchButton = ({ open, setOpen }: { open: boolean; setOpen: (open:
               <Flex align='center' justify='center' className='h-full'>
                 <div className='text-center'>
                   <Loader />
-                  <p className='text-sm text-gray-500 dark:text-gray-400 mt-3'>Loading search...</p>
                 </div>
               </Flex>
             }

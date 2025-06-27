@@ -1,5 +1,5 @@
-// hooks/useSearchResults.ts
 import { useFrappeGetCall } from 'frappe-react-sdk'
+import { useEffect, useState } from 'react'
 
 interface SearchParams {
   filter_type: string
@@ -18,6 +18,10 @@ interface SearchParams {
 }
 
 export const useSearchResults = (tab: string, searchQuery: string, channelId?: string) => {
+  const PAGE_SIZE = 10
+  const [offset, setOffset] = useState(0)
+  const [results, setResults] = useState<any[]>([])
+  const [hasMore, setHasMore] = useState(true)
   const getFilterConfig = (tab: string): Partial<SearchParams> => {
     switch (tab) {
       case 'Messages':
@@ -37,15 +41,44 @@ export const useSearchResults = (tab: string, searchQuery: string, channelId?: s
     ...getFilterConfig(tab),
     search_text: searchQuery,
     in_channel: channelId,
-    limit: 20,
-    offset: 0
+    limit: PAGE_SIZE,
+    offset
   }
+
+  // reset when search query or tab changes
+  useEffect(() => {
+    setOffset(0)
+    setResults([])
+    setHasMore(true)
+  }, [searchQuery, tab])
 
   const { data, isLoading, error } = useFrappeGetCall('raven.api.search.get_search_result', filters)
 
+  useEffect(() => {
+    if (data?.message) {
+      const newData = data.message
+      if (offset === 0) {
+        setResults(newData)
+      } else {
+        setResults((prev) => [...prev, ...newData])
+      }
+      if (newData.length < PAGE_SIZE) {
+        setHasMore(false)
+      }
+    }
+  }, [data])
+
+  const loadMore = () => {
+    if (!isLoading && hasMore) {
+      setOffset((prev) => prev + PAGE_SIZE)
+    }
+  }
+
   return {
-    results: data?.message || [],
+    results,
     isLoading,
-    error
+    error,
+    loadMore,
+    hasMore
   }
 }

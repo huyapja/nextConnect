@@ -37,14 +37,13 @@ export const getEmbedUrlFromYoutubeUrl = (url: string | undefined) => {
   return `${getYoutubeEmbedUrl()}${matches[1]}`
 }
 
-export const isValidUrl = (url: string | undefined) => {
-  if (!url) return
+export const isValidUrl = (url: string | undefined): boolean => {
+  if (!url) return false
 
   try {
-    new URL(url)
-    return true
-  } catch (e) {
-    console.error(e)
+    const parsed = new URL(url)
+    return ['http:', 'https:'].includes(parsed.protocol)
+  } catch {
     return false
   }
 }

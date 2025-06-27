@@ -71,9 +71,21 @@ const createNavigationPath = (baseRoute: string, channelId: string, messageId: s
   search: `message_id=${messageId}`
 })
 
-const getChannelDisplayName = (channelData: any, users: Record<string, any>): string | null => {
+const getChannelDisplayName = (channelData: any, users: Record<string, any>, isThreadRoot: boolean): string | null => {
   if (!channelData) return null
 
+  // ✅ Nếu đây là nhóm các tin từ thread (được gắn cờ từ saved_from_thread)
+  if (isThreadRoot) {
+    if (channelData.is_direct_message) {
+      const peerUserName =
+        users[(channelData as DMChannelListItem).peer_user_id]?.full_name ??
+        (channelData as DMChannelListItem).peer_user_id
+      return `Từ một chủ đề trong cuộc trò chuyện với ${peerUserName}`
+    }
+    return `Từ một chủ đề trong ${channelData.channel_name}`
+  }
+
+  // ✅ Bình thường
   if (channelData.is_direct_message) {
     const peerUserName =
       users[(channelData as DMChannelListItem).peer_user_id]?.full_name ??
@@ -234,6 +246,8 @@ const DirectMessageSaved = ({ message, handleUnflagMessage, messageId }: Message
   const { channel_id } = message
   const messageParams = searchParams.get('message_id')
 
+  console.log(message)
+
   const users = useGetUserRecords()
   const user = useGetUser(message.is_bot_message && message.bot ? message.bot : message.owner)
   const { channel } = useCurrentChannelData(channel_id)
@@ -245,11 +259,16 @@ const DirectMessageSaved = ({ message, handleUnflagMessage, messageId }: Message
     () => (message.workspace ? `/${message.workspace}` : `/${workspaceID}`),
     [message.workspace, workspaceID]
   )
-
   const handleNavigateToChannel = useCallback(() => {
-    const navigationPath = createNavigationPath(baseRoute, channel_id, message.name)
+    const targetChannelID = message.saved_from_thread || channel_id
+    const isThread = Boolean(message.saved_from_thread)
+
+    const navigationPath = isThread
+      ? `${baseRoute}/threads/${targetChannelID}?message_id=${message.name}`
+      : createNavigationPath(baseRoute, targetChannelID, message.name)
+
     navigate(navigationPath)
-  }, [navigate, baseRoute, channel_id, message.name])
+  }, [navigate, baseRoute, message.name, message.saved_from_thread, channel_id])
 
   const handleUnflagClick = useCallback(
     (e: React.MouseEvent) => {
