@@ -17,6 +17,9 @@ def get_search_result(
 ):
     user = frappe.session.user
 
+    limit = int(frappe.form_dict.get("limit", 10))
+    offset = int(frappe.form_dict.get("offset", 0))
+
     def get_file_extensions():
         return {
             "pdf": ["pdf"],
@@ -130,4 +133,4 @@ def get_search_result(
 
     query = apply_common_filters(query)
 
-    return query.limit(20).offset(0).run(as_dict=True)
+    return query.limit(limit).offset(offset).run(as_dict=True)
