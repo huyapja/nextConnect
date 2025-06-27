@@ -15,10 +15,12 @@ import {
   HiOutlineUserGroup,
   HiOutlineUsers
 } from 'react-icons/hi'
+import { FiPhoneMissed } from 'react-icons/fi'
 
 import { CreateLabelButton } from '@/components/feature/labels/CreateLabelModal'
 import LabelList from '@/components/feature/labels/LabelListSidebar'
 import { useSavedMessageCount } from '@/hooks/useSavedMessageCount'
+import { useMissedCallCount } from '@/hooks/useMissedCallCount'
 import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
 import clsx from 'clsx'
 import { useFrappeEventListener, useFrappeGetCall } from 'frappe-react-sdk'
@@ -50,6 +52,7 @@ export const useMentionUnreadCount = () => {
 export const filterItems = [
   { label: 'Trò chuyện', icon: HiOutlineChatAlt2 },
   { label: 'Chưa đọc', icon: HiOutlineInbox },
+  { label: 'Cuộc gọi nhỡ', icon: FiPhoneMissed },
   { label: 'Đã gắn cờ', icon: HiOutlineFlag },
   { label: 'Nhắc đến', icon: HiOutlineAtSymbol },
   { label: 'Nhãn', icon: HiOutlineTag },
@@ -140,6 +143,7 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
   const { title, setTitle, tempMode, setLabelID } = useSidebarMode()
   const isIconOnly = tempMode === 'show-only-icons'
   const { mentionUnreadCount, resetMentions } = useMentionUnreadCount()
+  const { unreadMissedCallCount } = useMissedCallCount()
 
   const enrichedChannels = useEnrichedSortedChannels(0) // chỉ lấy channel chưa xong
   const enrichedDoneChannels = useEnrichedSortedChannels(1) // lấy channel đã xong
@@ -183,6 +187,7 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
       let badgeCount = 0
 
       if (['Trò chuyện', 'Chưa đọc'].includes(item.label)) badgeCount = totalUnreadCountFiltered
+      if (item.label === 'Cuộc gọi nhỡ') badgeCount = unreadMissedCallCount
       if (item.label === 'Nhắc đến') badgeCount = mentionUnreadCount
       if (item.label === 'Đã gắn cờ') badgeCount = totalSaved as unknown as number
       if (item.label === 'Nhãn') badgeCount = labelChannelsUnreadCount

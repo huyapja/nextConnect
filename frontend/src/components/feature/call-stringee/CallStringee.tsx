@@ -2,12 +2,15 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useFrappeGetCall, useFrappeEventListener, useFrappeGetDoc, useFrappePostCall } from 'frappe-react-sdk'
 import { 
   FiPhone, FiPhoneCall, FiPhoneOff, 
-  FiVideo, FiVideoOff, FiMic, FiMicOff, FiHeadphones, FiChevronDown 
+  FiVideo, FiVideoOff, FiMic, FiMicOff, FiHeadphones, FiChevronDown,
+  FiVolume2, FiVolumeX 
 } from 'react-icons/fi'
 import { useTheme } from '@/ThemeProvider'
 import { toast } from 'sonner'
 import { useGlobalStringee } from './GlobalStringeeProvider'
 import { DropdownMenu } from '@radix-ui/themes'
+import { useIsTablet } from '@/hooks/useMediaQuery'
+
 
 // Import utilities and hooks
 import { getIconColor, getBackgroundColor } from './utils/themeUtils'
@@ -62,6 +65,13 @@ export default function StringeeCallComponent({
   const [isLocalVideoEnabled, setIsLocalVideoEnabled] = useState(true)
   const [isRemoteVideoEnabled, setIsRemoteVideoEnabled] = useState(true)
   
+  // Speaker state for mobile
+  const [isSpeakerOn, setIsSpeakerOn] = useState(false) // Default to earpiece (loa trong)
+  const isTablet = useIsTablet() // Use for mobile detection
+  
+  // Mobile detection function (consider tablet as mobile for speaker control)
+  const isMobile = isTablet || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  
   // State để track xem đã lưu lịch sử cuộc gọi chưa
   const [callHistorySaved, setCallHistorySaved] = useState(false)
   
@@ -114,6 +124,9 @@ export default function StringeeCallComponent({
   const { call: checkUserBusyStatus, error: checkBusyError } = useFrappePostCall('raven.api.stringee_token.check_user_busy_status')
   const { call: sendVideoStatus, error: sendVideoStatusError } = useFrappePostCall('raven.api.stringee_token.send_video_status')
   
+  // API call for creating missed calls
+  const { call: createMissedCall } = useFrappePostCall('raven.api.missed_calls.create_missed_call')
+  
   // Get caller info for incoming calls
   const callerUserId = incoming?.fromNumber
   const { data: callerData } = useFrappeGetDoc('Raven User', callerUserId, {
@@ -130,9 +143,15 @@ export default function StringeeCallComponent({
       setIsLocalVideoEnabled(true)
       setIsRemoteVideoEnabled(true)
       
+      // Reset speaker state for mobile (default to earpiece)
+      if (isMobile) {
+        setIsSpeakerOn(false)
+        console.log('🔊 Reset speaker state to OFF (earpiece) for mobile')
+      }
+      
       console.log('🔄 Reset call states for new call - callHistorySaved: false, isEndingCall: false')
     }
-  }, [call, incoming])
+  }, [call, incoming, isMobile])
 
   // 📹 Force refresh local video when call state changes
   useEffect(() => {
@@ -343,6 +362,27 @@ export default function StringeeCallComponent({
       document.removeEventListener('click', handleFirstInteraction)
       document.removeEventListener('keydown', handleFirstInteraction)
       document.removeEventListener('touchstart', handleFirstInteraction)
+    }
+  }, [])
+
+  // Handle make call from missed calls - moved after makeCall definition
+  useEffect(() => {
+    const handleMakeCallFromMissed = (event: CustomEvent) => {
+      const { isVideoCall } = event.detail
+      console.log('📞 Making call from missed calls:', isVideoCall)
+      
+      // Small delay to ensure call modal is ready
+      setTimeout(() => {
+        if (makeCall) {
+          makeCall(isVideoCall)
+        }
+      }, 100)
+    }
+    
+    window.addEventListener('makeCallFromMissed', handleMakeCallFromMissed as EventListener)
+    
+    return () => {
+      window.removeEventListener('makeCallFromMissed', handleMakeCallFromMissed as EventListener)
     }
   }, [])
 
@@ -693,9 +733,18 @@ export default function StringeeCallComponent({
             try {
               if (remoteAudioRef.current) {
                 remoteAudioRef.current.srcObject = stream
-                remoteAudioRef.current.volume = 1.0
+                remoteAudioRef.current.volume = isSpeakerOn ? 1.0 : 0.8
                 remoteAudioRef.current.autoplay = true
+                
+                // Apply mobile speaker settings
+                if (isMobile) {
+                  if ('playsInline' in remoteAudioRef.current) {
+                    remoteAudioRef.current.playsInline = !isSpeakerOn
+                  }
+                }
+                
                 await remoteAudioRef.current.play()
+                console.log(`🔊 Remote audio playing with speaker ${isSpeakerOn ? 'ON' : 'OFF'}`)
               }
             } catch (error) {
               if (attempt < 5) {
@@ -715,9 +764,18 @@ export default function StringeeCallComponent({
             try {
               if (remoteVideoRef.current) {
                 remoteVideoRef.current.srcObject = stream
-                remoteVideoRef.current.volume = 1.0
+                remoteVideoRef.current.volume = isSpeakerOn ? 1.0 : 0.8
                 remoteVideoRef.current.autoplay = true
+                
+                // Apply mobile speaker settings
+                if (isMobile) {
+                  if ('playsInline' in remoteVideoRef.current) {
+                    remoteVideoRef.current.playsInline = !isSpeakerOn
+                  }
+                }
+                
                 await remoteVideoRef.current.play()
+                console.log(`🔊 Remote audio via video playing with speaker ${isSpeakerOn ? 'ON' : 'OFF'}`)
               }
             } catch (error) {
               if (attempt < 5) {
@@ -1063,6 +1121,113 @@ export default function StringeeCallComponent({
     }
   }, [isVideoCall, isLocalVideoEnabled, localStreamRef.current, call, currentSessionId, data?.message?.user_id, toUserId, sendVideoStatus])
 
+  // Function to toggle speaker on/off for mobile
+  const toggleSpeaker = useCallback(async () => {
+    try {
+      console.log('🔊 Toggling speaker:', isSpeakerOn, '->', !isSpeakerOn)
+      
+      const newSpeakerState = !isSpeakerOn
+      setIsSpeakerOn(newSpeakerState)
+      
+      // Try to control audio output on mobile
+      if (remoteAudioRef.current) {
+        // Method 1: Try setSinkId if available (limited support on mobile)
+        if (remoteAudioRef.current.setSinkId) {
+          try {
+            // Get available audio devices
+            const devices = await navigator.mediaDevices.enumerateDevices()
+            const audioOutputs = devices.filter(device => device.kind === 'audiooutput')
+            
+            if (audioOutputs.length > 1) {
+              // Try to select appropriate output
+              const targetDevice = newSpeakerState 
+                ? audioOutputs.find(device => device.label.toLowerCase().includes('speaker'))
+                : audioOutputs.find(device => device.label.toLowerCase().includes('earpiece') || device.label.toLowerCase().includes('phone'))
+              
+              if (targetDevice) {
+                await remoteAudioRef.current.setSinkId(targetDevice.deviceId)
+                console.log('✅ Speaker switched via setSinkId to:', targetDevice.label)
+              }
+            }
+          } catch (error) {
+            console.log('⚠️ setSinkId not supported or failed:', error)
+          }
+        }
+        
+        // Method 2: Volume and playsinline attributes
+        if (newSpeakerState) {
+          // Speaker mode: higher volume, force to play through speakers
+          remoteAudioRef.current.volume = 1.0
+          remoteAudioRef.current.muted = false
+          if ('playsInline' in remoteAudioRef.current) {
+            remoteAudioRef.current.playsInline = false // This may help route to speakers
+          }
+        } else {
+          // Earpiece mode: lower volume
+          remoteAudioRef.current.volume = 0.8
+          if ('playsInline' in remoteAudioRef.current) {
+            remoteAudioRef.current.playsInline = true // This may help route to earpiece
+          }
+        }
+      }
+      
+      // Method 3: Try to influence audio routing through Web Audio API
+      try {
+        if (localStreamRef.current) {
+          const audioTracks = localStreamRef.current.getAudioTracks()
+          audioTracks.forEach(track => {
+            // Adjust echo cancellation and constraints
+            const constraints = {
+              echoCancellation: !newSpeakerState, // Disable for speaker, enable for earpiece
+              noiseSuppression: !newSpeakerState,
+              autoGainControl: !newSpeakerState
+            }
+            
+            if (track.applyConstraints) {
+              track.applyConstraints(constraints).catch(err => {
+                console.log('⚠️ Could not apply audio constraints:', err)
+              })
+            }
+          })
+        }
+      } catch (error) {
+        console.log('⚠️ Audio routing constraint failed:', error)
+      }
+      
+             // Show user feedback
+       toast.success(newSpeakerState ? 'Đã chuyển sang loa ngoài' : 'Đã chuyển về loa trong')
+      
+    } catch (error) {
+      console.error('❌ Error toggling speaker:', error)
+      toast.error('Không thể chuyển đổi loa')
+    }
+  }, [isSpeakerOn])
+
+  // Apply speaker settings when remote audio changes
+  useEffect(() => {
+    if (isMobile && remoteAudioRef.current && hasRemoteAudio) {
+      console.log('🔊 Applying speaker settings to new remote audio stream')
+      
+      // Apply current speaker state to new audio stream
+      remoteAudioRef.current.volume = isSpeakerOn ? 1.0 : 0.8
+      
+      if ('playsInline' in remoteAudioRef.current) {
+        remoteAudioRef.current.playsInline = !isSpeakerOn
+      }
+      
+      // Try to set audio routing attributes
+      try {
+        if (isSpeakerOn) {
+          remoteAudioRef.current.setAttribute('webkit-playsinline', 'false')
+        } else {
+          remoteAudioRef.current.setAttribute('webkit-playsinline', 'true')
+        }
+      } catch (error) {
+        console.log('⚠️ Could not set webkit-playsinline attribute:', error)
+      }
+    }
+  }, [isMobile, hasRemoteAudio, isSpeakerOn])
+
   const makeCall = async (isVideoCall: boolean = true) => {
     // Set global call status immediately when starting call
     setGlobalIsInCall(true)
@@ -1233,6 +1398,20 @@ export default function StringeeCallComponent({
               'missed'
             )
             
+            // Tạo missed call record
+            if (data?.message?.user_id) {
+              try {
+                await createMissedCall({
+                  caller_id: data.message.user_id,
+                  callee_id: toUserId,
+                  call_type: isVideoCall ? 'video' : 'audio'
+                })
+                console.log('📞 Created missed call record for timeout')
+              } catch (error) {
+                console.error('❌ Failed to create missed call:', error)
+              }
+            }
+            
             // Directly hangup the StringeeCall
             newCall.hangup(() => {
               console.log('StringeeCall hangup completed')
@@ -1386,6 +1565,12 @@ export default function StringeeCallComponent({
     setHasRemoteAudio(false)
     setVideoUpgradeRequest(null)
     setCallerUserName('')
+    
+    // Reset speaker state
+    if (isMobile) {
+      setIsSpeakerOn(false)
+      console.log('🔊 Reset speaker state to default (OFF - earpiece) after cleanup')
+    }
     
     // Stop network monitoring
     stopNetworkMonitoring()
@@ -1658,6 +1843,22 @@ export default function StringeeCallComponent({
       isVideoCall ? 'video' : 'audio',
       'rejected'
     )
+    
+    // Tạo missed call record cho caller
+    const callerId = incoming.fromNumber
+    const calleeId = data?.message?.user_id
+    if (callerId && calleeId) {
+      try {
+        await createMissedCall({
+          caller_id: callerId,
+          callee_id: calleeId,
+          call_type: isVideoCall ? 'video' : 'audio'
+        })
+        console.log('📞 Created missed call record for rejected call')
+      } catch (error) {
+        console.error('❌ Failed to create missed call for rejected call:', error)
+      }
+    }
     
     // Clear call timeout
     if (callTimeoutRef.current) {
@@ -2598,6 +2799,41 @@ export default function StringeeCallComponent({
                        title={isMuted ? "Bật tiếng" : "Tắt tiếng"}
                      >
                        {isMuted ? <FiMicOff size={20} /> : <FiMic size={20} />}
+                     </button>
+                   )}
+
+                   {/* Speaker Toggle Button - only show on mobile when connected */}
+                   {isMobile && callStatus === 'connected' && (
+                     <button
+                       onClick={toggleSpeaker}
+                       style={{
+                         width: '54px',
+                         height: '54px',
+                         borderRadius: '50%',
+                         border: 'none',
+                         backgroundColor: !isSpeakerOn ? getIconColor('red', appearance) : getBackgroundColor('button', appearance),
+                         color: !isSpeakerOn ? 'white' : getIconColor('white', appearance),
+                         cursor: 'pointer',
+                         display: 'flex',
+                         alignItems: 'center',
+                         justifyContent: 'center',
+                         fontSize: '20px',
+                         boxShadow: !isSpeakerOn 
+                           ? '0 3px 12px rgba(255, 107, 107, 0.4)' 
+                           : `0 3px 12px ${getIconColor('gray', appearance)}33`,
+                         transition: 'all 0.2s ease'
+                       }}
+                       onMouseOver={(e) => {
+                         e.currentTarget.style.transform = 'scale(1.05)'
+                         e.currentTarget.style.opacity = '0.8'
+                       }}
+                       onMouseOut={(e) => {
+                         e.currentTarget.style.transform = 'scale(1)'
+                         e.currentTarget.style.opacity = '1'
+                       }}
+                       title={isSpeakerOn ? "Chuyển về loa trong" : "Bật loa ngoài"}
+                     >
+                       {isSpeakerOn ? <FiVolume2 size={20} /> : <FiVolumeX size={20} />}
                      </button>
                    )}
 

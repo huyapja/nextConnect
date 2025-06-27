@@ -27,6 +27,7 @@ import ChatbotAIStream from '../chatbot-ai/ChatbotAIStream'
 import LabelByUserList from '../labels/LabelByUserList'
 import ThreadsCustom from '../threads/ThreadsCustom'
 import { MessageSaved } from './DirectMessageSaved'
+import { MissedCallsList } from '../missed-calls/MissedCallsList'
 import clsx from 'clsx'
 import {
   labelListAtom,
@@ -63,6 +64,7 @@ export const DirectMessageItemList = ({ channel_list }: any) => {
 
   // Ưu tiên các component đặc biệt trước
   if (title === 'Đã gắn cờ') return <MessageSaved />
+  if (title === 'Cuộc gọi nhỡ') return <MissedCallsList />
   if (title === 'Nhắc đến') return <MentionList />
   if (title === 'Xong') return <DoneChannelList key='done-list' />
   if (title === 'Chủ đề') return <ThreadsCustom />

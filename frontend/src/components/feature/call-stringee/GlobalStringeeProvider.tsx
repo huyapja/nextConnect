@@ -352,6 +352,44 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
     }
   }, [data?.message?.user_id])
 
+  // Handle call back from missed calls
+  useEffect(() => {
+    const handleCallBack = (event: CustomEvent) => {
+      const { toUserId, isVideoCall, callerName } = event.detail
+      
+      console.log('📞 Triggering call back to:', toUserId, 'isVideo:', isVideoCall)
+      
+      // Set up call data for callback
+      const currentUserId = data?.message?.user_id
+      const channelId = currentUserId && currentUserId < toUserId 
+        ? `${currentUserId} _ ${toUserId}` 
+        : `${toUserId} _ ${currentUserId}`
+      
+      setGlobalCallData({
+        toUserId: toUserId,
+        channelId: channelId
+      })
+      setShowGlobalCall(true)
+      
+      toast.success(`Đang gọi lại ${callerName}...`)
+      
+      // Small delay to let modal open, then trigger call
+      setTimeout(() => {
+        // Use DOM event to trigger call
+        const makeCallEvent = new CustomEvent('makeCallFromMissed', {
+          detail: { isVideoCall }
+        })
+        window.dispatchEvent(makeCallEvent)
+      }, 500)
+    }
+    
+    window.addEventListener('triggerCallBack', handleCallBack as EventListener)
+    
+    return () => {
+      window.removeEventListener('triggerCallBack', handleCallBack as EventListener)
+    }
+  }, [data?.message?.user_id])
+
   // Cleanup audio refs on unmount
   useEffect(() => {
     return () => {
