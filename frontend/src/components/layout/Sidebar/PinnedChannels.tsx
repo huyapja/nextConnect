@@ -116,7 +116,7 @@ const PinnedChannelItem = ({ channel }: Props) => {
               e.stopPropagation()
               togglePin(channel.name)
             }}
-            className='absolute -top-2 -right-3 z-10'
+            className='absolute -top-2 -right-3 z-9'
           >
             <FaRegTimesCircle
               className='bg-white dark:bg-gray-800 text-[10px] font-bold w-4 h-4 flex items-center justify-center 
