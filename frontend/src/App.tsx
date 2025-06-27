@@ -12,6 +12,7 @@ import AppUpdateProvider from './utils/AppUpdateProvider'
 import { UserProvider } from './utils/auth/UserProvider'
 import { CallProvider } from './components/feature/call/CallProvider'
 import { GlobalStringeeProvider } from './components/feature/call-stringee/GlobalStringeeProvider'
+import { GroupCallProvider } from './components/feature/group-call/GroupCallProvider'
 
 /** Following keys will not be cached in app cache */
 // const NO_CACHE_KEYS = [
@@ -69,19 +70,21 @@ function App() {
       <UserProvider>
         <CallProvider>
           <GlobalStringeeProvider>
-          <Toaster position='top-right' richColors />
-          <ThemeProvider
-            appearance={appearance}
-            // grayColor='slate'
-            accentColor='iris'
-            panelBackground='translucent'
-            setAppearance={setAppearance}
-          >
-            <Suspense fallback={<></>}>
-              <RouterProvider router={router} />
-            </Suspense>
-            <AppUpdateProvider />
-          </ThemeProvider>
+            <GroupCallProvider>
+              <Toaster position='top-right' richColors />
+              <ThemeProvider
+                appearance={appearance}
+                // grayColor='slate'
+                accentColor='iris'
+                panelBackground='translucent'
+                setAppearance={setAppearance}
+              >
+                <Suspense fallback={<></>}>
+                  <RouterProvider router={router} />
+                </Suspense>
+                <AppUpdateProvider />
+              </ThemeProvider>
+            </GroupCallProvider>
           </GlobalStringeeProvider>
         </CallProvider>
       </UserProvider>

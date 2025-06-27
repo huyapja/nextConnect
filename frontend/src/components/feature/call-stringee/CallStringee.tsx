@@ -1,39 +1,39 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useFrappeGetCall, useFrappeGetDoc, useFrappePostCall } from 'frappe-react-sdk'
+import { useFrappeGetCall, useFrappeEventListener, useFrappeGetDoc, useFrappePostCall } from 'frappe-react-sdk'
 import { 
   FiPhone, FiPhoneCall, FiPhoneOff, 
-  FiVideo, FiVideoOff, FiMic, FiMicOff
+  FiVideo, FiVideoOff, FiMic, FiMicOff, FiHeadphones, FiChevronDown,
+  FiVolume2, FiVolumeX 
 } from 'react-icons/fi'
 import { useTheme } from '@/ThemeProvider'
 import { toast } from 'sonner'
 import { useGlobalStringee } from './GlobalStringeeProvider'
+import { DropdownMenu } from '@radix-ui/themes'
+import { useIsTablet } from '@/hooks/useMediaQuery'
+
 
 // Import utilities and hooks
 import { getIconColor, getBackgroundColor } from './utils/themeUtils'
-import { formatCallDuration, getDisplayName, getUserAvatar, getAvatarInitials } from './utils/callHelpers'
+import { formatCallDuration, getDisplayName, getUserAvatar, getAvatarInitials, generateFallbackSessionId } from './utils/callHelpers'
 import { getPhoneRingAudio, getRingtoneSoundAudio, stopAllAudio as stopAllAudioGlobal, initAudioContext } from './utils/stringeeAudio'
 import { useNetworkMonitoring } from './hooks/useNetworkMonitoring'
 import { useCallDuration } from './hooks/useCallDuration'
 import { useCallAudio } from './hooks/useCallAudio'
-import { useCallEventHandlers } from './hooks/useCallEventHandlers'
-import { 
-  getDMChannelId as getDMChannelIdUtil, 
-  saveCallHistoryToChat as saveCallHistoryToChatUtil,
-  checkDeviceAvailability
-} from './utils/callLogic'
-
-// Import components
-import CallButton from './components/CallButton'
-import VideoUpgradeDialog from './components/VideoUpgradeDialog'
-
-// Import types
-import { CallStringeeProps, CallStatus, VideoUpgradeRequest } from './types'
 
 declare global {
   interface Window {
     StringeeClient: any
     StringeeCall2: any
   }
+}
+
+interface CallStringeeProps {
+  toUserId: string
+  channelId?: string
+  globalClient?: any // Global Stringee client
+  globalIncomingCall?: any // Global incoming call
+  isGlobalCall?: boolean // Flag để biết đây là global call
+  onClose?: () => void // Callback để đóng global modal
 }
 
 export default function StringeeCallComponent({ 
@@ -55,15 +55,22 @@ export default function StringeeCallComponent({
   const [hasRemoteVideo, setHasRemoteVideo] = useState(false)
   const [hasRemoteAudio, setHasRemoteAudio] = useState(false)
   const [isVideoCall, setIsVideoCall] = useState(true)
-  const [callStatus, setCallStatus] = useState<CallStatus>(null)
+  const [callStatus, setCallStatus] = useState<'connecting' | 'connected' | 'ended' | 'rejected' | null>(null)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [forceRender, setForceRender] = useState(0)
-  const [videoUpgradeRequest, setVideoUpgradeRequest] = useState<VideoUpgradeRequest | null>(null)
+  const [videoUpgradeRequest, setVideoUpgradeRequest] = useState<{fromUser: string, fromUserName?: string, sessionId: string} | null>(null)
   const [callerUserName, setCallerUserName] = useState<string>('')
   
   // Video controls states
   const [isLocalVideoEnabled, setIsLocalVideoEnabled] = useState(true)
   const [isRemoteVideoEnabled, setIsRemoteVideoEnabled] = useState(true)
+  
+  // Speaker state for mobile
+  const [isSpeakerOn, setIsSpeakerOn] = useState(false) // Default to earpiece (loa trong)
+  const isTablet = useIsTablet() // Use for mobile detection
+  
+  // Mobile detection function (consider tablet as mobile for speaker control)
+  const isMobile = isTablet || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
   
   // State để track xem đã lưu lịch sử cuộc gọi chưa
   const [callHistorySaved, setCallHistorySaved] = useState(false)
@@ -117,6 +124,9 @@ export default function StringeeCallComponent({
   const { call: checkUserBusyStatus, error: checkBusyError } = useFrappePostCall('raven.api.stringee_token.check_user_busy_status')
   const { call: sendVideoStatus, error: sendVideoStatusError } = useFrappePostCall('raven.api.stringee_token.send_video_status')
   
+  // API call for creating missed calls
+  const { call: createMissedCall } = useFrappePostCall('raven.api.missed_calls.create_missed_call')
+  
   // Get caller info for incoming calls
   const callerUserId = incoming?.fromNumber
   const { data: callerData } = useFrappeGetDoc('Raven User', callerUserId, {
@@ -133,9 +143,15 @@ export default function StringeeCallComponent({
       setIsLocalVideoEnabled(true)
       setIsRemoteVideoEnabled(true)
       
+      // Reset speaker state for mobile (default to earpiece)
+      if (isMobile) {
+        setIsSpeakerOn(false)
+        console.log('🔊 Reset speaker state to OFF (earpiece) for mobile')
+      }
+      
       console.log('🔄 Reset call states for new call - callHistorySaved: false, isEndingCall: false')
     }
-  }, [call, incoming])
+  }, [call, incoming, isMobile])
 
   // 📹 Force refresh local video when call state changes
   useEffect(() => {
@@ -187,21 +203,82 @@ export default function StringeeCallComponent({
 
   // 📝 Function để tìm đúng DM channel ID qua API
   const getDMChannelId = useCallback(async () => {
-    return getDMChannelIdUtil(data, toUserId, incoming, findDMChannel)
-  }, [data, toUserId, incoming, findDMChannel])
+    const currentUserId = data?.message?.user_id
+    
+    // Xác định caller và callee dựa trên loại cuộc gọi
+    let callerId: string | undefined
+    let calleeId: string | undefined
+    
+    if (incoming) {
+      // Cuộc gọi đến: fromNumber là caller, toNumber (current user) là callee
+      callerId = incoming.fromNumber
+      calleeId = incoming.toNumber || currentUserId
+    } else {
+      // Cuộc gọi đi: current user là caller, toUserId là callee
+      callerId = currentUserId
+      calleeId = toUserId
+    }
+    
+    if (!callerId || !calleeId) {
+      console.error('❌ Missing caller or callee ID for channel lookup')
+      return null
+    }
+    
+    try {
+      console.log('📝 Finding DM channel between:', callerId, '<->', calleeId)
+      console.log('📝 Call direction:', incoming ? 'incoming' : 'outgoing')
+      
+      // Gọi API để tìm channel ID đúng
+      const result = await findDMChannel({
+        user1: callerId,
+        user2: calleeId
+      })
+      
+      const channelId = result?.message || result
+      console.log('📝 Found DM channel ID:', channelId)
+      return channelId
+    } catch (error) {
+      console.error('❌ Failed to find DM channel:', error)
+      return null
+    }
+  }, [data?.message?.user_id, toUserId, incoming, findDMChannel])
 
   // Function để lưu lịch sử cuộc gọi
-  const saveCallHistoryToChat = useCallback(async (callType: 'audio' | 'video', callStatus: 'completed' | 'missed' | 'rejected' | 'ended', duration?: number) => {
-    return saveCallHistoryToChatUtil(
-      callType, 
-      callStatus, 
-      duration, 
-      callHistorySaved, 
-      setCallHistorySaved, 
-      getDMChannelId, 
-      saveCallHistory
-    )
-  }, [callHistorySaved, getDMChannelId, saveCallHistory])
+  const saveCallHistoryToChat = async (callType: 'audio' | 'video', callStatus: 'completed' | 'missed' | 'rejected' | 'ended', duration?: number) => {
+    // Double check để tránh duplicate
+    if (callHistorySaved) {
+      console.log('⚠️ Call history already saved - skipping duplicate save attempt')
+      return
+    }
+    
+    // Set flag ngay lập tức để prevent race conditions
+    setCallHistorySaved(true)
+    
+    try {
+      const dmChannelId = await getDMChannelId()
+      if (!dmChannelId) {
+        console.error('❌ Cannot save call history - no valid channel ID')
+        // Reset flag nếu failed
+        setCallHistorySaved(false)
+        return
+      }
+      
+      console.log('💾 Saving call history to channel:', dmChannelId, 'Call type:', callType, 'Status:', callStatus, 'Duration:', duration)
+      
+      await saveCallHistory({
+        channel_id: dmChannelId,
+        call_type: callType,
+        call_status: callStatus,
+        duration: duration
+      })
+      
+      console.log('✅ Call history saved successfully to:', dmChannelId)
+    } catch (error) {
+      console.error('❌ Failed to save call history:', error)
+      // Reset flag nếu failed để có thể retry
+      setCallHistorySaved(false)
+    }
+  }
 
 
 
@@ -288,30 +365,196 @@ export default function StringeeCallComponent({
     }
   }, [])
 
-  // Use event handlers hook
-  useCallEventHandlers({
-    currentSessionId,
-    callStatus,
-    incoming,
-    call,
-    data,
-    stopAllAudioWithRefs,
-    setIsCallConnected,
-    setCallStatus,
-    callTimeoutRef,
-    startNetworkMonitoring,
-    localVideoRef,
-    remoteVideoRef,
-    remoteAudioRef,
-    setHasRemoteVideo,
-    setHasRemoteAudio,
-    setVideoUpgradeRequest,
-    setForceRender,
-    setIsVideoCall,
-    setIsRemoteVideoEnabled,
-    setCurrentSessionId,
-    setCallerUserName,
-    localStreamRef
+  // Handle make call from missed calls - moved after makeCall definition
+  useEffect(() => {
+    const handleMakeCallFromMissed = (event: CustomEvent) => {
+      const { isVideoCall } = event.detail
+      console.log('📞 Making call from missed calls:', isVideoCall)
+      
+      // Small delay to ensure call modal is ready
+      setTimeout(() => {
+        if (makeCall) {
+          makeCall(isVideoCall)
+        }
+      }, 100)
+    }
+    
+    window.addEventListener('makeCallFromMissed', handleMakeCallFromMissed as EventListener)
+    
+    return () => {
+      window.removeEventListener('makeCallFromMissed', handleMakeCallFromMissed as EventListener)
+    }
+  }, [])
+
+    // Listen for realtime call status updates using frappe-react-sdk hook
+  useFrappeEventListener('call_status_update', (data: any) => {
+    console.log('🔄 Received call_status_update:', data, 'currentSessionId:', currentSessionId)
+    
+    // Match by session ID to ensure we only handle our call
+    if (data.session_id === currentSessionId) {
+      
+      // Handle call connected notification - chỉ cho outgoing calls
+      if (data.status === 'connected' && callStatus === 'connecting' && !incoming) {
+        console.log('✅ Received call connected notification via realtime for outgoing call')
+        
+        // Aggressive audio stop
+        stopAllAudio()
+        
+        setIsCallConnected(true)
+        setCallStatus('connected')
+        
+        // Clear call timeout when connected
+        if (callTimeoutRef.current) {
+          clearTimeout(callTimeoutRef.current)
+          callTimeoutRef.current = null
+        }
+        
+        // Start network monitoring when call is connected
+        setTimeout(() => {
+          startNetworkMonitoring(call)
+        }, 1000)
+      }
+      
+      // Handle call ended notification
+      if (data.status === 'ended') {
+        console.log('🔚 Received call ended notification via realtime')
+        
+        // AGGRESSIVE audio stop immediately - caller hangup
+        stopAllAudio()
+        
+        // Additional immediate audio cleanup using hook
+        stopAllAudioWithRefs()
+        
+        // Force remove ring audio from DOM
+        document.querySelectorAll('audio').forEach(audio => {
+          if (audio.src.includes('phone-ring') || audio.src.includes('ringtone')) {
+            audio.pause()
+            audio.currentTime = 0
+            audio.volume = 0
+            audio.loop = false
+            try {
+              audio.remove()
+            } catch (e) {
+              // Could not remove audio element
+            }
+          }
+        })
+        
+        // Clear video streams
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = null
+        }
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = null
+        }
+        if (remoteAudioRef.current) {
+          remoteAudioRef.current.srcObject = null
+        }
+        
+        // Force UI update - cập nhật ngay lập tức nhưng KHÔNG đóng modal
+        setCallStatus('ended')
+        setIsCallConnected(false)
+        setHasRemoteVideo(false)
+        setHasRemoteAudio(false)
+        setVideoUpgradeRequest(null)
+        setForceRender(prev => prev + 1) // Force re-render
+        
+        // KHÔNG tự động đóng modal - để người dùng nhấn nút kết thúc để đóng
+      }
+    }
+  })
+
+  // Listen for video upgrade requests
+  useFrappeEventListener('video_upgrade_request', (eventData: any) => {
+    // More flexible matching - check if we're the target user  
+    const currentUserId = data?.message?.user_id
+    const isTargetUser = eventData.to_user === currentUserId
+    
+    // Show popup if we are the target user, regardless of session ID match
+    if (isTargetUser || eventData.session_id === currentSessionId) {
+      setVideoUpgradeRequest({
+        fromUser: eventData.from_user,
+        fromUserName: eventData.from_user_name || eventData.from_user,
+        sessionId: eventData.session_id
+      })
+      
+      // Also update current session ID if it was missing
+      if (!currentSessionId && eventData.session_id) {
+        setCurrentSessionId(eventData.session_id)
+      }
+    }
+  })
+
+  // Listen for video upgrade responses
+  useFrappeEventListener('video_upgrade_response', (data: any) => {
+    if (data.session_id === currentSessionId) {
+      if (data.accepted && call) {
+        call.upgradeToVideoCall()
+        setIsVideoCall(true)
+      } else {
+        
+        // Revert to audio-only call
+        setIsVideoCall(false)
+        
+        // Stop video stream and revert to audio only
+        if (localStreamRef.current) {
+          const videoTracks = localStreamRef.current.getVideoTracks()
+          videoTracks.forEach(track => {
+            track.stop()
+          })
+          
+          // Get audio-only stream
+          navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(audioStream => {
+              if (localVideoRef.current) {
+                localVideoRef.current.srcObject = null
+              }
+              localStreamRef.current = audioStream
+            })
+            .catch(error => {
+              // Failed to get audio stream after video rejection
+            })
+        }
+        
+        // Clear local video display
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = null
+        }
+        
+        // Show rejection message briefly
+        toast.error('Người dùng đã từ chối chuyển sang video call')
+      }
+    }
+  })
+
+  // Listen for video status updates (tắt/bật video)
+  useFrappeEventListener('video_status_update', (data: any) => {
+    if (data.session_id === currentSessionId) {
+      console.log('📹 Received video status update:', data)
+      setIsRemoteVideoEnabled(data.video_enabled)
+      
+      if (data.video_enabled) {
+        console.log('📹 Remote user enabled video')
+      } else {
+        console.log('📹 Remote user disabled video')
+      }
+    }
+  })
+
+  // Listen for incoming call notifications to get correct call type
+  useFrappeEventListener('incoming_call', (callData: any) => {
+    // Store call type info for when stringee event arrives
+    const currentUserId = data?.message?.user_id
+    if (callData.callee_id === currentUserId) {
+          // Store in a ref or global variable to use when incoming call arrives
+          ;(window as any)._expectedCallType = callData.call_type
+          ;(window as any)._expectedCallSession = callData.session_id
+          
+          // Set caller name from realtime notification
+          if (callData.caller_name) {
+            setCallerUserName(callData.caller_name)
+          }
+    }
   })
 
   // Initialize Stringee client when SDK is loaded and we have token
@@ -434,8 +677,6 @@ export default function StringeeCallComponent({
     }
   }, [globalIncomingCall, isGlobalCall])
 
-  // Note: performCleanup function is defined later in the component
-
   const setupCallEvents = (callObj: any) => {
     console.log('🔧 Setting up call events for call:', callObj?.callId || 'unknown')
     
@@ -492,9 +733,18 @@ export default function StringeeCallComponent({
             try {
               if (remoteAudioRef.current) {
                 remoteAudioRef.current.srcObject = stream
-                remoteAudioRef.current.volume = 1.0
+                remoteAudioRef.current.volume = isSpeakerOn ? 1.0 : 0.8
                 remoteAudioRef.current.autoplay = true
+                
+                // Apply mobile speaker settings
+                if (isMobile) {
+                  if ('playsInline' in remoteAudioRef.current) {
+                    remoteAudioRef.current.playsInline = !isSpeakerOn
+                  }
+                }
+                
                 await remoteAudioRef.current.play()
+                console.log(`🔊 Remote audio playing with speaker ${isSpeakerOn ? 'ON' : 'OFF'}`)
               }
             } catch (error) {
               if (attempt < 5) {
@@ -514,9 +764,18 @@ export default function StringeeCallComponent({
             try {
               if (remoteVideoRef.current) {
                 remoteVideoRef.current.srcObject = stream
-                remoteVideoRef.current.volume = 1.0
+                remoteVideoRef.current.volume = isSpeakerOn ? 1.0 : 0.8
                 remoteVideoRef.current.autoplay = true
+                
+                // Apply mobile speaker settings
+                if (isMobile) {
+                  if ('playsInline' in remoteVideoRef.current) {
+                    remoteVideoRef.current.playsInline = !isSpeakerOn
+                  }
+                }
+                
                 await remoteVideoRef.current.play()
+                console.log(`🔊 Remote audio via video playing with speaker ${isSpeakerOn ? 'ON' : 'OFF'}`)
               }
             } catch (error) {
               if (attempt < 5) {
@@ -862,8 +1121,120 @@ export default function StringeeCallComponent({
     }
   }, [isVideoCall, isLocalVideoEnabled, localStreamRef.current, call, currentSessionId, data?.message?.user_id, toUserId, sendVideoStatus])
 
+  // Function to toggle speaker on/off for mobile
+  const toggleSpeaker = useCallback(async () => {
+    try {
+      console.log('🔊 Toggling speaker:', isSpeakerOn, '->', !isSpeakerOn)
+      
+      const newSpeakerState = !isSpeakerOn
+      setIsSpeakerOn(newSpeakerState)
+      
+      // Try to control audio output on mobile
+      if (remoteAudioRef.current) {
+        // Method 1: Try setSinkId if available (limited support on mobile)
+        if (remoteAudioRef.current.setSinkId) {
+          try {
+            // Get available audio devices
+            const devices = await navigator.mediaDevices.enumerateDevices()
+            const audioOutputs = devices.filter(device => device.kind === 'audiooutput')
+            
+            if (audioOutputs.length > 1) {
+              // Try to select appropriate output
+              const targetDevice = newSpeakerState 
+                ? audioOutputs.find(device => device.label.toLowerCase().includes('speaker'))
+                : audioOutputs.find(device => device.label.toLowerCase().includes('earpiece') || device.label.toLowerCase().includes('phone'))
+              
+              if (targetDevice) {
+                await remoteAudioRef.current.setSinkId(targetDevice.deviceId)
+                console.log('✅ Speaker switched via setSinkId to:', targetDevice.label)
+              }
+            }
+          } catch (error) {
+            console.log('⚠️ setSinkId not supported or failed:', error)
+          }
+        }
+        
+        // Method 2: Volume and playsinline attributes
+        if (newSpeakerState) {
+          // Speaker mode: higher volume, force to play through speakers
+          remoteAudioRef.current.volume = 1.0
+          remoteAudioRef.current.muted = false
+          if ('playsInline' in remoteAudioRef.current) {
+            remoteAudioRef.current.playsInline = false // This may help route to speakers
+          }
+        } else {
+          // Earpiece mode: lower volume
+          remoteAudioRef.current.volume = 0.8
+          if ('playsInline' in remoteAudioRef.current) {
+            remoteAudioRef.current.playsInline = true // This may help route to earpiece
+          }
+        }
+      }
+      
+      // Method 3: Try to influence audio routing through Web Audio API
+      try {
+        if (localStreamRef.current) {
+          const audioTracks = localStreamRef.current.getAudioTracks()
+          audioTracks.forEach(track => {
+            // Adjust echo cancellation and constraints
+            const constraints = {
+              echoCancellation: !newSpeakerState, // Disable for speaker, enable for earpiece
+              noiseSuppression: !newSpeakerState,
+              autoGainControl: !newSpeakerState
+            }
+            
+            if (track.applyConstraints) {
+              track.applyConstraints(constraints).catch(err => {
+                console.log('⚠️ Could not apply audio constraints:', err)
+              })
+            }
+          })
+        }
+      } catch (error) {
+        console.log('⚠️ Audio routing constraint failed:', error)
+      }
+      
+             // Show user feedback
+       toast.success(newSpeakerState ? 'Đã chuyển sang loa ngoài' : 'Đã chuyển về loa trong')
+      
+    } catch (error) {
+      console.error('❌ Error toggling speaker:', error)
+      toast.error('Không thể chuyển đổi loa')
+    }
+  }, [isSpeakerOn])
+
+  // Apply speaker settings when remote audio changes
+  useEffect(() => {
+    if (isMobile && remoteAudioRef.current && hasRemoteAudio) {
+      console.log('🔊 Applying speaker settings to new remote audio stream')
+      
+      // Apply current speaker state to new audio stream
+      remoteAudioRef.current.volume = isSpeakerOn ? 1.0 : 0.8
+      
+      if ('playsInline' in remoteAudioRef.current) {
+        remoteAudioRef.current.playsInline = !isSpeakerOn
+      }
+      
+      // Try to set audio routing attributes
+      try {
+        if (isSpeakerOn) {
+          remoteAudioRef.current.setAttribute('webkit-playsinline', 'false')
+        } else {
+          remoteAudioRef.current.setAttribute('webkit-playsinline', 'true')
+        }
+      } catch (error) {
+        console.log('⚠️ Could not set webkit-playsinline attribute:', error)
+      }
+    }
+  }, [isMobile, hasRemoteAudio, isSpeakerOn])
+
   const makeCall = async (isVideoCall: boolean = true) => {
-    // Kiểm tra điều kiện trước khi thay đổi state
+    // Set global call status immediately when starting call
+    setGlobalIsInCall(true)
+    
+    // Initialize audio context immediately on user interaction
+    initAudioContext()
+    
     if (!client || !data?.message.user_id || !toUserId || !window.StringeeCall2) {
       console.error('❌ Cannot make call - missing requirements:', {
         client: !!client,
@@ -878,12 +1249,8 @@ export default function StringeeCallComponent({
     if (data.message.user_id === toUserId) {
       toast.error('Bạn không thể gọi cho chính mình')
       console.log('❌ Cannot call yourself')
-      return // Return sớm mà không thay đổi state
+      return
     }
-
-    // Chỉ set state khi đã pass validation
-    setGlobalIsInCall(true)
-    initAudioContext()
 
     // 📞 Kiểm tra người nhận có đang bận không
     try {
@@ -893,7 +1260,6 @@ export default function StringeeCallComponent({
       if (busyResult?.is_busy) {
         toast.error('Người dùng đang trong cuộc gọi khác')
         console.log('📞 User is busy:', toUserId)
-        setGlobalIsInCall(false) // Reset state
         return // Dừng cuộc gọi nếu người nhận đang bận
       }
       
@@ -907,7 +1273,6 @@ export default function StringeeCallComponent({
     const deviceAvailable = await checkDeviceAvailability(isVideoCall)
     if (!deviceAvailable) {
       console.log('❌ Device check failed - canceling call')
-      setGlobalIsInCall(false) // Reset state
       return // Dừng thực hiện cuộc gọi nếu thiếu thiết bị
     }
     
@@ -966,11 +1331,9 @@ export default function StringeeCallComponent({
     setupCallEvents(newCall)
 
     ringbackAudioRef.current = getRingtoneSoundAudio()
-    if (ringbackAudioRef.current) {
-      ringbackAudioRef.current.loop = true
-      ringbackAudioRef.current.volume = 0.7
-      ringbackAudioRef.current.autoplay = true
-    }
+    ringbackAudioRef.current.loop = true
+    ringbackAudioRef.current.volume = 0.7
+    ringbackAudioRef.current.autoplay = true
     
     // Force play ringback with retry
     ringbackAudioRef.current.play().then(() => {
@@ -1034,6 +1397,20 @@ export default function StringeeCallComponent({
               isVideoCall ? 'video' : 'audio',
               'missed'
             )
+            
+            // Tạo missed call record
+            if (data?.message?.user_id) {
+              try {
+                await createMissedCall({
+                  caller_id: data.message.user_id,
+                  callee_id: toUserId,
+                  call_type: isVideoCall ? 'video' : 'audio'
+                })
+                console.log('📞 Created missed call record for timeout')
+              } catch (error) {
+                console.error('❌ Failed to create missed call:', error)
+              }
+            }
             
             // Directly hangup the StringeeCall
             newCall.hangup(() => {
@@ -1141,60 +1518,107 @@ export default function StringeeCallComponent({
     }
   }, [])
 
-  // Cleanup function
+  // Comprehensive cleanup function
   const performCleanup = useCallback(() => {
-    console.log('🧹 Performing cleanup...')
+    console.log('🧹 Performing comprehensive cleanup...')
     
-    // Stop media streams
+    // Stop all media streams with detailed logging
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => track.stop())
+      console.log('🔴 Stopping all local media tracks:', localStreamRef.current.getTracks().length)
+      localStreamRef.current.getTracks().forEach((track, index) => {
+        console.log(`🔴 Stopping track ${index}:`, track.kind, track.readyState)
+        track.stop()
+      })
       localStreamRef.current = null
+      console.log('✅ Local stream ref cleared')
     } else {
+      console.log('ℹ️ No local stream to stop - trying global cleanup...')
+      
+      // 🌐 Force global media cleanup when no local stream ref
       forceStopAllMediaStreams()
     }
     
     // Clear video sources
-    if (localVideoRef.current) localVideoRef.current.srcObject = null
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null
-    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null
+    if (localVideoRef.current) {
+      console.log('🔴 Clearing local video source')
+      localVideoRef.current.srcObject = null
+    }
+    if (remoteVideoRef.current) {
+      console.log('🔴 Clearing remote video source')
+      remoteVideoRef.current.srcObject = null
+    }
+    if (remoteAudioRef.current) {
+      console.log('🔴 Clearing remote audio source')
+      remoteAudioRef.current.srcObject = null
+    }
     
-    // Stop audio and network monitoring
+    // Stop all audio
     stopAllAudio()
+    
+    // Reset states
+    setCall(null)
+    setIncoming(null)
+    setCallStatus(null)
+    setCurrentSessionId(null)
+    setIsCallConnected(false)
+    setHasRemoteVideo(false)
+    setHasRemoteAudio(false)
+    setVideoUpgradeRequest(null)
+    setCallerUserName('')
+    
+    // Reset speaker state
+    if (isMobile) {
+      setIsSpeakerOn(false)
+      console.log('🔊 Reset speaker state to default (OFF - earpiece) after cleanup')
+    }
+    
+    // Stop network monitoring
     stopNetworkMonitoring()
     
-    // Clear timeout
+    // Stop call timeout timer
     if (callTimeoutRef.current) {
       clearTimeout(callTimeoutRef.current)
       callTimeoutRef.current = null
     }
     
-    // Reset all states
-    setCall(null); setIncoming(null); setCallStatus(null); setCurrentSessionId(null)
-    setIsCallConnected(false); setHasRemoteVideo(false); setHasRemoteAudio(false)
-    setVideoUpgradeRequest(null); setCallerUserName(''); setCallHistorySaved(false)
-    setIsEndingCall(false); setShowDetailedStats(false); setGlobalIsInCall(false)
+    // Reset call history flag
+    setCallHistorySaved(false)
+    
+    // Reset ending call flag
+    setIsEndingCall(false)
+    
+    // Reset detailed stats view
+    setShowDetailedStats(false)
 
-    if (isGlobalCall && onClose) onClose()
-    console.log('✅ Cleanup completed')
+    // Reset global call status
+    setGlobalIsInCall(false)
+
+    // 🌐 Gọi callback để đóng global modal
+    if (isGlobalCall && onClose) {
+      onClose()
+    }
   }, [stopAllAudio, isGlobalCall, onClose])
 
   const answerCall = async () => {
     if (!incoming) return
     
+    // Set global call status when answering call
+    setGlobalIsInCall(true)
+    
+    // Initialize audio context immediately on user interaction
+    initAudioContext()
+    
+    // ✅ Kiểm tra thiết bị mic/camera trước khi trả lời cuộc gọi
     const deviceAvailable = await checkDeviceAvailability(isVideoCall)
     if (!deviceAvailable) {
       console.log('❌ Device check failed - cannot answer call')
-      return // Return sớm mà không thay đổi state
+      return // Dừng trả lời cuộc gọi nếu thiếu thiết bị
     }
     
-    // Chỉ set state khi đã pass validation
-    setGlobalIsInCall(true)
-    initAudioContext()
-    
-    // Stop all audio
+    // AGGRESSIVE audio stop BEFORE answering
     stopAllAudio()
-    stopAllAudioWithRefs()
     
+    // Additional immediate audio cleanup
     if (phoneRingRef.current) {
       phoneRingRef.current.pause()
       phoneRingRef.current.currentTime = 0
@@ -1203,28 +1627,43 @@ export default function StringeeCallComponent({
       phoneRingRef.current.loop = false
     }
     
+            // Stop all audio using hook function
+        stopAllAudioWithRefs()
+    
+    // Stop any remaining ring tones in DOM immediately
     document.querySelectorAll('audio').forEach(audio => {
       if (audio.src.includes('phone-ring') || audio.src.includes('ringtone')) {
         audio.pause()
         audio.currentTime = 0
         audio.volume = 0
         audio.loop = false
-        try { audio.remove() } catch (e) {}
+        try {
+          audio.remove()
+        } catch (e) {
+          // Could not remove audio element
+        }
       }
     })
     
     incoming.answer((res: any) => {
       console.log('✅ Incoming call answered:', res)
+      console.log('📊 State before answer - callStatus:', callStatus, 'isCallConnected:', isCallConnected, 'call:', !!call, 'incoming:', !!incoming)
       
       setCall(incoming)
       setIncoming(null)
+      // ✅ Set trạng thái tạm thời để UI update ngay, signalingstate sẽ confirm lại
       setCallStatus('connected') 
       setIsCallConnected(true)
       
+      // 📹 Force get local stream for video call when answering
       if (isVideoCall) {
+        console.log('📹 Requesting local video stream for answered call...')
         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
           .then(stream => {
+            console.log('📹 Got local stream for answered call:', stream)
             localStreamRef.current = stream
+            
+            // 🌐 Store in global window for emergency cleanup
             ;(window as any).currentLocalStream = stream
             
             if (localVideoRef.current) {
@@ -1233,26 +1672,51 @@ export default function StringeeCallComponent({
               localVideoRef.current.play().catch(() => {})
             }
           })
-          .catch(error => console.log('❌ Failed to get local stream:', error))
+          .catch(error => {
+            console.log('❌ Failed to get local stream for answered call:', error)
+          })
       }
       
+      console.log('📊 State after answer - setting call to incoming, incoming to null, status to connected')
+      
+      // 🔄 Gửi realtime event để thông báo cho bên gọi biết cuộc gọi đã được chấp nhận
       if (currentSessionId && data?.message?.user_id) {
         updateCallStatus({
           session_id: currentSessionId,
           status: 'connected',
           answered_at: new Date().toISOString()
-        }).catch(error => console.error('❌ Failed to send call answered notification:', error))
+        }).then(() => {
+          console.log('✅ Call answered notification sent successfully')
+        }).catch(error => {
+          console.error('❌ Failed to send call answered notification:', error)
+          // Continue anyway - don't block the call flow
+        })
       }
       
+      // Clear call timeout when answered
       if (callTimeoutRef.current) {
         clearTimeout(callTimeoutRef.current)
         callTimeoutRef.current = null
       }
       
-      // Multiple cleanups after answer
-      setTimeout(() => stopAllAudio(), 10)
-      setTimeout(() => stopAllAudio(), 100)
-      setTimeout(() => stopAllAudio(), 500)
+      // ❌ Xóa startNetworkMonitoring - để signalingstate xử lý
+      // Start network monitoring after answering
+      // setTimeout(() => {
+      //   startNetworkMonitoring()
+      // }, 1000)
+      
+      // Multiple aggressive cleanups after answer
+      setTimeout(() => {
+        stopAllAudio()
+      }, 10)
+      
+      setTimeout(() => {
+        stopAllAudio()
+      }, 100)
+      
+      setTimeout(() => {
+        stopAllAudio()
+      }, 500)
     })
   }
 
@@ -1374,17 +1838,38 @@ export default function StringeeCallComponent({
   const rejectCall = async () => {
     if (!incoming) return
     
-    await saveCallHistoryToChat(isVideoCall ? 'video' : 'audio', 'rejected')
+    // Lưu lịch sử cuộc gọi bị từ chối
+    await saveCallHistoryToChat(
+      isVideoCall ? 'video' : 'audio',
+      'rejected'
+    )
     
+    // Tạo missed call record cho caller
+    const callerId = incoming.fromNumber
+    const calleeId = data?.message?.user_id
+    if (callerId && calleeId) {
+      try {
+        await createMissedCall({
+          caller_id: callerId,
+          callee_id: calleeId,
+          call_type: isVideoCall ? 'video' : 'audio'
+        })
+        console.log('📞 Created missed call record for rejected call')
+      } catch (error) {
+        console.error('❌ Failed to create missed call for rejected call:', error)
+      }
+    }
+    
+    // Clear call timeout
     if (callTimeoutRef.current) {
       clearTimeout(callTimeoutRef.current)
       callTimeoutRef.current = null
     }
     
-    // Stop all audio
+    // AGGRESSIVE audio stop immediately
     stopAllAudio()
-    stopAllAudioGlobal()
     
+    // Additional immediate audio cleanup for reject
     if (phoneRingRef.current) {
       phoneRingRef.current.pause()
       phoneRingRef.current.currentTime = 0
@@ -1393,39 +1878,68 @@ export default function StringeeCallComponent({
       phoneRingRef.current.loop = false
     }
     
+    // phoneRingAudio handled by hook
+    stopAllAudioGlobal()
+    
+    // Force remove ring audio from DOM
     document.querySelectorAll('audio').forEach(audio => {
       if (audio.src.includes('phone-ring') || audio.src.includes('ringtone')) {
         audio.pause()
         audio.currentTime = 0
         audio.volume = 0
         audio.loop = false
-        try { audio.remove() } catch (e) {}
+        try {
+          audio.remove()
+        } catch (e) {
+          // Could not remove audio element
+        }
       }
     })
     
-    // Stop media tracks
+    // 📹 FORCE STOP media tracks khi reject call
+    console.log('🔴 Stopping media tracks on reject...')
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => track.stop())
+      localStreamRef.current.getTracks().forEach((track, index) => {
+        console.log(`🔴 Stopping track ${index} on reject:`, track.kind, track.readyState)
+        track.stop()
+      })
       localStreamRef.current = null
     }
     
-    // Clear video sources
-    if (localVideoRef.current) localVideoRef.current.srcObject = null
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null
-    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null
+    // Clear video sources immediately
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null
+    }
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.srcObject = null
+    }
 
-    incoming.reject((res: any) => console.log('📞 Call rejected result:', res))
+    incoming.reject((res: any) => {
+      console.log('📞 Call rejected result:', res)
+    })
     
-    setTimeout(() => forceStopAllMediaStreams(), 500)
+    // 🌐 FORCE global media cleanup after reject
+    setTimeout(() => {
+      console.log('🌐 Performing delayed global cleanup after reject...')
+      forceStopAllMediaStreams()
+    }, 500)
     
-    // Update UI
+    // Cập nhật UI ngay lập tức
     setCallStatus('rejected')
     setIsCallConnected(false)
     setHasRemoteVideo(false)
     setHasRemoteAudio(false)
     setVideoUpgradeRequest(null)
     
-    setTimeout(() => stopAllAudio(), 100)
+    // Final cleanup to ensure no audio continues
+    setTimeout(() => {
+      stopAllAudio()
+    }, 100)
+    
+    // KHÔNG tự động đóng modal - để người dùng nhấn nút đóng
   }
 
   const upgradeToVideo = async () => {
@@ -1602,238 +2116,505 @@ export default function StringeeCallComponent({
         }
       `}</style>
       
-            {/* Call Button Component */}
-      <CallButton onMakeCall={makeCall} isGlobalCall={isGlobalCall} />
+      {/* 🎯 Call Button with Dropdown - chỉ hiển thị khi không phải global call và không đang trong cuộc gọi */}
+      {!isGlobalCall && !call && !incoming && (
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger>
+            <button
+              disabled={globalIsInCall}
+              className="bg-transparent text-gray-12 hover:bg-gray-3 disabled:opacity-50"
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '6px',
+                border: 'none',
+                color: appearance === 'light' ? '#000000' : '#ffffff',
+                cursor: globalIsInCall ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '16px',
+                transition: 'all 0.2s ease',
+                position: 'relative'
+              }}
+              title={globalIsInCall ? "Cuộc gọi đang diễn ra" : "Tùy chọn cuộc gọi"}
+            >
+              <FiPhone size={18} />
+              <FiChevronDown size={12} style={{ position: 'absolute', bottom: '-2px', right: '2px' }} />
+            </button>
+          </DropdownMenu.Trigger>
+          
+          <DropdownMenu.Content>
+            <DropdownMenu.Item onClick={() => makeCall(false)}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FiPhoneCall size={16} />
+                <span>Gọi Thoại</span>
+              </div>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item onClick={() => makeCall(true)}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FiVideo size={16} />
+                <span>Gọi Video</span>
+              </div>
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Root>
+      )}
 
-      {/* Call Modal - Rút gọn UI */}
+      {/* Call Modal - Zalo style - hiển thị khi có call hoặc là global call */}
       {(call || incoming || isGlobalCall) && (
         <div 
-          key={`modal-${forceRender}-${callStatus}`} 
-          onClick={() => initAudioContext()}
+          key={`call-modal-${forceRender}-${callStatus}`} 
+          onClick={() => {
+            // Force audio context resume on any click in modal
+            initAudioContext()
+          }}
           style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.95)', zIndex: 9999,
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.95)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}>
-          <div style={{
-            width: '420px', height: '650px',
+          <div           style={{
+            width: '420px',
+            height: '650px',
             backgroundColor: getBackgroundColor('modal', appearance),
-            borderRadius: '20px', overflow: 'hidden', position: 'relative',
-            display: 'flex', flexDirection: 'column',
-            boxShadow: appearance === 'light' ? '0 20px 60px rgba(0, 0, 0, 0.15)' : '0 20px 60px rgba(0, 0, 0, 0.5)',
+            borderRadius: '20px',
+            overflow: 'hidden',
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: appearance === 'light' 
+              ? '0 20px 60px rgba(0, 0, 0, 0.15)' 
+              : '0 20px 60px rgba(0, 0, 0, 0.5)',
             border: appearance === 'light' ? '1px solid #e5e7eb' : 'none'
           }}>
             {/* Video Area */}
             <div style={{ 
-              flex: 1, position: 'relative',
-              background: appearance === 'light' ? 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)' : 'linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)'
+              flex: 1, 
+              position: 'relative',
+              background: appearance === 'light' 
+                ? 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)'
+                : 'linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)'
             }}>
               {/* Remote Video */}
               <video 
                 ref={remoteVideoRef} 
-                autoPlay playsInline controls={false} muted={false}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: isRemoteVideoEnabled ? 'block' : 'none' }} 
+                autoPlay 
+                playsInline 
+                controls={false}
+                muted={false}
+                style={{ 
+                  width: '100%', 
+                  height: '100%', 
+                  objectFit: 'cover',
+                  display: isRemoteVideoEnabled ? 'block' : 'none'
+                }} 
               />
               
-              {/* Remote Video Disabled */}
+              {/* 📹 Remote Video Disabled Overlay */}
               {isVideoCall && !isRemoteVideoEnabled && (
                 <div style={{
-                  position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
                   backgroundColor: appearance === 'light' ? '#f3f4f6' : '#1f2937',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   color: getIconColor('gray', appearance)
                 }}>
-                  <FiVideoOff size={80} style={{ opacity: 0.7, marginBottom: '16px' }} />
-                  <div style={{ fontSize: '18px', fontWeight: '500' }}>
+                  <div style={{
+                    fontSize: '80px',
+                    marginBottom: '16px',
+                    opacity: 0.7,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <FiVideoOff size={80} />
+                  </div>
+                  <div style={{
+                    fontSize: '18px',
+                    fontWeight: '500',
+                    color: getIconColor('gray', appearance)
+                  }}>
                     {displayName} đã tắt camera
                   </div>
                 </div>
               )}
               
-              {/* Local Video PiP */}
+              {/* Local Video (PiP) - Always show when in video call */}
               {isVideoCall && (
                 <div style={{
-                  position: 'absolute', top: '20px', right: '20px', width: '100px', height: '140px',
-                  borderRadius: '16px', overflow: 'hidden',
+                  position: 'absolute',
+                  top: '20px',
+                  right: '20px',
+                  width: '100px',
+                  height: '140px',
+                  borderRadius: '16px',
+                  overflow: 'hidden',
                   border: appearance === 'light' ? '3px solid #d1d5db' : '3px solid #404040',
                   backgroundColor: appearance === 'light' ? '#f3f4f6' : '#2a2a2a',
-                  boxShadow: appearance === 'light' ? '0 4px 20px rgba(0, 0, 0, 0.1)' : '0 4px 20px rgba(0, 0, 0, 0.3)',
-                  zIndex: 20
+                  boxShadow: appearance === 'light' 
+                    ? '0 4px 20px rgba(0, 0, 0, 0.1)' 
+                    : '0 4px 20px rgba(0, 0, 0, 0.3)',
+                  zIndex: 20 // Ensure it's above overlay
                 }}>
-                  {isLocalVideoEnabled ? (
-                    <video ref={localVideoRef} autoPlay playsInline muted controls={false}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
-                  ) : (
+                  {/* Local Video Element */}
+                  {isLocalVideoEnabled && (
+                    <video 
+                      ref={localVideoRef} 
+                      autoPlay 
+                      playsInline 
+                      muted 
+                      controls={false}
+                      style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'cover',
+                        transform: 'scaleX(-1)' // Mirror effect for natural selfie view
+                      }} 
+                    />
+                  )}
+                  
+                  {/* Local Video Disabled Overlay */}
+                  {!isLocalVideoEnabled && (
                     <div style={{
-                      width: '100%', height: '100%', display: 'flex', flexDirection: 'column', 
-                      alignItems: 'center', justifyContent: 'center',
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       backgroundColor: appearance === 'light' ? '#e5e7eb' : '#374151'
                     }}>
-                      <FiVideoOff size={24} style={{ opacity: 0.7, marginBottom: '4px' }} />
-                      <div style={{ fontSize: '8px', color: getIconColor('gray', appearance), textAlign: 'center' }}>
+                      <div style={{
+                        fontSize: '24px',
+                        marginBottom: '4px',
+                        opacity: 0.7,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <FiVideoOff size={24} />
+                      </div>
+                      <div style={{
+                        fontSize: '8px',
+                        color: getIconColor('gray', appearance),
+                        textAlign: 'center'
+                      }}>
                         Camera tắt
                       </div>
                     </div>
                   )}
+                  
+                  {/* Local video indicator */}
                   <div style={{
-                    position: 'absolute', bottom: '4px', left: '4px',
-                    background: 'rgba(0, 0, 0, 0.6)', color: 'white',
-                    fontSize: '10px', padding: '2px 6px', borderRadius: '4px'
+                    position: 'absolute',
+                    bottom: '4px',
+                    left: '4px',
+                    background: 'rgba(0, 0, 0, 0.6)',
+                    color: 'white',
+                    fontSize: '10px',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    backdropFilter: 'blur(4px)'
                   }}>
                     Bạn
                   </div>
                 </div>
               )}
 
-            {/* User Info Overlay */}
+            {/* User Info Overlay - Zalo style - Ẩn chỉ khi Gọi video có remote video */}
               {(callStatus === 'ended' || callStatus === 'rejected' || callStatus === 'connecting' || !isCallConnected || !isVideoCall || (isVideoCall && !hasRemoteVideo)) && (
                 <div style={{
-                  position: 'absolute', top: '0', left: '0', right: '0', bottom: '0',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  position: 'absolute',
+                  top: '0',
+                  left: '0',
+                  right: '0',
+                  bottom: '0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   background: appearance === 'light'
                     ? 'linear-gradient(135deg, rgba(248, 249, 250, 0.95) 0%, rgba(233, 236, 239, 0.95) 100%)'
                     : 'linear-gradient(135deg, rgba(42, 42, 42, 0.95) 0%, rgba(26, 26, 26, 0.95) 100%)',
                   color: getIconColor('white', appearance)
                 }}>
-                  {/* Avatar */}
-                  <div style={{ width: '120px', height: '120px', margin: '0 auto 24px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {call && callStatus === 'connecting' && (
-                      <svg key={`progress-${progressKey}`} width="140" height="140" 
-                        style={{ position: 'absolute', top: '-10px', left: '-10px', zIndex: 2 }} className="progress-ring">
-                        <circle cx="70" cy="70" r="60" fill="transparent" stroke={appearance === 'light' ? '#e5e7eb' : '#374151'} strokeWidth="3" />
-                        <circle cx="70" cy="70" r="60" fill="transparent" stroke={getIconColor('blue', appearance)} strokeWidth="3" 
-                          className="progress-ring-circle" style={{ filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.5))' }} />
-                      </svg>
-                    )}
-                    <div style={{
-                      width: '120px', height: '120px', borderRadius: '50%',
-                      backgroundColor: userAvatar ? 'transparent' : (callStatus === 'connected' && !isVideoCall ? getIconColor('green', appearance) : getBackgroundColor('button', appearance)),
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      border: callStatus === 'connected' && !isVideoCall ? `4px solid ${getIconColor('green', appearance)}` : `4px solid ${getIconColor('gray', appearance)}`,
-                      boxShadow: callStatus === 'connected' && !isVideoCall
-                        ? `0 8px 32px ${getIconColor('green', appearance)}66, 0 0 0 8px ${getIconColor('green', appearance)}1a`
-                        : appearance === 'light' ? '0 8px 32px rgba(0, 0, 0, 0.1)' : '0 8px 32px rgba(0, 0, 0, 0.4)',
-                      animation: callStatus === 'connected' && !isVideoCall ? 'pulse 2s infinite' : 'none',
-                      backgroundImage: userAvatar ? `url(${userAvatar})` : 'none',
-                      backgroundSize: 'cover', backgroundPosition: 'center'
-                    }}>
-                      {!userAvatar && (
-                        <div style={{
-                          fontSize: '36px', fontWeight: '600', color: getIconColor('white', appearance)
-                        }}>
-                          {avatarInitials}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                                     {/* Avatar với animation cho active call */}
+                   <div style={{
+                     width: '120px',
+                     height: '120px',
+                     margin: '0 auto 24px',
+                     position: 'relative',
+                     display: 'flex',
+                     alignItems: 'center',
+                     justifyContent: 'center'
+                   }}>
+                     {/* Progress Ring - chỉ hiển thị khi đang gọi đi */}
+                     {call && callStatus === 'connecting' && (
+                       <svg 
+                         key={`progress-${progressKey}`}
+                         width="140" 
+                         height="140" 
+                         style={{
+                           position: 'absolute',
+                           top: '-10px',
+                           left: '-10px',
+                           zIndex: 2
+                         }}
+                         className="progress-ring"
+                       >
+                         <circle
+                           cx="70"
+                           cy="70"
+                           r="60"
+                           fill="transparent"
+                           stroke={appearance === 'light' ? '#e5e7eb' : '#374151'}
+                           strokeWidth="3"
+                         />
+                         <circle
+                           cx="70"
+                           cy="70"
+                           r="60"
+                           fill="transparent"
+                           stroke={getIconColor('blue', appearance)}
+                           strokeWidth="3"
+                           className="progress-ring-circle"
+                           style={{
+                             filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.5))'
+                           }}
+                         />
+                       </svg>
+                     )}
+                     
+                     {/* Avatar */}
+                     <div style={{
+                       width: '120px',
+                       height: '120px',
+                       borderRadius: '50%',
+                       backgroundColor: userAvatar ? 'transparent' : (callStatus === 'connected' && !isVideoCall 
+                         ? getIconColor('green', appearance) 
+                         : getBackgroundColor('button', appearance)),
+                       display: 'flex',
+                       alignItems: 'center',
+                       justifyContent: 'center',
+                       fontSize: userAvatar ? '16px' : '48px',
+                       border: callStatus === 'connected' && !isVideoCall 
+                         ? `4px solid ${getIconColor('green', appearance)}` 
+                         : `4px solid ${getIconColor('gray', appearance)}`,
+                       boxShadow: callStatus === 'connected' && !isVideoCall
+                         ? `0 8px 32px ${getIconColor('green', appearance)}66, 0 0 0 8px ${getIconColor('green', appearance)}1a`
+                         : appearance === 'light' 
+                           ? '0 8px 32px rgba(0, 0, 0, 0.1)'
+                           : '0 8px 32px rgba(0, 0, 0, 0.4)',
+                       animation: callStatus === 'connected' && !isVideoCall 
+                         ? 'pulse 2s infinite' 
+                         : 'none',
+                       transition: 'all 0.3s ease',
+                       backgroundImage: userAvatar ? `url(${userAvatar})` : 'none',
+                       backgroundSize: 'cover',
+                       backgroundPosition: 'center',
+                       position: 'relative',
+                       overflow: 'hidden',
+                       zIndex: 1
+                     }}>
+                       {!userAvatar && (
+                         // Fallback to initials when no avatar
+                         <div style={{
+                           display: 'flex',
+                           alignItems: 'center',
+                           justifyContent: 'center',
+                           width: '100%',
+                           height: '100%',
+                           fontSize: '36px',
+                           fontWeight: '600',
+                           color: getIconColor('white', appearance)
+                         }}>
+                           {avatarInitials}
+                         </div>
+                       )}
+                       
+
+                     </div>
+                   </div>
                   
-                  {/* User Name */}
-                  <h2 style={{ 
-                    margin: '0 0 12px', fontSize: '28px', fontWeight: '600',
-                    color: getIconColor('white', appearance),
-                    textShadow: appearance === 'light' ? 'none' : '0 2px 4px rgba(0, 0, 0, 0.3)'
-                  }}>
-                    {displayName}
-                  </h2>
+                                     {/* User Name */}
+                   <h2 style={{ 
+                     margin: '0 0 12px', 
+                     fontSize: '28px', 
+                     fontWeight: '600',
+                     color: getIconColor('white', appearance),
+                     textShadow: appearance === 'light' ? 'none' : '0 2px 4px rgba(0, 0, 0, 0.3)'
+                   }}>
+                     {displayName}
+                   </h2>
                   
-                  {/* Status */}
-                  <p style={{ margin: 0, fontSize: '18px', color: getIconColor('gray', appearance), fontWeight: '400' }}>
-                    {callStatus === 'ended' 
-                      ? (callDuration > 0 
-                          ? `Cuộc gọi đã kết thúc - Thời gian: ${formatCallDuration(callDuration)}`
-                          : (incoming && !isCallConnected ? 'Cuộc gọi nhỡ' : 'Cuộc gọi đã kết thúc'))
-                      : callStatus === 'rejected'
-                        ? 'Cuộc gọi bị từ chối'
-                        : incoming 
-                          ? 'Cuộc gọi đến...' 
-                          : call 
-                            ? (callStatus === 'connected' 
-                                ? (isVideoCall && hasRemoteVideo ? 'Gọi video - Đã kết nối' : isVideoCall && !hasRemoteVideo ? 'Đang chờ video...' : 'Đang nói chuyện')
-                                : (isVideoCall ? 'Đang gọi video...' : 'Đang gọi...'))
-                            : 'Đang kết nối...'
-                    }
-                  </p>
-                  
-                  {/* Call type indicator */}
-                  <div style={{
-                    marginTop: '16px', padding: '8px 20px', borderRadius: '20px', fontSize: '14px',
-                    backgroundColor: callStatus === 'connected' && !isVideoCall ? `${getIconColor('green', appearance)}33` : isVideoCall ? `${getIconColor('blue', appearance)}33` : `${getIconColor('gray', appearance)}33`,
-                    color: callStatus === 'connected' && !isVideoCall ? getIconColor('green', appearance) : isVideoCall ? getIconColor('blue', appearance) : getIconColor('gray', appearance),
-                    border: callStatus === 'connected' && !isVideoCall ? `1px solid ${getIconColor('green', appearance)}66` : isVideoCall ? `1px solid ${getIconColor('blue', appearance)}66` : 'none',
-                    whiteSpace: 'nowrap', minWidth: 'max-content'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {isVideoCall ? <FiVideo size={16} /> : <FiPhoneCall size={16} />}
-                      <span>
-                        {isVideoCall ? 'Gọi video' : 'Gọi thoại'}
-                        {callStatus === 'connected' && !isVideoCall && ' - Đang hoạt động'}
-                        {callStatus === 'connecting' && ' - Đang kết nối...'}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* Call Duration */}
-                  {(callStatus === 'connected' || callStatus === 'ended') && callDuration > 0 && (
-                    <div style={{
-                      marginTop: '12px', fontSize: callStatus === 'ended' ? '20px' : '16px',
-                      color: callStatus === 'ended' ? getIconColor('white', appearance) : getIconColor('green', appearance),
-                      fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-                    }}>
-                      {callStatus === 'connected' && (
-                        <div style={{
-                          width: '8px', height: '8px', borderRadius: '50%',
-                          backgroundColor: getIconColor('green', appearance), animation: 'pulse 1s infinite'
-                        }}></div>
-                      )}
-                      <span style={{
-                        background: callStatus === 'ended' ? 'linear-gradient(45deg, #4ade80, #22c55e)' : 'none',
-                        WebkitBackgroundClip: callStatus === 'ended' ? 'text' : 'initial',
-                        WebkitTextFillColor: callStatus === 'ended' ? 'transparent' : 'inherit',
-                        fontSize: callStatus === 'ended' ? '22px' : '16px'
-                      }}>
-                        {formatCallDuration(callDuration)}
-                      </span>
-                    </div>
-                  )}
-                  
-                  {/* Network Quality */}
-                  {callStatus === 'connected' && networkStats.ping !== null && !showDetailedStats && (
-                    <div 
-                      onClick={() => setShowDetailedStats(true)}
-                      style={{
-                        marginTop: '8px', fontSize: '14px', color: getIconColor('gray', appearance),
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                        cursor: 'pointer', padding: '4px 8px', borderRadius: '8px',
-                        background: 'rgba(0, 0, 0, 0.2)', transition: 'all 0.2s ease'
-                      }}
-                      onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.3)'}
-                      onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.2)'}
-                      title="Click để xem chi tiết mạng"
-                    >
-                      <span>📡</span>
-                      <span style={{ 
-                        color: networkStats.ping < 100 ? getIconColor('green', appearance) : networkStats.ping < 300 ? '#fbbf24' : '#ef4444',
-                        fontWeight: '500'
-                      }}>
-                        {networkStats.ping < 100 ? 'Mạng tốt' : networkStats.ping < 300 ? 'Mạng trung bình' : 'Mạng yếu'}
-                      </span>
-                      <span style={{ fontSize: '12px', opacity: 0.7 }}>
-                        ({networkStats.ping}ms)
-                      </span>
-                    </div>
-                  )}
+                                     {/* Status */}
+                   <p style={{ 
+                     margin: 0, 
+                     fontSize: '18px', 
+                     color: getIconColor('gray', appearance),
+                     fontWeight: '400'
+                   }}>
+                     {callStatus === 'ended' 
+                       ? (callDuration > 0 
+                           ? `Cuộc gọi đã kết thúc - Thời gian: ${formatCallDuration(callDuration)}`
+                           : (incoming && !isCallConnected ? 'Cuộc gọi nhỡ' : 'Cuộc gọi đã kết thúc'))
+                       : callStatus === 'rejected'
+                         ? 'Cuộc gọi bị từ chối'
+                         : incoming 
+                           ? 'Cuộc gọi đến...' 
+                           : call 
+                             ? (callStatus === 'connected' 
+                                 ? (isVideoCall && hasRemoteVideo 
+                                     ? 'Gọi video - Đã kết nối'
+                                     : isVideoCall && !hasRemoteVideo
+                                       ? 'Đang chờ video...'
+                                       : 'Đang nói chuyện')
+                                 : (isVideoCall ? 'Đang gọi video...' : 'Đang gọi...'))
+                             : 'Đang kết nối...'
+                     }
+                   </p>
+                   
+                   {/* Call type indicator với trạng thái chi tiết */}
+                   <div style={{
+                     marginTop: '16px',
+                     padding: '8px 20px',
+                     backgroundColor: callStatus === 'connected' && !isVideoCall
+                       ? `${getIconColor('green', appearance)}33` 
+                       : isVideoCall 
+                         ? `${getIconColor('blue', appearance)}33`
+                         : `${getIconColor('gray', appearance)}33`,
+                     borderRadius: '20px',
+                     fontSize: '14px',
+                     color: callStatus === 'connected' && !isVideoCall
+                       ? getIconColor('green', appearance)
+                       : isVideoCall
+                         ? getIconColor('blue', appearance)
+                         : getIconColor('gray', appearance),
+                     border: callStatus === 'connected' && !isVideoCall
+                       ? `1px solid ${getIconColor('green', appearance)}66`
+                       : isVideoCall
+                         ? `1px solid ${getIconColor('blue', appearance)}66`
+                         : 'none',
+                     whiteSpace: 'nowrap',
+                     minWidth: 'max-content'
+                                        }}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                         {isVideoCall ? <FiVideo size={16} /> : <FiPhoneCall size={16} />}
+                         <span>
+                           {isVideoCall ? 'Gọi video' : 'Gọi thoại'}
+                           {callStatus === 'connected' && !isVideoCall && ' - Đang hoạt động'}
+                           {callStatus === 'connecting' && ' - Đang kết nối...'}
+                         </span>
+                       </div>
+                     </div>
+                   
+                   {/* Thời gian cuộc gọi */}
+                   {(callStatus === 'connected' || callStatus === 'ended') && callDuration > 0 && (
+                     <div style={{
+                       marginTop: '12px',
+                       fontSize: callStatus === 'ended' ? '20px' : '16px',
+                       color: callStatus === 'ended' ? getIconColor('white', appearance) : getIconColor('green', appearance),
+                       fontWeight: '600',
+                       display: 'flex',
+                       alignItems: 'center',
+                       justifyContent: 'center',
+                       gap: '8px'
+                     }}>
+                       {callStatus === 'connected' && (
+                         <div style={{
+                           width: '8px',
+                           height: '8px',
+                           borderRadius: '50%',
+                           backgroundColor: getIconColor('green', appearance),
+                           animation: 'pulse 1s infinite'
+                         }}></div>
+                       )}
+                       <span style={{
+                         background: callStatus === 'ended' 
+                           ? 'linear-gradient(45deg, #4ade80, #22c55e)'
+                           : 'none',
+                         WebkitBackgroundClip: callStatus === 'ended' ? 'text' : 'initial',
+                         WebkitTextFillColor: callStatus === 'ended' ? 'transparent' : 'inherit',
+                         fontSize: callStatus === 'ended' ? '22px' : '16px'
+                       }}>
+                         {formatCallDuration(callDuration)}
+                       </span>
+                     </div>
+                   )}
+                   
+                   {/* Quick Network Quality Indicator */}
+                   {callStatus === 'connected' && networkStats.ping !== null && !showDetailedStats && (
+                     <div 
+                       onClick={() => setShowDetailedStats(true)}
+                       style={{
+                         marginTop: '8px',
+                         fontSize: '14px',
+                         color: getIconColor('gray', appearance),
+                         fontWeight: '400',
+                         display: 'flex',
+                         alignItems: 'center',
+                         justifyContent: 'center',
+                         gap: '6px',
+                         cursor: 'pointer',
+                         padding: '4px 8px',
+                         borderRadius: '8px',
+                         background: 'rgba(0, 0, 0, 0.2)',
+                         transition: 'all 0.2s ease'
+                       }}
+                       onMouseOver={(e) => {
+                         e.currentTarget.style.background = 'rgba(0, 0, 0, 0.3)'
+                       }}
+                       onMouseOut={(e) => {
+                         e.currentTarget.style.background = 'rgba(0, 0, 0, 0.2)'
+                       }}
+                       title="Click để xem chi tiết mạng"
+                     >
+                       <span>📡</span>
+                       <span style={{ 
+                         color: networkStats.ping < 100 ? getIconColor('green', appearance) : networkStats.ping < 300 ? '#fbbf24' : '#ef4444',
+                         fontWeight: '500'
+                       }}>
+                         {networkStats.ping < 100 ? 'Mạng tốt' : networkStats.ping < 300 ? 'Mạng trung bình' : 'Mạng yếu'}
+                       </span>
+                       <span style={{ fontSize: '12px', opacity: 0.7 }}>
+                         ({networkStats.ping}ms)
+                       </span>
+                     </div>
+                   )}
                 </div>
               )}
               
-              {/* Network Stats Overlay */}
+                            {/* Network Stats Overlay - Show only when connected and detailed view enabled */}
               {callStatus === 'connected' && showDetailedStats && (
                 <div style={{
-                  position: 'absolute', top: '20px', left: '20px',
+                  position: 'absolute',
+                  top: '20px',
+                  left: '20px',
                   background: appearance === 'light' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.6)',
-                  borderRadius: '12px', padding: '8px 12px', backdropFilter: 'blur(8px)',
-                  fontSize: '12px', color: appearance === 'light' ? '#374151' : 'white',
-                  display: 'flex', flexDirection: 'column', gap: '4px',
-                  minWidth: '120px', zIndex: 10,
+                  borderRadius: '12px',
+                  padding: '8px 12px',
+                  backdropFilter: 'blur(8px)',
+                  fontSize: '12px',
+                  color: appearance === 'light' ? '#374151' : 'white',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  minWidth: '120px',
+                  zIndex: 10,
                   border: appearance === 'light' ? '1px solid rgba(0, 0, 0, 0.1)' : 'none'
                 }}>
                   <div style={{ 
@@ -1913,121 +2694,266 @@ export default function StringeeCallComponent({
               )}
             </div>
 
-            {/* Controls */}
+            {/* Controls - Zalo style */}
             <div style={{
               padding: '30px 24px',
               backgroundColor: appearance === 'light' ? '#f8f9fa' : '#0d0d0d',
               borderTop: appearance === 'light' ? '1px solid #e5e7eb' : '1px solid #333',
-              display: 'flex', justifyContent: 'center', gap: '30px', alignItems: 'center'
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '30px',
+              alignItems: 'center'
             }}>
               {incoming && !call && callStatus !== 'rejected' && callStatus !== 'ended' ? (
-                // Incoming call controls
+                // Incoming call controls - Zalo style
                 <>
-                  <button onClick={rejectCall} style={{
-                    width: '64px', height: '64px', borderRadius: '50%', border: 'none',
-                    backgroundColor: getIconColor('red', appearance), color: 'white', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px',
-                    boxShadow: '0 4px 16px rgba(255, 71, 87, 0.3)', transition: 'all 0.2s ease'
-                  }}
-                  onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.opacity = '0.9' }}
-                  onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.opacity = '1' }}>
+                  <button
+                    onClick={rejectCall}
+                    style={{
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      border: 'none',
+                      backgroundColor: getIconColor('red', appearance),
+                      color: 'white',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px',
+                      boxShadow: '0 4px 16px rgba(255, 71, 87, 0.3)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.1)'
+                      e.currentTarget.style.opacity = '0.9'
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)'
+                      e.currentTarget.style.opacity = '1'
+                    }}
+                  >
                     <FiPhoneOff size={24} />
                   </button>
-                  <button onClick={answerCall} style={{
-                    width: '64px', height: '64px', borderRadius: '50%', border: 'none',
-                    backgroundColor: getIconColor('green', appearance), color: 'white', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px',
-                    boxShadow: '0 4px 16px rgba(46, 213, 115, 0.3)', transition: 'all 0.2s ease'
-                  }}
-                  onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.opacity = '0.9' }}
-                  onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.opacity = '1' }}>
+                  <button
+                    onClick={answerCall}
+                    style={{
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      border: 'none',
+                      backgroundColor: getIconColor('green', appearance),
+                      color: 'white',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px',
+                      boxShadow: '0 4px 16px rgba(46, 213, 115, 0.3)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.1)'
+                      e.currentTarget.style.opacity = '0.9'
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)'
+                      e.currentTarget.style.opacity = '1'
+                    }}
+                  >
                     <FiPhone size={24} />
                   </button>
                 </>
               ) : (
-                // In-call controls
+                // In-call controls - Zalo style
                 <>
-                  {/* Mute Button */}
-                  {callStatus === 'connected' && (
-                    <button onClick={toggleMute} style={{
-                      width: '54px', height: '54px', borderRadius: '50%', border: 'none',
-                      backgroundColor: isMuted ? getIconColor('red', appearance) : getBackgroundColor('button', appearance),
-                      color: isMuted ? 'white' : getIconColor('white', appearance), cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px',
-                      boxShadow: isMuted ? '0 3px 12px rgba(255, 107, 107, 0.4)' : `0 3px 12px ${getIconColor('gray', appearance)}33`,
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.opacity = '0.8' }}
-                    onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.opacity = '1' }}
-                    title={isMuted ? "Bật tiếng" : "Tắt tiếng"}>
-                      {isMuted ? <FiMicOff size={20} /> : <FiMic size={20} />}
-                    </button>
-                  )}
+                                    {/* Mute/Unmute Button - only show when connected */}
+                   {callStatus === 'connected' && (
+                     <button
+                       onClick={toggleMute}
+                       style={{
+                         width: '54px',
+                         height: '54px',
+                         borderRadius: '50%',
+                         border: 'none',
+                         backgroundColor: isMuted ? getIconColor('red', appearance) : getBackgroundColor('button', appearance),
+                         color: isMuted ? 'white' : getIconColor('white', appearance),
+                         cursor: 'pointer',
+                         display: 'flex',
+                         alignItems: 'center',
+                         justifyContent: 'center',
+                         fontSize: '20px',
+                         boxShadow: isMuted 
+                           ? '0 3px 12px rgba(255, 107, 107, 0.4)' 
+                           : `0 3px 12px ${getIconColor('gray', appearance)}33`,
+                         transition: 'all 0.2s ease'
+                       }}
+                       onMouseOver={(e) => {
+                         e.currentTarget.style.transform = 'scale(1.05)'
+                         e.currentTarget.style.opacity = '0.8'
+                       }}
+                       onMouseOut={(e) => {
+                         e.currentTarget.style.transform = 'scale(1)'
+                         e.currentTarget.style.opacity = '1'
+                       }}
+                       title={isMuted ? "Bật tiếng" : "Tắt tiếng"}
+                     >
+                       {isMuted ? <FiMicOff size={20} /> : <FiMic size={20} />}
+                     </button>
+                   )}
 
-                  {/* Video Toggle Button */}
+                   {/* Speaker Toggle Button - only show on mobile when connected */}
+                   {isMobile && callStatus === 'connected' && (
+                     <button
+                       onClick={toggleSpeaker}
+                       style={{
+                         width: '54px',
+                         height: '54px',
+                         borderRadius: '50%',
+                         border: 'none',
+                         backgroundColor: !isSpeakerOn ? getIconColor('red', appearance) : getBackgroundColor('button', appearance),
+                         color: !isSpeakerOn ? 'white' : getIconColor('white', appearance),
+                         cursor: 'pointer',
+                         display: 'flex',
+                         alignItems: 'center',
+                         justifyContent: 'center',
+                         fontSize: '20px',
+                         boxShadow: !isSpeakerOn 
+                           ? '0 3px 12px rgba(255, 107, 107, 0.4)' 
+                           : `0 3px 12px ${getIconColor('gray', appearance)}33`,
+                         transition: 'all 0.2s ease'
+                       }}
+                       onMouseOver={(e) => {
+                         e.currentTarget.style.transform = 'scale(1.05)'
+                         e.currentTarget.style.opacity = '0.8'
+                       }}
+                       onMouseOut={(e) => {
+                         e.currentTarget.style.transform = 'scale(1)'
+                         e.currentTarget.style.opacity = '1'
+                       }}
+                       title={isSpeakerOn ? "Chuyển về loa trong" : "Bật loa ngoài"}
+                     >
+                       {isSpeakerOn ? <FiVolume2 size={20} /> : <FiVolumeX size={20} />}
+                     </button>
+                   )}
+
+                  {/* 📹 Video Toggle Button - chỉ hiển thị trong video call */}
                   {isVideoCall && callStatus === 'connected' && (
-                    <button onClick={toggleLocalVideo} style={{
-                      width: '54px', height: '54px', borderRadius: '50%', border: 'none',
-                      backgroundColor: !isLocalVideoEnabled ? getIconColor('red', appearance) : getBackgroundColor('button', appearance),
-                      color: !isLocalVideoEnabled ? 'white' : getIconColor('white', appearance), cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px',
-                      boxShadow: !isLocalVideoEnabled ? '0 3px 12px rgba(255, 107, 107, 0.4)' : `0 3px 12px ${getIconColor('gray', appearance)}33`,
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.opacity = '0.8' }}
-                    onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.opacity = '1' }}
-                    title={isLocalVideoEnabled ? "Tắt camera" : "Bật camera"}>
+                    <button
+                      onClick={toggleLocalVideo}
+                      style={{
+                        width: '54px',
+                        height: '54px',
+                        borderRadius: '50%',
+                        border: 'none',
+                        backgroundColor: !isLocalVideoEnabled ? getIconColor('red', appearance) : getBackgroundColor('button', appearance),
+                        color: !isLocalVideoEnabled ? 'white' : getIconColor('white', appearance),
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '20px',
+                        boxShadow: !isLocalVideoEnabled 
+                          ? '0 3px 12px rgba(255, 107, 107, 0.4)' 
+                          : `0 3px 12px ${getIconColor('gray', appearance)}33`,
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.05)'
+                        e.currentTarget.style.opacity = '0.8'
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)'
+                        e.currentTarget.style.opacity = '1'
+                      }}
+                      title={isLocalVideoEnabled ? "Tắt camera" : "Bật camera"}
+                    >
                       {isLocalVideoEnabled ? <FiVideo size={20} /> : <FiVideoOff size={20} />}
                     </button>
                   )}
 
                   {!isVideoCall && callStatus === 'connected' && (
-                    <button onClick={upgradeToVideo} style={{
-                      width: '54px', height: '54px', borderRadius: '50%', border: 'none',
-                      backgroundColor: getBackgroundColor('button', appearance), color: getIconColor('blue', appearance),
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '20px', boxShadow: `0 3px 12px ${getIconColor('gray', appearance)}33`,
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.opacity = '0.8' }}
-                    onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.opacity = '1' }}
-                    title="Bật camera">
+                    <button
+                      onClick={upgradeToVideo}
+                      style={{
+                        width: '54px',
+                        height: '54px',
+                        borderRadius: '50%',
+                        border: 'none',
+                        backgroundColor: getBackgroundColor('button', appearance),
+                        color: getIconColor('blue', appearance),
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '20px',
+                        boxShadow: `0 3px 12px ${getIconColor('gray', appearance)}33`,
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.05)'
+                        e.currentTarget.style.opacity = '0.8'
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)'
+                        e.currentTarget.style.opacity = '1'
+                      }}
+                      title="Bật camera"
+                    >
                       <FiVideo size={20} />
                     </button>
                   )}
-                  <button onClick={hangupCall} disabled={isEndingCall && !['ended', 'rejected'].includes(callStatus || '')} style={{
-                    width: '64px', height: '64px', borderRadius: '50%', border: 'none',
-                    backgroundColor: ['ended', 'rejected'].includes(callStatus || '')
-                      ? getBackgroundColor('button', appearance) 
-                      : (isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))
-                        ? getIconColor('gray', appearance)
-                        : getIconColor('red', appearance),
-                    color: ['ended', 'rejected'].includes(callStatus || '') ? getIconColor('white', appearance) : 'white',
-                    cursor: (isEndingCall && !['ended', 'rejected'].includes(callStatus || '')) ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px',
-                    boxShadow: ['ended', 'rejected'].includes(callStatus || '')
-                      ? `0 4px 16px ${getIconColor('gray', appearance)}33`
-                      : '0 4px 16px rgba(255, 71, 87, 0.3)',
-                    transition: 'all 0.2s ease',
-                    opacity: (isEndingCall && !['ended', 'rejected'].includes(callStatus || '')) ? '0.6' : '1'
-                  }}
-                  onMouseOver={(e) => {
-                    if (!(isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))) {
-                      e.currentTarget.style.transform = 'scale(1.1)';
-                      e.currentTarget.style.opacity = '0.9';
+                  <button
+                    onClick={hangupCall}
+                    disabled={isEndingCall && !['ended', 'rejected'].includes(callStatus || '')}
+                    style={{
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      border: 'none',
+                      backgroundColor: ['ended', 'rejected'].includes(callStatus || '')
+                        ? getBackgroundColor('button', appearance) 
+                        : (isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))
+                          ? getIconColor('gray', appearance)
+                          : getIconColor('red', appearance),
+                      color: ['ended', 'rejected'].includes(callStatus || '')
+                        ? getIconColor('white', appearance) 
+                        : 'white',
+                      cursor: (isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))
+                        ? 'not-allowed' 
+                        : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px',
+                      boxShadow: ['ended', 'rejected'].includes(callStatus || '')
+                        ? `0 4px 16px ${getIconColor('gray', appearance)}33`
+                        : '0 4px 16px rgba(255, 71, 87, 0.3)',
+                      transition: 'all 0.2s ease',
+                      opacity: (isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))
+                        ? '0.6' 
+                        : '1'
+                    }}
+                    onMouseOver={(e) => {
+                      if (!(isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))) {
+                        e.currentTarget.style.transform = 'scale(1.1)'
+                        e.currentTarget.style.opacity = '0.9'
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!(isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))) {
+                        e.currentTarget.style.transform = 'scale(1)'
+                        e.currentTarget.style.opacity = '1'
+                      }
+                    }}
+                    title={
+                      (isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))
+                        ? 'Đang kết thúc cuộc gọi...'
+                        : ['ended', 'rejected'].includes(callStatus || '')
+                          ? 'Đóng' 
+                          : 'Kết thúc cuộc gọi'
                     }
-                  }}
-                  onMouseOut={(e) => {
-                    if (!(isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))) {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.opacity = '1';
-                    }
-                  }}
-                  title={
-                    (isEndingCall && !['ended', 'rejected'].includes(callStatus || ''))
-                      ? 'Đang kết thúc cuộc gọi...'
-                      : ['ended', 'rejected'].includes(callStatus || '') ? 'Đóng' : 'Kết thúc cuộc gọi'
-                  }>
+                  >
                     <FiPhoneOff size={24} />
                   </button>
                 </>
@@ -2044,14 +2970,108 @@ export default function StringeeCallComponent({
         </div>
       )}
 
-      {/* Video Upgrade Dialog Component */}
+      {/* Video Upgrade Request Dialog */}
       {videoUpgradeRequest && (
-        <VideoUpgradeDialog 
-          videoUpgradeRequest={videoUpgradeRequest}
-          callerUserName={callerUserName}
-          onAccept={acceptVideoUpgrade}
-          onReject={rejectVideoUpgrade}
-        />
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: appearance === 'light' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.8)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div style={{
+            backgroundColor: getBackgroundColor('modal', appearance),
+            borderRadius: '20px',
+            padding: '30px',
+            maxWidth: '400px',
+            textAlign: 'center',
+            border: appearance === 'light' ? '1px solid #e5e7eb' : '1px solid #333',
+            boxShadow: appearance === 'light' 
+              ? '0 10px 40px rgba(0, 0, 0, 0.15)' 
+              : '0 10px 40px rgba(0, 0, 0, 0.6)'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              marginBottom: '20px',
+              color: getIconColor('blue', appearance)
+            }}>
+              <FiVideo size={48} />
+            </div>
+            <h3 style={{
+              color: getIconColor('white', appearance),
+              fontSize: '22px',
+              margin: '0 0 12px',
+              fontWeight: '600'
+            }}>
+              Yêu cầu bật camera
+            </h3>
+                         <p style={{
+               color: getIconColor('gray', appearance),
+               fontSize: '16px',
+               margin: '0 0 30px',
+               lineHeight: '1.4'
+             }}>
+               <strong style={{ color: getIconColor('white', appearance) }}>{videoUpgradeRequest.fromUserName || callerUserName || videoUpgradeRequest.fromUser}</strong> muốn chuyển sang chế độ Gọi video. Bạn có đồng ý không?
+             </p>
+            <div style={{
+              display: 'flex',
+              gap: '20px',
+              justifyContent: 'center'
+            }}>
+              <button
+                onClick={rejectVideoUpgrade}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '25px',
+                  border: 'none',
+                  backgroundColor: getBackgroundColor('button', appearance),
+                  color: getIconColor('white', appearance),
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  minWidth: '100px',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.opacity = '0.8'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.opacity = '1'
+                }}
+              >
+                Từ chối
+              </button>
+              <button
+                onClick={acceptVideoUpgrade}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '25px',
+                  border: 'none',
+                  backgroundColor: getIconColor('green', appearance),
+                  color: 'white',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  minWidth: '100px',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.opacity = '0.9'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.opacity = '1'
+                }}
+              >
+                Đồng ý
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

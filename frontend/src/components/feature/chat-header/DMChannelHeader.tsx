@@ -13,10 +13,10 @@ import { Key, useContext, useMemo } from 'react'
 import { BiChevronLeft } from 'react-icons/bi'
 import { Link } from 'react-router-dom'
 import VideoCall from '../call-stringee/CallStringee'
-import { useGlobalStringee } from '../call-stringee/GlobalStringeeProvider'
 import ChannelLabelBadge from '../channels/ChannelLabelBadge'
 import { ViewPinnedMessagesButton } from '../pinned-messages/ViewPinnedMessagesButton'
 import ChannelHeaderMenu from './ChannelHeaderMenu'
+import { useGlobalStringee } from '../call-stringee/GlobalStringeeProvider'
 
 interface DMChannelHeaderProps {
   channelData: DMChannelListItem
@@ -40,12 +40,12 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
   const lastWorkspace = localStorage.getItem('ravenLastWorkspace')
 
   const enrichedChannels = useEnrichedSortedChannels()
-  const currentChannel = useMemo(
+  const enrichedChannel = useMemo(
     () => enrichedChannels.find((ch) => ch.name === channelData.name),
     [enrichedChannels, channelData.name]
   )
 
-  const userLabels = currentChannel?.user_labels || []
+  const userLabels = enrichedChannel?.user_labels || []
 
   return (
     <PageHeader>
@@ -120,7 +120,7 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
       </Flex>
 
       <Flex className='mr-3' gap='4' align='center'>
-        {peerUserId && <VideoCall toUserId={peerUserId} channelId={channelData.name} globalClient={globalClient} />}
+        {peerUserId && <VideoCall toUserId={peerUserId} channelId={channelData.name} globalClient={globalClient}/>}
         <ChannelHeaderMenu channelData={channelData} />
       </Flex>
     </PageHeader>
