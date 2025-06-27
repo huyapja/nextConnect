@@ -133,4 +133,6 @@ def get_search_result(
 
     query = apply_common_filters(query)
 
+    query = query.orderby(message.creation, order=frappe.qb.desc)
+
     return query.limit(limit).offset(offset).run(as_dict=True)
