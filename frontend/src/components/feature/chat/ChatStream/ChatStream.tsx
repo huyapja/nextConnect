@@ -4,6 +4,7 @@ import { ChannelHistoryFirstMessage } from '@/components/layout/EmptyState/Empty
 import { useChannelSeenUsers } from '@/hooks/useChannelSeenUsers'
 import { useCurrentChannelData } from '@/hooks/useCurrentChannelData'
 import { useDebounceDynamic } from '@/hooks/useDebounce'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useUserData } from '@/hooks/useUserData'
 import { getFileExtension } from '@/utils/operations'
 import { virtuosoSettings } from '@/utils/VirtuosoSettings'
@@ -29,7 +30,6 @@ import { MessageItemRenderer } from './MessageListRenderer'
 import ScrollToBottomButtons from './ScrollToBottomButtons'
 import useChatStream from './useChatStream'
 import { useChatStreamActions } from './useChatStreamActions'
-import { useIsMobile } from '@/hooks/useMediaQuery'
 
 type Props = {
   channelID: string
