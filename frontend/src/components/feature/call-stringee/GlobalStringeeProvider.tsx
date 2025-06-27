@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react'
-import { useFrappeGetCall, useFrappeEventListener, useFrappePostCall } from 'frappe-react-sdk'
+import { useFrappeGetCall, useFrappeEventListener, useFrappePostCall, useFrappeGetDoc } from 'frappe-react-sdk'
+import { toast } from 'sonner'
 import CallStringee from './CallStringee'
 
 declare global {
@@ -32,6 +33,9 @@ interface GlobalStringeeContextType {
   ongoingCallInfo: OngoingCallInfo | null
   showRejoinDialog: boolean
   setShowRejoinDialog: (show: boolean) => void
+  // Missed calls
+  missedCalls: string[]
+  clearMissedCalls: () => void
 }
 
 const GlobalStringeeContext = createContext<GlobalStringeeContextType | null>(null)
@@ -52,6 +56,12 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
   // Rejoin call states
   const [ongoingCallInfo, setOngoingCallInfo] = useState<OngoingCallInfo | null>(null)
   const [showRejoinDialog, setShowRejoinDialog] = useState(false)
+  
+  // Missed calls tracking
+  const [missedCalls, setMissedCalls] = useState<string[]>([])
+  
+  // Audio notification refs
+  const missedCallAudioRef = useRef<HTMLAudioElement | null>(null)
 
   // Get Stringee token
   const { data } = useFrappeGetCall<{ message: { user_id: string; token: string } }>(
@@ -61,6 +71,66 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
   // API calls for rejoin functionality
   const { call: rejoinCall } = useFrappePostCall('raven.api.stringee_token.rejoin_call')
   const { call: declineRejoin } = useFrappePostCall('raven.api.stringee_token.decline_rejoin')
+  
+  // Handle busy call notification
+  const handleBusyCallNotification = async (callerId: string) => {
+    try {
+      // Get caller information
+      const response = await fetch(`/api/resource/Raven User/${callerId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Frappe-CSRF-Token': (window as any).csrf_token
+        }
+      })
+      
+      if (response.ok) {
+        const callerData = await response.json()
+        const callerName = callerData.data?.full_name || callerData.data?.first_name || callerId
+        const callerImage = callerData.data?.user_image
+        
+        // Show rich notification with caller info
+        toast.info(
+          `📞 Cuộc gọi nhỡ từ ${callerName}`,
+          {
+            description: 'Bạn đang trong cuộc gọi khác. Cuộc gọi đã được từ chối tự động.',
+            duration: 8000,
+            action: {
+              label: 'Gọi lại',
+              onClick: () => {
+                // Set up callback when current call ends
+                console.log('📞 Callback scheduled for:', callerId)
+                setMissedCalls(prev => prev.filter(id => id !== callerId))
+                
+                // Show notification that callback is scheduled
+                toast.success(`Sẽ gọi lại ${callerName} khi cuộc gọi hiện tại kết thúc`)
+              }
+            }
+          }
+        )
+        
+        console.log('📞 Displayed busy notification for:', callerName)
+      } else {
+        // Fallback notification if can't get caller info
+        toast.info(
+          '📞 Cuộc gọi nhỡ',
+          {
+            description: 'Bạn đang trong cuộc gọi khác. Cuộc gọi đã được từ chối tự động.',
+            duration: 6000
+          }
+        )
+      }
+    } catch (error) {
+      console.error('❌ Error showing busy notification:', error)
+      // Fallback notification
+      toast.info(
+        '📞 Cuộc gọi nhỡ',
+        {
+          description: 'Bạn đang trong cuộc gọi khác. Cuộc gọi đã được từ chối tự động.',
+          duration: 6000
+        }
+      )
+    }
+  }
 
   // Load Stringee SDK
   useEffect(() => {
@@ -92,20 +162,57 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
         setIsConnected(false)
       })
 
-      // 🎯 Global incoming call handler
+      // 🎯 Global incoming call handler with busy check
       stringeeClient.on('incomingcall2', (incomingCall: any) => {
         console.log('🌐 Global incoming call received:', incomingCall)
-        setGlobalIncomingCall(incomingCall)
+        console.log('🌐 Current call status - isInCall:', isInCall)
         
-        // 📝 Tạo channel_id theo format đúng của API (user1 _ user2)
         const caller = incomingCall.fromNumber
         const callee = data.message.user_id
+        
+        // 🚫 Check if user is currently busy with another call
+        if (isInCall) {
+          console.log('📞 User is busy - auto rejecting incoming call from:', caller)
+          
+          // Auto reject the incoming call
+          try {
+            incomingCall.reject()
+            console.log('✅ Successfully auto-rejected incoming call')
+          } catch (error) {
+            console.error('❌ Error auto-rejecting call:', error)
+          }
+          
+          // Track missed call
+          setMissedCalls(prev => [...prev, caller])
+          
+          // Play missed call notification sound
+          try {
+            if (!missedCallAudioRef.current) {
+              missedCallAudioRef.current = new Audio('/assets/raven/sounds/notification.mp3')
+              missedCallAudioRef.current.volume = 0.6
+            }
+            missedCallAudioRef.current.play().catch(() => {
+              // Fallback - no audio if permission denied
+            })
+          } catch (error) {
+            // Silent fail for audio
+          }
+          
+          // Get caller info for better notification
+          handleBusyCallNotification(caller)
+          
+          return // Don't show call modal
+        }
+        
+        // ✅ User is available - show call modal normally
         const channelId = caller < callee ? `${caller} _ ${callee}` : `${callee} _ ${caller}`
         
+        console.log('🌐 User available - showing call modal for:', caller)
         console.log('🌐 Generated channelId for global call:', channelId)
         
+        setGlobalIncomingCall(incomingCall)
         setGlobalCallData({
-          toUserId: incomingCall.fromNumber,
+          toUserId: caller,
           channelId: channelId
         })
         setShowGlobalCall(true)
@@ -126,11 +233,81 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
       setShowGlobalCall(false)
       setGlobalIncomingCall(null)
       setGlobalCallData(null)
+      
+      // Show missed calls reminder when call ends
+      handleCallEndedMissedCallsReminder()
     } else if (eventData.status === 'connected') {
       console.log('📞 Call connected - keeping isInCall true')
       setIsInCall(true)
     }
   })
+
+  // Handle missed calls reminder when call ends
+  const handleCallEndedMissedCallsReminder = async () => {
+    if (missedCalls.length === 0) return
+    
+    try {
+      console.log('📞 Showing missed calls reminder for:', missedCalls)
+      
+      if (missedCalls.length === 1) {
+        // Single missed call
+        const callerId = missedCalls[0]
+        const response = await fetch(`/api/resource/Raven User/${callerId}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Frappe-CSRF-Token': (window as any).csrf_token
+          }
+        })
+        
+        if (response.ok) {
+          const callerData = await response.json()
+          const callerName = callerData.data?.full_name || callerData.data?.first_name || callerId
+          
+          toast.info(
+            `📞 Bạn có cuộc gọi nhỡ từ ${callerName}`,
+            {
+              description: 'Nhấn để gọi lại ngay bây giờ',
+              duration: 10000,
+              action: {
+                label: 'Gọi lại',
+                onClick: () => {
+                  // Trigger callback logic here
+                  const channelId = data?.message?.user_id && data.message.user_id < callerId 
+                    ? `${data.message.user_id} _ ${callerId}` 
+                    : `${callerId} _ ${data?.message?.user_id}`
+                  
+                  setGlobalCallData({
+                    toUserId: callerId,
+                    channelId: channelId
+                  })
+                  setShowGlobalCall(true)
+                  setMissedCalls([]) // Clear missed calls
+                }
+              }
+            }
+          )
+        }
+      } else {
+        // Multiple missed calls
+        toast.info(
+          `📞 Bạn có ${missedCalls.length} cuộc gọi nhỡ`,
+          {
+            description: 'Kiểm tra danh sách tin nhắn để xem chi tiết',
+            duration: 8000,
+            action: {
+              label: 'Xem',
+              onClick: () => {
+                console.log('📞 Multiple missed calls:', missedCalls)
+                setMissedCalls([]) // Clear missed calls
+              }
+            }
+          }
+        )
+      }
+    } catch (error) {
+      console.error('❌ Error showing missed calls reminder:', error)
+    }
+  }
 
   // Listen for incoming calls to set call status
   useFrappeEventListener('incoming_call', (eventData: any) => {
@@ -174,6 +351,16 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
       checkForOngoingCalls()
     }
   }, [data?.message?.user_id])
+
+  // Cleanup audio refs on unmount
+  useEffect(() => {
+    return () => {
+      if (missedCallAudioRef.current) {
+        missedCallAudioRef.current.pause()
+        missedCallAudioRef.current = null
+      }
+    }
+  }, [])
 
   // Handle rejoin call
   const handleRejoinCall = async () => {
@@ -233,6 +420,11 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
     }
   }
 
+  // Function to clear missed calls
+  const clearMissedCalls = () => {
+    setMissedCalls([])
+  }
+
   const contextValue: GlobalStringeeContextType = {
     client,
     isConnected,
@@ -243,7 +435,9 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
     setIsInCall,
     ongoingCallInfo,
     showRejoinDialog,
-    setShowRejoinDialog
+    setShowRejoinDialog,
+    missedCalls,
+    clearMissedCalls
   }
 
   return (
