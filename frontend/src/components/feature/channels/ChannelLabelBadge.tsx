@@ -1,10 +1,11 @@
 import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
 import { useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
 import { Badge, Button, Dialog, Flex, Text } from '@radix-ui/themes'
+import { useSWRConfig } from 'frappe-react-sdk'
 import { useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { labelListAtom } from '../labels/conversations/atoms/labelAtom'
+import { labelListAtom, useRefreshLabelList } from '../labels/conversations/atoms/labelAtom'
 
 const ChannelLabelBadge = ({
   channelID,
@@ -28,29 +29,16 @@ const ChannelLabelBadge = ({
   }
 
   const setLabelList = useSetAtom(labelListAtom)
+  const refreshLabelList = useRefreshLabelList()
+  const { mutate } = useSWRConfig()
 
   const handleConfirmRemove = async () => {
     try {
       await removeChannel(labelID, channelID)
-
-      // ✅ Xoá local overrideLabels + sortedChannelsAtom
-      removeLabelFromChannel(channelID, labelID)
-
-      // ✅ Xoá local labelListAtom
-      setLabelList((prev) =>
-        prev.map((l) => {
-          if (l.label_id === labelID) {
-            return {
-              ...l,
-              channels: l.channels.filter((c) => c.channel_id !== channelID)
-            }
-          }
-          return l
-        })
-      )
-
       toast.success(`Đã xoá thành công`)
       setShowModal(false)
+      mutate('channel_list')
+      // refreshLabelList()
     } catch (err) {
       console.error('Xoá thất bại:', err)
       toast.error('Xoá channel khỏi nhãn thất bại')

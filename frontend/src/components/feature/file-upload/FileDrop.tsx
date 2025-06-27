@@ -87,7 +87,7 @@ export const FileDrop = forwardRef((props: FileDropProps, ref) => {
     <Flex
       direction='column'
       style={{
-        height: height ?? 'calc(100vh - 65px)'
+        height: height ?? 'calc(100vh - 80px)'
       }}
       width='100%'
       {...getRootProps()}

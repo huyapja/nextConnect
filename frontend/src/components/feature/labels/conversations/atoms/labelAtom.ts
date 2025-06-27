@@ -49,3 +49,12 @@ export const useLabelList = () => {
     error
   }
 }
+
+export const useLabelListValue = () => {
+  return useAtomValue(labelListAtom)
+}
+
+export const useRefreshLabelList = () => {
+  const setRefresh = useSetAtom(refreshLabelListAtom)
+  return () => setRefresh((v) => v + 1)
+}

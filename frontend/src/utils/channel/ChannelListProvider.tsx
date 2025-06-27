@@ -109,7 +109,7 @@ export const useFetchChannelList = (): ChannelListContextType => {
     let timeout: NodeJS.Timeout | undefined
     if (newUpdatesAvailable) {
       timeout = setTimeout(() => {
-        mutate()
+        // mutate()
         // Also update the unread channel count
         globalMutate('unread_channel_count')
         setNewUpdatesAvailable(0)
@@ -122,11 +122,11 @@ export const useFetchChannelList = (): ChannelListContextType => {
    * If a bulk import happens, this gets called multiple times potentially causing the server to go down.
    * Instead, throttle this - wait for all events to subside
    */
-  useFrappeEventListener('channel_list_updated', () => {
-    if (!isValidating) {
-      setNewUpdatesAvailable((n) => n + 1)
-    }
-  })
+  // useFrappeEventListener('channel_list_updated', () => {
+  //   if (!isValidating) {
+  //     setNewUpdatesAvailable((n) => n + 1)
+  //   }
+  // })
   return {
     channels: data?.message?.channels as ChannelListItem[],
     dm_channels: data?.message?.dm_channels as DMChannelListItem[],

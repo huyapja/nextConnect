@@ -29,6 +29,7 @@ import { MessageItemRenderer } from './MessageListRenderer'
 import ScrollToBottomButtons from './ScrollToBottomButtons'
 import useChatStream from './useChatStream'
 import { useChatStreamActions } from './useChatStreamActions'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 
 type Props = {
   channelID: string
@@ -533,8 +534,10 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
       [renderState.initialRenderComplete]
     )
 
+    const isMobile = useIsMobile()
+
     return (
-      <div className='relative h-full flex flex-col overflow-hidden pb-16 sm:pb-0'>
+      <div className={`relative h-full flex flex-col overflow-hidden ${isMobile ? 'pb-4' : 'pb-16'} sm:pb-0`}>
         {!isLoading && !hasOlderMessages && <ChannelHistoryFirstMessage channelID={channelID ?? ''} />}
 
         {isLoading && <ChatStreamLoader />}

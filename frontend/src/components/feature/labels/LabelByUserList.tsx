@@ -1,25 +1,10 @@
-import BeatLoader from '@/components/layout/Loaders/BeatLoader'
 import { Flex, Text } from '@radix-ui/themes'
 import { LuAtSign } from 'react-icons/lu'
-import { useLabelList } from './conversations/atoms/labelAtom'
+import { useLabelListValue } from './conversations/atoms/labelAtom'
 import LabelItem from './LabelItem'
 
-interface Label {
-  label_id: string
-  label: string
-  channels: {
-    channel_id: string
-    channel_name: string
-    is_direct_message: boolean
-  }[]
-}
-
 const LabelByUserList = () => {
-  const { labelList, loading, error } = useLabelList()
-
-  if (loading && labelList?.length === 0) return <BeatLoader text='Đang tải label...' />
-  if (error && labelList?.length === 0) return <div className='text-red-500'>Lỗi: {error.message}</div>
-
+  const labelList = useLabelListValue()
   return (
     <div className='space-y-2'>
       {labelList?.length === 0 ? (

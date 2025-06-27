@@ -21,7 +21,7 @@ const ChannelItem = ({
   const { currentUser } = useContext(UserContext)
   const { workspaceID, channelID: currentChannelID } = useParams()
   const user = useGetUser(peer_user_id)
-  const isOnline = useIsUserActive(peer_user_id) // ✅ luôn gọi hook, không conditional
+  const isOnline = useIsUserActive(peer_user_id)
   const navigate = useNavigate()
 
   const handleClick = () => {
@@ -47,7 +47,13 @@ const ChannelItem = ({
       <Flex gap='2' align='center' justify='between' width='100%'>
         <Flex gap='2' align='center'>
           <Box className='relative'>
-            <UserAvatar isActive={isOnline} src={user?.user_image} alt={userName} isBot={user?.type === 'Bot'} />
+            <UserAvatar
+              isActive={isOnline}
+              src={user?.user_image}
+              alt={userName}
+              isBot={user?.type === 'Bot'}
+              availabilityStatus={user?.availability_status}
+            />
           </Box>
 
           <Text as='span' className={clsx('line-clamp-1 text-ellipsis', 'text-base md:text-sm xs:text-xs')}>
