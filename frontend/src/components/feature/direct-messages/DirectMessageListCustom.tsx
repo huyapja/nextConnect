@@ -116,7 +116,7 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
   const { call: callCreateOrAssignLabel } = useFrappePostCall(
     'raven.api.user_channel_label.add_label_to_multiple_channels'
   )
-  const { mutate } = useSWRConfig()
+  // const { mutate } = useSWRConfig()
   const { isPinned, togglePin, markAsUnread, isManuallyMarked } = useChannelActions()
 
   const selectedChannelRef = useRef<UnifiedChannel | null>(dm_channel)
@@ -149,7 +149,7 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
         }
       }
 
-      mutate('channel_list')
+      // mutate('channel_list')
     } catch (err) {
       console.error('Xử lý nhãn thất bại:', err)
       toast.error('Không thể cập nhật nhãn')

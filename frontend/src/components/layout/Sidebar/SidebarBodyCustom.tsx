@@ -1,5 +1,5 @@
 import { useIsTablet } from '@/hooks/useMediaQuery'
-import { prepareSortedChannels, setSortedChannelsAtom } from '@/utils/channel/ChannelAtom'
+import { prepareSortedChannels, setSortedChannelsAtom, sortedChannelsAtom } from '@/utils/channel/ChannelAtom'
 import { channelIsDoneAtom } from '@/utils/channel/channelIsDoneAtom'
 import { ChannelListContext, ChannelListContextType } from '@/utils/channel/ChannelListProvider'
 import { Flex, ScrollArea } from '@radix-ui/themes'
@@ -21,11 +21,14 @@ export const SidebarBody: FC = () => {
   const currentChannelIsDone = useAtomValue(channelIsDoneAtom)
 
   const { refreshLabelList } = useLabelList()
+  const prev = useAtomValue(sortedChannelsAtom)
 
   useEffect(() => {
     if (channels?.length === 0 && dm_channels?.length === 0) return
 
-    const sorted = prepareSortedChannels(channels, dm_channels, currentChannelIsDone)
+    // Nếu đang trong Jotai write atom
+    const sorted = prepareSortedChannels(channels, dm_channels, currentChannelIsDone, prev)
+
     setSortedChannels(sorted)
   }, [channels, dm_channels, setSortedChannels, currentChannelIsDone])
 

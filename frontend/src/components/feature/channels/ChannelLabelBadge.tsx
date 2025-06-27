@@ -30,14 +30,16 @@ const ChannelLabelBadge = ({
 
   const setLabelList = useSetAtom(labelListAtom)
   const refreshLabelList = useRefreshLabelList()
-  const {mutate} = useSWRConfig()
+  const { mutate } = useSWRConfig()
 
   const handleConfirmRemove = async () => {
     try {
       await removeChannel(labelID, channelID)
+      removeLabelFromChannel(channelID, labelID)
+
       toast.success(`Đã xoá thành công`)
       setShowModal(false)
-      mutate("channel_list")
+      // mutate("channel_list")
       // refreshLabelList()
     } catch (err) {
       console.error('Xoá thất bại:', err)

@@ -161,16 +161,16 @@ def get_messages(channel_id):
 
 
 @frappe.whitelist()
-def save_message(message_id, add=False):
-	"""
-	Save the message as a bookmark
-	"""
+def save_message(message_id, add=False, thread_id=None):
 	from frappe.desk.like import toggle_like
 
+	# Gắn cờ hoặc bỏ cờ
 	toggle_like("Raven Message", message_id, add)
 
+	# Lấy danh sách user đã like
 	liked_by = frappe.db.get_value("Raven Message", message_id, "_liked_by")
 
+	# Phát sự kiện realtime
 	frappe.publish_realtime(
 		"message_saved",
 		{
@@ -180,31 +180,45 @@ def save_message(message_id, add=False):
 		user=frappe.session.user,
 	)
 
+	# ✅ Nếu là hành động Save và có thread_id -> ghi vào json.saved_from_thread
+	if thread_id and not add == "No":
+		doc = frappe.get_doc("Raven Message", message_id)
+		json_data = doc.json or {}
+
+		if isinstance(json_data, str):
+			try:
+				json_data = json.loads(json_data)
+			except Exception:
+				json_data = {}
+
+		# Chỉ lưu nếu chưa có
+		if "saved_from_thread" not in json_data:
+			json_data["saved_from_thread"] = thread_id
+			doc.json = json_data
+			doc.flags.ignore_version = True
+			doc.save(ignore_permissions=True)
+
+	# ✅ Lấy message sau khi cập nhật
 	message = frappe.db.get_value(
 		"Raven Message",
 		message_id,
 		[
-			"name",
-			"owner",
-			"creation",
-			"text",
-			"channel_id",
-			"file",
-			"message_type",
-			"message_reactions",
-			"_liked_by",
-			"thumbnail_width",
-			"thumbnail_height",
-			"is_bot_message",
-			"bot",
-			"content",
+			"name", "owner", "creation", "text", "channel_id", "file", "message_type",
+			"message_reactions", "_liked_by", "thumbnail_width", "thumbnail_height",
+			"is_bot_message", "bot", "content", "json"
 		],
 		as_dict=True,
 	)
 
+	# ✅ Nếu có thread_id, thay thế channel_id trả về thành channel của message thread cha
+	if thread_id and message:
+		parent_channel_id = frappe.db.get_value("Raven Message", thread_id, "channel_id")
+		if parent_channel_id:
+			message["channel_id"] = parent_channel_id
+
+	# ✅ Lấy workspace của channel_id (sau khi chỉnh sửa)
 	if message and message.get("channel_id"):
-		workspace = frappe.db.get_value("Raven Channel", message["channel_id"], "workspace")
-		message["workspace"] = workspace
+		message["workspace"] = frappe.db.get_value("Raven Channel", message["channel_id"], "workspace")
 
 	return message
 
@@ -261,7 +275,6 @@ def get_saved_messages():
 	raven_channel = frappe.qb.DocType("Raven Channel")
 	raven_channel_member = frappe.qb.DocType("Raven Channel Member")
 
-	# Xây dựng truy vấn
 	query = (
 		frappe.qb.from_(raven_message)
 		.join(raven_channel, JoinType.left)
@@ -290,19 +303,41 @@ def get_saved_messages():
 			.when(raven_message.is_retracted == 1, None)
 			.else_(raven_message.content)
 			.as_('content'),
-			raven_message.is_retracted
+			raven_message.is_retracted,
+			raven_message.json
 		)
 		.where(raven_message._liked_by.like(f"%{frappe.session.user}%"))
 		.where(
 			(raven_channel.type.isin(["Open", "Public"]))
 			| (raven_channel_member.user_id == frappe.session.user)
 		)
-		.distinct()  # Tránh trùng lặp nếu join trả về nhiều dòng cho 1 message
+		.distinct()
 	)
 
 	messages = query.run(as_dict=True)
 
+	# Parse thêm saved_from_thread
+	for msg in messages:
+		json_data = msg.get("json")
+		if isinstance(json_data, str):
+			try:
+				json_data = json.loads(json_data)
+			except Exception:
+				json_data = {}
+		elif not isinstance(json_data, dict):
+			json_data = {}
+
+		saved_from_thread = json_data.get("saved_from_thread")
+		msg["saved_from_thread"] = saved_from_thread
+		msg.pop("json", None)
+
+		if saved_from_thread:
+			parent_channel_id = frappe.get_cached_value("Raven Message", saved_from_thread, "channel_id")
+			if parent_channel_id:
+				msg["channel_id"] = parent_channel_id
+
 	return messages
+
 
 def parse_messages(messages):
 
