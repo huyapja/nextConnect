@@ -23,6 +23,7 @@ export const setSortedChannelsAtom = atom(
   null,
   (get, set, next: ChannelWithGroupType[] | ((prev: ChannelWithGroupType[]) => ChannelWithGroupType[])) => {
     const prev = get(sortedChannelsAtom)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     const resolved = typeof next === 'function' ? (next as Function)(prev) : next
     set(sortedChannelsAtom, resolved)
   }
@@ -32,43 +33,83 @@ export const setSortedChannelsLoadingAtom = atom(null, (get, set, next: boolean)
   set(sortedChannelsLoadingAtom, next)
 })
 
+// export const prepareSortedChannels = (
+//   channels: any[],
+//   dm_channels: any[],
+//   currentChannelIsDone: Record<string, number> = {}
+// ): ChannelWithGroupType[] => {
+//   return [
+//     ...(channels ?? []).map((channel) => ({
+//       ...channel,
+//       group_type: 'channel' as const,
+//       is_done: Object.prototype.hasOwnProperty.call(currentChannelIsDone, channel.name)
+//         ? currentChannelIsDone[channel.name]
+//         : typeof channel.is_done === 'number'
+//         ? channel.is_done
+//         : 0,
+//       user_labels: channel.user_labels ?? []
+//     })),
+//     ...(dm_channels ?? []).map((dm) => ({
+//       ...dm,
+//       group_type: 'dm' as const,
+//       is_done: Object.prototype.hasOwnProperty.call(currentChannelIsDone, dm.name)
+//         ? currentChannelIsDone[dm.name]
+//         : typeof dm.is_done === 'number'
+//         ? dm.is_done
+//         : 0,
+//       user_labels: dm.user_labels ?? []
+//     }))
+//   ].sort((a, b) => {
+//     const getTimestamp = (item: any) => {
+//       const lastMsg = item.last_message_timestamp ? new Date(item.last_message_timestamp).getTime() : 0
+//       const creation = item.creation ? new Date(item.creation).getTime() : 0
+//       return lastMsg > 0 ? lastMsg : creation
+//     }
+
+//     const timeA = getTimestamp(a)
+//     const timeB = getTimestamp(b)
+
+//     return timeB - timeA
+//   })
+// }
+
 export const prepareSortedChannels = (
-  channels: any[],
-  dm_channels: any[],
-  currentChannelIsDone: Record<string, number> = {}
+  newChannels: any[],
+  newDmChannels: any[],
+  currentChannelIsDone: Record<string, number> = {},
+  prev: ChannelWithGroupType[] = []
 ): ChannelWithGroupType[] => {
-  return [
-    ...(channels ?? []).map((channel) => ({
-      ...channel,
-      group_type: 'channel' as const,
-      is_done: Object.prototype.hasOwnProperty.call(currentChannelIsDone, channel.name)
-        ? currentChannelIsDone[channel.name]
-        : typeof channel.is_done === 'number'
-        ? channel.is_done
-        : 0,
-      user_labels: channel.user_labels ?? []
-    })),
-    ...(dm_channels ?? []).map((dm) => ({
-      ...dm,
-      group_type: 'dm' as const,
-      is_done: Object.prototype.hasOwnProperty.call(currentChannelIsDone, dm.name)
-        ? currentChannelIsDone[dm.name]
-        : typeof dm.is_done === 'number'
-        ? dm.is_done
-        : 0,
-      user_labels: dm.user_labels ?? []
-    }))
-  ].sort((a, b) => {
-    const getTimestamp = (item: any) => {
-      const lastMsg = item.last_message_timestamp ? new Date(item.last_message_timestamp).getTime() : 0
-      const creation = item.creation ? new Date(item.creation).getTime() : 0
-      return lastMsg > 0 ? lastMsg : creation
+  const prevMap = new Map(prev.map((c) => [c.name, c]))
+
+  const mergeChannel = (newC: any, group_type: 'channel' | 'dm'): ChannelWithGroupType => {
+    const old = prevMap.get(newC.name)
+    const is_done = Object.prototype.hasOwnProperty.call(currentChannelIsDone, newC.name)
+      ? currentChannelIsDone[newC.name]
+      : typeof newC.is_done === 'number'
+        ? newC.is_done
+        : 0
+
+    return {
+      ...(old ?? {}),
+      ...newC,
+      group_type,
+      is_done,
+      user_labels: old?.user_labels ?? newC.user_labels ?? []
     }
+  }
 
-    const timeA = getTimestamp(a)
-    const timeB = getTimestamp(b)
+  const merged = [
+    ...newChannels.map((c) => mergeChannel(c, 'channel')),
+    ...newDmChannels.map((c) => mergeChannel(c, 'dm'))
+  ]
 
-    return timeB - timeA
+  return merged.sort((a, b) => {
+    const getTime = (x: any) => {
+      const t1 = x.last_message_timestamp ? new Date(x.last_message_timestamp).getTime() : 0
+      const t2 = x.creation ? new Date(x.creation).getTime() : 0
+      return Math.max(t1, t2)
+    }
+    return getTime(b) - getTime(a)
   })
 }
 

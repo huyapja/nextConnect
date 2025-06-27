@@ -4,7 +4,6 @@ import { UnreadCountData, useChannelList, useUpdateLastMessageInChannelList } fr
 import { FrappeConfig, FrappeContext, useFrappeEventListener, useFrappeGetCall } from 'frappe-react-sdk'
 import { useAtomValue } from 'jotai'
 import { useContext, useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
 import { useNotificationAudio } from './useNotificationAudio'
 
 export const useUnreadMessageCount = () => {
@@ -95,7 +94,6 @@ export const useFetchUnreadMessageCount = () => {
     )
   }
 
-  const { channelID } = useParams()
   const { updateLastMessageInChannelList } = useUpdateLastMessageInChannelList()
 
   // const { call: trackVisit } = useFrappePostCall('raven.api.raven_channel_member.track_visit')
@@ -164,13 +162,10 @@ export const useFetchUnreadMessageCount = () => {
       document.title = app_name
       return
     }
-
-    const isManualOnly = totalUnread > 0 && serverUnreadCount === 0
     let hasRealNewMessage = false
 
     if (latestUnreadData) {
-      const { name, last_message_sender_name, is_direct_message, channel_name, last_message_timestamp } =
-        latestUnreadData
+      const { name, last_message_sender_name, is_direct_message, channel_name } = latestUnreadData
       const isManuallyMarked = manuallyMarked.has(name)
       const currentUnread = allChannelMap.get(name)?.unread_count || 0
 

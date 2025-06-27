@@ -12,14 +12,14 @@ interface ScrollToBottomButtonsProps {
 
 const ScrollToBottomButtons = ({
   newMessageCount,
-  onGoToLatestMessages
-  // onScrollToBottom,
-  // isAtBottom,
-  // hasMessageId = false
+  onGoToLatestMessages,
+  onScrollToBottom,
+  isAtBottom,
+  hasMessageId = false
 }: ScrollToBottomButtonsProps) => {
   const shouldShowNewMessageButton = newMessageCount > 0
 
-  // const shouldShowScrollToBottom = !shouldShowNewMessageButton && !isAtBottom
+  const shouldShowScrollToBottom = !shouldShowNewMessageButton && !isAtBottom
 
   return (
     <>
@@ -56,7 +56,7 @@ const ScrollToBottomButtons = ({
       )}
 
       {/* Button scroll to bottom - hiển thị khi không có tin nhắn mới và không ở đáy */}
-      {/* {shouldShowScrollToBottom && (
+      {shouldShowScrollToBottom && (
         <div className='fixed bottom-40 z-50 right-4 sm:right-10'>
           <div
             className='
@@ -69,7 +69,7 @@ const ScrollToBottomButtons = ({
             <FiArrowDown size={20} />
           </div>
         </div>
-      )} */}
+      )}
     </>
   )
 }
