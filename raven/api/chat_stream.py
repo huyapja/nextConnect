@@ -7,7 +7,7 @@ from raven.utils import track_channel_visit
 
 
 @frappe.whitelist()
-def get_messages(channel_id: str, limit: int = 20, base_message: str | None = None):
+def get_messages(channel_id: str, limit: int = 10, base_message: str | None = None):
 	"""
 	API to get list of messages for a channel, ordered by creation date (newest first)
 
@@ -117,7 +117,7 @@ def get_messages_around_base(channel_id: str, base_message: str):
 
 
 @frappe.whitelist()
-def get_older_messages(channel_id: str, from_message: str, limit: int = 20):
+def get_older_messages(channel_id: str, from_message: str, limit: int = 10):
 	"""
 	API to get older messages for a channel, ordered by creation date (newest first)
 
@@ -134,7 +134,7 @@ def get_older_messages(channel_id: str, from_message: str, limit: int = 20):
 
 
 def fetch_older_messages(
-	channel_id: str, from_message: str, from_timestamp: datetime.datetime, limit: int = 20
+	channel_id: str, from_message: str, from_timestamp: datetime.datetime, limit: int = 10
 ):
 	# Cannot use `get_all` as it does not apply the `order_by` clause to multiple fields
 	message = frappe.qb.DocType("Raven Message")
@@ -206,7 +206,7 @@ def fetch_older_messages(
 
 
 @frappe.whitelist()
-def get_newer_messages(channel_id: str, from_message: str, limit: int = 20):
+def get_newer_messages(channel_id: str, from_message: str, limit: int = 10):
 	"""
 	API to get older messages for a channel, ordered by creation date (newest first)
 	"""
@@ -236,7 +236,7 @@ def fetch_newer_messages(
 	channel_id: str,
 	from_message: str,
 	from_timestamp: datetime.datetime,
-	limit: int = 20,
+	limit: int = 10,
 	include_from_message: bool = False,
 ):
 
