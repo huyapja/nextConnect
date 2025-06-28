@@ -36,7 +36,7 @@ export const ChannelDetails = ({ channelData, channelMembers, onClose }: Channel
         <Flex justify={'between'}>
           <Flex direction={'column'}>
             <Text weight='medium' size='2'>
-              Channel name
+              Tên group
             </Text>
             <Flex gap='1' pt='1' align='center'>
               <ChannelIcon type={channelData.type} size='14' />

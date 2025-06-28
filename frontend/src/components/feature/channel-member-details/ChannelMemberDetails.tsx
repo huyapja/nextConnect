@@ -8,123 +8,48 @@ import { useDebounce } from '../../../hooks/useDebounce'
 import { UserContext } from '../../../utils/auth/UserProvider'
 import { AddMembersButton } from './add-members/AddMembersButton'
 import { UserActionsMenu } from './UserActions/UserActionsMenu'
-import { UserFields } from '@/utils/users/UserListProvider'
-import clsx from 'clsx'
-import { useCombobox, useMultipleSelection } from 'downshift'
 
 interface MemberDetailsProps {
   channelData: ChannelListItem
   channelMembers: ChannelMembers
   activeUsers: string[]
   updateMembers: () => void
-  getFilteredUsers?: (selectedUsers: UserFields[], inputValue: string) => UserFields[]
 }
 
 export const ChannelMemberDetails = ({
   channelData,
   channelMembers,
   activeUsers,
-  updateMembers,
-  getFilteredUsers
+  updateMembers
 }: MemberDetailsProps) => {
-  const [inputValue, setInputValue] = useState('')
-  const debouncedInput = useDebounce(inputValue, 50)
+  const [searchText, setSearchText] = useState('')
+  const debouncedText = useDebounce(searchText, 50)
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchText(e.target.value)
+  }
 
   const { currentUser } = useContext(UserContext)
 
   const isCurrentMember = useMemo(() => {
-    return !!channelMembers[currentUser]
+    return channelMembers[currentUser] ? true : false
   }, [currentUser, channelMembers])
 
-  const {
-    getSelectedItemProps,
-    getDropdownProps,
-    addSelectedItem,
-    removeSelectedItem,
-    selectedItems,
-    setSelectedItems
-  } = useMultipleSelection<UserFields>()
-
-  const items = useMemo(() => {
-    if (!getFilteredUsers) return []
-    return getFilteredUsers(selectedItems, debouncedInput)
-  }, [getFilteredUsers, debouncedInput, selectedItems])
-
-  const { isOpen, getMenuProps, getInputProps, getItemProps, highlightedIndex } = useCombobox<UserFields>({
-    inputValue,
-    items,
-    selectedItem: null,
-    onInputValueChange: ({ inputValue }) => {
-      setInputValue(inputValue || '')
-    },
-    onSelectedItemChange: ({ selectedItem }) => {
-      if (selectedItem) addSelectedItem(selectedItem)
-      setInputValue('')
-    },
-    stateReducer: (state, actionAndChanges) => {
-      const { changes, type } = actionAndChanges
-      switch (type) {
-        case useCombobox.stateChangeTypes.InputKeyDownEnter:
-        case useCombobox.stateChangeTypes.ItemClick:
-          return {
-            ...changes,
-            isOpen: true,
-            highlightedIndex: 0
-          }
-        default:
-          return changes
-      }
-    }
-  })
-
   return (
-    <Flex direction='column' gap='4' className='h-[66vh] pb-2 sm:h-96'>
+    <Flex direction='column' gap='4' className={'h-[66vh] pb-2 sm:h-96'}>
       <Flex gap='2' justify='between'>
-        <div className='w-full relative'>
-          <TextField.Root>
+        <div className={'w-full sm:w-full'}>
+          <TextField.Root autoFocus placeholder='Tìm kiếm thành viên' onChange={handleChange} value={searchText}>
             <TextField.Slot side='left'>
               <BiSearch />
             </TextField.Slot>
-            <input
-              className='bg-transparent w-full outline-none'
-              placeholder='Find members'
-              {...getInputProps(getDropdownProps({ preventKeyAction: isOpen }))}
-            />
           </TextField.Root>
-
-          <ul
-            {...getMenuProps()}
-            className={clsx(
-              isOpen && items.length > 0
-                ? 'absolute sm:w-[550px] w-[24rem] bg-background mt-1 shadow z-[9999] max-h-96 overflow-y-auto border border-gray-3 dark:border-gray-6 rounded-md'
-                : 'hidden'
-            )}
-          >
-            {items.map((item, index) => (
-              <li
-                key={item.name}
-                {...getItemProps({ item, index })}
-                className={clsx(
-                  'px-3 py-2 cursor-pointer flex items-center gap-2',
-                  highlightedIndex === index && 'bg-accent-2 dark:bg-accent-8'
-                )}
-              >
-                <UserAvatar src={item.user_image ?? ''} alt={item.full_name} size='2' />
-                <div className='flex flex-col'>
-                  <Text size='2' weight='medium'>
-                    {item.full_name}
-                  </Text>
-                  <Text size='1' color='gray'>
-                    {item.name}
-                  </Text>
-                </div>
-              </li>
-            ))}
-          </ul>
         </div>
-
+        {/* if current user is a channel member and the channel is not a open channel, user can add more members to the channel */}
         {isCurrentMember && channelData.type !== 'Open' && channelData.is_archived == 0 && (
-          <AddMembersButton channelData={channelData} variant='soft' size='2' />
+          <div>
+            <AddMembersButton channelData={channelData} variant='soft' size='2' />
+          </div>
         )}
       </Flex>
 
@@ -133,11 +58,12 @@ export const ChannelMemberDetails = ({
         channelMembers={channelMembers}
         activeUsers={activeUsers}
         updateMembers={updateMembers}
-        input={debouncedInput}
+        input={debouncedText}
       />
     </Flex>
   )
 }
+
 interface MemberListProps extends MemberDetailsProps {
   input: string
 }
@@ -207,7 +133,7 @@ const MemberList = ({ channelData, channelMembers, activeUsers, updateMembers, i
         ) : (
           <Box className={'text-center h-10'}>
             <Text size='1'>
-              No matches found for <strong>{input}</strong>
+              Không tìm thấy kết quả phù hợp với <strong>{input}</strong>
             </Text>
           </Box>
         )}

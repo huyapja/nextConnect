@@ -125,14 +125,18 @@ const ViewChannelDetailsModalContent = ({
       <Tabs.Root defaultValue={defaultTab}>
         <Flex direction={'column'} gap='4'>
           <Tabs.List>
-            <Tabs.Trigger value='About'>About</Tabs.Trigger>
-            <Tabs.Trigger value='Members'>
+            <Tabs.Trigger className='cursor-pointer' value='About'>
+              Thông tin
+            </Tabs.Trigger>
+            <Tabs.Trigger className='cursor-pointer' value='Members'>
               <Flex gap='2'>
-                <Text>Members</Text>
+                <Text>Thành viên</Text>
                 <Text>{memberCount}</Text>
               </Flex>
             </Tabs.Trigger>
-            <Tabs.Trigger value='Settings'>Settings</Tabs.Trigger>
+            <Tabs.Trigger className='cursor-pointer' value='Settings'>
+              Cài đặt
+            </Tabs.Trigger>
           </Tabs.List>
           <Box>
             <Tabs.Content value='About'>

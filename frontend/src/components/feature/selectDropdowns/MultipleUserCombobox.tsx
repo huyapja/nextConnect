@@ -14,12 +14,14 @@ function MultipleUserComboBox({
   selectedUsers,
   setSelectedUsers,
   getFilteredUsers,
-  label
+  label,
+  loading
 }: {
   selectedUsers: UserFields[]
   setSelectedUsers: (users: UserFields[]) => void
   getFilteredUsers: (selectedUsers: UserFields[], inputValue: string) => UserFields[]
   label: string
+  loading?: boolean
 }) {
   const [inputValue, setInputValue] = useState('')
 
@@ -51,7 +53,6 @@ function MultipleUserComboBox({
         switch (type) {
           case useCombobox.stateChangeTypes.InputKeyDownEnter:
           case useCombobox.stateChangeTypes.ItemClick:
-          case useCombobox.stateChangeTypes.InputBlur:
             if (newSelectedItem) {
               setSelectedUsers([...selectedUsers, newSelectedItem])
               setInputValue('')
@@ -60,10 +61,25 @@ function MultipleUserComboBox({
 
           case useCombobox.stateChangeTypes.InputChange:
             setInputValue(newInputValue ?? '')
-
             break
           default:
             break
+        }
+      },
+      // 👇 Đây là phần thêm vào để giữ dropdown luôn mở
+      stateReducer(state, actionAndChanges) {
+        const { changes, type } = actionAndChanges
+
+        switch (type) {
+          case useCombobox.stateChangeTypes.InputKeyDownEnter:
+          case useCombobox.stateChangeTypes.ItemClick:
+            return {
+              ...changes,
+              isOpen: true, // ⚠️ giữ menu mở sau khi chọn
+              highlightedIndex: 0
+            }
+          default:
+            return changes
         }
       }
     })
@@ -101,39 +117,54 @@ function MultipleUserComboBox({
       >
         {isOpen && (
           <>
-            {items.length === 0 && !hasFetchedOnce ? (
+            {items.length === 0 && loading ? (
               <li className='py-3 px-4 text-sm text-gray-500 text-center'>
                 <Loader />
               </li>
-            ) : items.length === 0 && hasFetchedOnce ? (
+            ) : items.length === 0 && !loading ? (
               <li className='py-3 px-4 text-sm text-gray-500 text-center'>Không có dữ liệu</li>
             ) : (
-              items.map((item, index) => (
-                <li
-                  className={clsx(
-                    highlightedIndex === index && 'dark:bg-accent-9 bg-gray-3',
-                    selectedItem === item && 'font-bold',
-                    'py-2 px-3 flex justify-between gap-2 items-center cursor-default border-b dark:border-gray-6 border-gray-3'
-                  )}
-                  key={item.name}
-                  {...getItemProps({ item, index })}
-                >
-                  <HStack>
-                    <UserAvatar src={item.user_image ?? ''} alt={item.full_name} size='2' />
-                    <div className='flex flex-col'>
-                      <Text as='span' weight='medium' size='2'>
-                        {item.full_name}
-                      </Text>
-                      <Text as='span' size='1' weight='light'>
-                        {item.name}
-                      </Text>
-                    </div>
-                  </HStack>
-                  <Text className='cursor-pointer' as='span' size='1' color='gray' weight='medium'>
-                    Thêm
-                  </Text>
-                </li>
-              ))
+              items.map((item, index) => {
+                const isSelected = selectedUsers.some((u) => u.name === item.name)
+
+                return (
+                  <li
+                    className={clsx(
+                      highlightedIndex === index && 'dark:bg-accent-9 bg-gray-3',
+                      isSelected && 'font-bold',
+                      'py-2 px-3 flex justify-between gap-2 items-center cursor-pointer border-b dark:border-gray-6 border-gray-3'
+                    )}
+                    key={item.name}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (isSelected) {
+                        setSelectedUsers(selectedUsers.filter((u) => u.name !== item.name))
+                      } else {
+                        setSelectedUsers([...selectedUsers, item])
+                      }
+                      setInputValue('')
+                    }}
+                  >
+                    <HStack>
+                      <input
+                        type='checkbox'
+                        checked={isSelected}
+                        readOnly
+                        className='mr-2 accent-blue-9 cursor-pointer'
+                      />
+                      <UserAvatar src={item.user_image ?? ''} alt={item.full_name} size='2' />
+                      <div className='flex flex-col'>
+                        <Text as='span' weight='medium' size='2'>
+                          {item.full_name}
+                        </Text>
+                        <Text as='span' size='1' weight='light'>
+                          {item.name}
+                        </Text>
+                      </div>
+                    </HStack>
+                  </li>
+                )
+              })
             )}
           </>
         )}
@@ -144,7 +175,7 @@ function MultipleUserComboBox({
           <Separator size='4' />
           <div className='pt-1'>
             <Text as='span' size='1' color='gray' weight='medium'>
-              Selected Members
+              Những thành viên đã được chọn
             </Text>
           </div>
         </div>

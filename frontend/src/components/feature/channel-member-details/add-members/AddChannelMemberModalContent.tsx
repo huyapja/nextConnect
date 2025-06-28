@@ -64,7 +64,7 @@ export const AddChannelMembersModalContent = ({ onClose }: AddChannelMemberModal
             <Dialog.Title>
               <Text as='span'>
                 Thêm thành viên vào
-                <ChannelIcon type={channel?.channelData.type} size='18' className='inline-block -mb-0.5' />
+                <ChannelIcon type={channel?.channelData.type} size='18' className='inline-block -mb-0.5 ml-1' />
                 {channel?.channelData.channel_name}
               </Text>
             </Dialog.Title>
