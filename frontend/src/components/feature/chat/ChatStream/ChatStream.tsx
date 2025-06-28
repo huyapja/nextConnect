@@ -6,6 +6,7 @@ import { useCurrentChannelData } from '@/hooks/useCurrentChannelData'
 import { useDebounceDynamic } from '@/hooks/useDebounce'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useUserData } from '@/hooks/useUserData'
+import { lastReadStorage } from '@/utils/lastReadStorage'
 import { getFileExtension } from '@/utils/operations'
 import { virtuosoSettings } from '@/utils/VirtuosoSettings'
 import {
@@ -242,13 +243,16 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
 
     // Reset state khi thay đổi channel hoặc messageId
     useEffect(() => {
+      setIsInitialMounting(true)
       dispatch({ type: 'RESET' })
       initialRenderRef.current = true
       hasProcessedInitialLoad.current = false
 
-      safeSetTimeout(() => {
+      const timeout = safeSetTimeout(() => {
         setIsInitialMounting(false)
       }, 1000)
+
+      return () => clearTimeout(timeout) // cleanup nếu channel đổi nhanh
     }, [channelID, messageId, safeSetTimeout])
 
     const {
@@ -305,7 +309,6 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
             })
           }
 
-          // Batch process visible messages
           if (range && newMessageIds.size > 0) {
             const visibleMessages = messages.slice(range.startIndex, range.endIndex + 1)
             const messagesToMark = visibleMessages
@@ -316,6 +319,16 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
               safeSetTimeout(() => {
                 messagesToMark.forEach((messageName) => markMessageAsSeen(messageName))
               }, 2000)
+            }
+          }
+
+          if (range && messages && messages.length > 0) {
+            const visibleMessages = messages.slice(range.startIndex, range.endIndex + 1)
+            if (visibleMessages.length > 0) {
+              const lastVisibleMessage = visibleMessages[visibleMessages.length - 1]
+              if (lastVisibleMessage?.name) {
+                lastReadStorage.set(channelID, lastVisibleMessage.name)
+              }
             }
           }
         },
@@ -416,7 +429,7 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
 
       const processedMessages = (messages ?? []).map((m: any) => ({
         ...m,
-        sort_time: m.resend_at ?? new Date(m.modified || m.creation || 0).getTime()
+        sort_time: m.sort_parent_time || m.resend_at || new Date(m.creation || m.modified || 0).getTime()
       }))
 
       const pending = (pendingMessages ?? []).map((m) => {
