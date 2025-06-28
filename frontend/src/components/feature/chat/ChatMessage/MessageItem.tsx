@@ -863,6 +863,7 @@ export const MessageContent = ({
       )}
 
       {message.message_type === 'Poll' && <PollMessageBlock message={message} user={user} />}
+
       {message.message_type === 'GroupCall' && (
         <GroupCallMessage message={message} user={user} currentUser={currentUser} />
       )}
