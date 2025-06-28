@@ -6,11 +6,13 @@ import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { ChannelIcon } from '@/utils/layout/channelIcon'
 import { DIALOG_CONTENT_CLASS } from '@/utils/layout/dialog'
 import { Box, Dialog, Flex, Tabs, Text } from '@radix-ui/themes'
-import { useCallback, useContext } from 'react'
+import { useCallback, useContext, useMemo } from 'react'
 import { UserContext } from '../../../utils/auth/UserProvider'
 import { ChannelDetails } from '../channel-details/ChannelDetails'
 import { ChannelMemberDetails } from '../channel-member-details/ChannelMemberDetails'
 import { ChannelSettings } from '../channel-settings/ChannelSettings'
+import { useFetchWorkspaceMembers } from '../workspaces/WorkspaceMemberManagement'
+import { UserFields, UserListContext } from '@/utils/users/UserListProvider'
 
 interface ViewChannelDetailsModalContentProps {
   open: boolean
@@ -64,6 +66,7 @@ const ViewChannelDetailsModalContent = ({
   const activeUsers = data?.message ?? []
 
   const { channelMembers, mutate: updateMembers } = useFetchChannelMembers(channelData.name)
+  const { data: workspaceMembers } = useFetchWorkspaceMembers(channelData.workspace as string)
 
   const memberCount = Object.keys(channelMembers)?.length
   const { currentUser } = useContext(UserContext)
@@ -75,6 +78,40 @@ const ViewChannelDetailsModalContent = ({
 
   // channel settings are only available for admins
   const allowSettingChange = channelMembers[currentUser]?.is_admin == 1 || false
+
+  const users = useContext(UserListContext)
+
+  //Options for dropdown
+  const nonChannelMembers = useMemo(() => {
+    // console.log(workspaceMembers)
+
+    // Only workspace members are eligible to be added to the channel
+    const eligibleUsers: { [key: string]: string } = {}
+    workspaceMembers?.message?.forEach((m) => {
+      eligibleUsers[m.user] = m.name
+    })
+
+    // Filter out users that are already in the channel and are eligible to be added
+    return users.enabledUsers?.filter((m: UserFields) => !channelMembers?.[m.name] && eligibleUsers[m.name]) ?? []
+  }, [users.enabledUsers, channelMembers, workspaceMembers])
+
+  /** Function to filter users */
+  const getFilteredUsers = useCallback(
+    (selectedUsers: UserFields[], inputValue: string) => {
+      const lowerCasedInputValue = inputValue.toLowerCase()
+
+      return nonChannelMembers.filter((user) => {
+        if (selectedUsers.some((u) => u.name === user.name)) return false
+        if (inputValue === '') return true // không lọc gì cả
+
+        return (
+          user.full_name.toLowerCase().includes(lowerCasedInputValue) ||
+          user.name.toLowerCase().includes(lowerCasedInputValue)
+        )
+      })
+    },
+    [nonChannelMembers]
+  )
 
   return (
     <>
@@ -107,6 +144,7 @@ const ViewChannelDetailsModalContent = ({
                 channelMembers={channelMembers}
                 activeUsers={activeUsers}
                 updateMembers={updateMembers}
+                getFilteredUsers={getFilteredUsers}
               />
             </Tabs.Content>
             <Tabs.Content value='Settings'>

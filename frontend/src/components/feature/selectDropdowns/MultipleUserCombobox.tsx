@@ -1,4 +1,5 @@
 import { Label } from '@/components/common/Form'
+import { Loader } from '@/components/common/Loader'
 import { UserAvatar } from '@/components/common/UserAvatar'
 import { HStack, Stack } from '@/components/layout/Stack'
 import { useIsDesktop } from '@/hooks/useMediaQuery'
@@ -6,7 +7,7 @@ import { UserFields } from '@/utils/users/UserListProvider'
 import { ScrollArea, Separator, Text, TextField } from '@radix-ui/themes'
 import clsx from 'clsx'
 import { useCombobox, useMultipleSelection } from 'downshift'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FiX } from 'react-icons/fi'
 
 function MultipleUserComboBox({
@@ -67,7 +68,13 @@ function MultipleUserComboBox({
       }
     })
 
-  const isDesktop = useIsDesktop()
+  const [hasFetchedOnce, setHasFetchedOnce] = useState(false)
+
+  useEffect(() => {
+    if (items.length > 0) {
+      setHasFetchedOnce(true)
+    }
+  }, [items, hasFetchedOnce])
 
   return (
     <div className='w-full'>
@@ -77,7 +84,7 @@ function MultipleUserComboBox({
         </Label>
         <TextField.Root
           // variant='soft'
-          placeholder='Type a name...'
+          placeholder='Tìm kiếm...'
           size='3'
           className='w-full'
           autoFocus={false}
@@ -85,39 +92,53 @@ function MultipleUserComboBox({
         ></TextField.Root>
       </div>
       <ul
-        className={`sm:w-[550px] w-[24rem] absolute bg-background mt-0 shadow-sm dark:shadow-md z-[9999] max-h-96 overflow-scroll p-0
-                    border border-b-0 border-gray-3 dark:border-gray-6
-                    ${!(isOpen && items?.length) && 'hidden'}`}
+        className={clsx(
+          'sm:w-[550px] w-[24rem] absolute bg-background mt-0 shadow-sm dark:shadow-md z-[9999] max-h-96 overflow-scroll p-0',
+          'border border-b-0 border-gray-3 dark:border-gray-6',
+          !isOpen && 'hidden'
+        )}
         {...getMenuProps()}
       >
-        {isOpen &&
-          items?.map((item, index) => (
-            <li
-              className={clsx(
-                highlightedIndex === index && 'dark:bg-accent-9 bg-gray-3',
-                selectedItem === item && 'font-bold',
-                'py-2 px-3 flex justify-between gap-2 items-center cursor-default border-b dark:border-gray-6 border-gray-3'
-              )}
-              key={`${item.name}`}
-              {...getItemProps({ item, index })}
-            >
-              <HStack>
-                <UserAvatar src={item.user_image ?? ''} alt={item.full_name} size='2' />
-                <div className='flex flex-col'>
-                  <Text as='span' weight='medium' size='2'>
-                    {item.full_name}
+        {isOpen && (
+          <>
+            {items.length === 0 && !hasFetchedOnce ? (
+              <li className='py-3 px-4 text-sm text-gray-500 text-center'>
+                <Loader />
+              </li>
+            ) : items.length === 0 && hasFetchedOnce ? (
+              <li className='py-3 px-4 text-sm text-gray-500 text-center'>Không có dữ liệu</li>
+            ) : (
+              items.map((item, index) => (
+                <li
+                  className={clsx(
+                    highlightedIndex === index && 'dark:bg-accent-9 bg-gray-3',
+                    selectedItem === item && 'font-bold',
+                    'py-2 px-3 flex justify-between gap-2 items-center cursor-default border-b dark:border-gray-6 border-gray-3'
+                  )}
+                  key={item.name}
+                  {...getItemProps({ item, index })}
+                >
+                  <HStack>
+                    <UserAvatar src={item.user_image ?? ''} alt={item.full_name} size='2' />
+                    <div className='flex flex-col'>
+                      <Text as='span' weight='medium' size='2'>
+                        {item.full_name}
+                      </Text>
+                      <Text as='span' size='1' weight='light'>
+                        {item.name}
+                      </Text>
+                    </div>
+                  </HStack>
+                  <Text className='cursor-pointer' as='span' size='1' color='gray' weight='medium'>
+                    Thêm
                   </Text>
-                  <Text as='span' size='1' weight={'light'}>
-                    {item.name}
-                  </Text>
-                </div>
-              </HStack>
-              <Text as='span' size='1' color='gray' weight='medium'>
-                Add
-              </Text>
-            </li>
-          ))}
+                </li>
+              ))
+            )}
+          </>
+        )}
       </ul>
+
       {selectedUsers?.length > 0 && (
         <div className='mt-4 px-1'>
           <Separator size='4' />

@@ -10,7 +10,8 @@ import { Suspense, lazy } from 'react'
 import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-const AddMembersDropdown = lazy(() => import('../../selectDropdowns/AddMembersDropdown'))
+import AddMembersDropdown from '../../selectDropdowns/AddMembersDropdown'
+// const AddMembersDropdown = lazy(() => import('../../selectDropdowns/AddMembersDropdown'))
 
 interface AddChannelMemberForm {
   add_members: UserFields[] | null
@@ -78,29 +79,27 @@ export const AddChannelMembersModalContent = ({ onClose }: AddChannelMemberModal
               <Box width='100%'>
                 <Flex direction='column' gap='2'>
                   <Flex direction='column' gap='2'>
-                    <Suspense fallback={<Loader />}>
-                      <Controller
-                        control={control}
-                        name='add_members'
-                        rules={{
-                          validate: (value) => {
-                            if (value && value?.length > 0) {
-                              return true
-                            }
-                            return 'Vui lòng chọn ít nhất một thành viên'
+                    <Controller
+                      control={control}
+                      name='add_members'
+                      rules={{
+                        validate: (value) => {
+                          if (value && value?.length > 0) {
+                            return true
                           }
-                        }}
-                        render={({ field: { onChange, value } }) => (
-                          <AddMembersDropdown
-                            setSelectedUsers={onChange}
-                            workspaceID={channel?.channelData.workspace ?? ''}
-                            selectedUsers={value ?? []}
-                            channelID={channelID}
-                            label=''
-                          />
-                        )}
-                      />
-                    </Suspense>
+                          return 'Vui lòng chọn ít nhất một thành viên'
+                        }
+                      }}
+                      render={({ field: { onChange, value } }) => (
+                        <AddMembersDropdown
+                          setSelectedUsers={onChange}
+                          workspaceID={channel?.channelData.workspace ?? ''}
+                          selectedUsers={value ?? []}
+                          channelID={channelID}
+                          label=''
+                        />
+                      )}
+                    />
                     <ErrorText>{methods.formState.errors.add_members?.message}</ErrorText>
                   </Flex>
                 </Flex>

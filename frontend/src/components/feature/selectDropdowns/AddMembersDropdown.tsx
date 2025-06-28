@@ -45,12 +45,13 @@ const AddMembersDropdown = ({
     (selectedUsers: UserFields[], inputValue: string) => {
       const lowerCasedInputValue = inputValue.toLowerCase()
 
-      return nonChannelMembers.filter((user: UserFields) => {
-        const isUserSelected = selectedUsers.find((selectedUser) => selectedUser.name === user.name)
+      return nonChannelMembers.filter((user) => {
+        if (selectedUsers.some((u) => u.name === user.name)) return false
+        if (inputValue === '') return true // không lọc gì cả
+
         return (
-          !isUserSelected &&
-          (user.full_name.toLowerCase().includes(lowerCasedInputValue) ||
-            user.name.toLowerCase().includes(lowerCasedInputValue))
+          user.full_name.toLowerCase().includes(lowerCasedInputValue) ||
+          user.name.toLowerCase().includes(lowerCasedInputValue)
         )
       })
     },
