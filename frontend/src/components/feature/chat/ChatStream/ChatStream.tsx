@@ -242,13 +242,16 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
 
     // Reset state khi thay đổi channel hoặc messageId
     useEffect(() => {
+      setIsInitialMounting(true)
       dispatch({ type: 'RESET' })
       initialRenderRef.current = true
       hasProcessedInitialLoad.current = false
 
-      safeSetTimeout(() => {
+      const timeout = safeSetTimeout(() => {
         setIsInitialMounting(false)
       }, 1000)
+
+      return () => clearTimeout(timeout) // cleanup nếu channel đổi nhanh
     }, [channelID, messageId, safeSetTimeout])
 
     const {
