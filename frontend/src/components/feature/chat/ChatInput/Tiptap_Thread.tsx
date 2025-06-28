@@ -18,7 +18,6 @@ import { PluginKey } from '@tiptap/pm/state'
 import { BubbleMenu, EditorContent, EditorContext, Extension, ReactRenderer, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import clsx from 'clsx'
-import { useFrappePostCall } from 'frappe-react-sdk'
 import css from 'highlight.js/lib/languages/css'
 import js from 'highlight.js/lib/languages/javascript'
 import json from 'highlight.js/lib/languages/json'
@@ -28,7 +27,7 @@ import html from 'highlight.js/lib/languages/xml'
 import { useAtom } from 'jotai'
 import { common, createLowlight } from 'lowlight'
 import { Plugin } from 'prosemirror-state'
-import React, { Suspense, forwardRef, lazy, useContext, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import React, { Suspense, forwardRef, lazy, useContext, useEffect, useImperativeHandle, useRef } from 'react'
 import { BiPlus } from 'react-icons/bi'
 import { useParams } from 'react-router-dom'
 import tippy from 'tippy.js'
@@ -135,27 +134,22 @@ const TiptapThread = forwardRef(
 
     const channelMembersRef = useRef<MemberSuggestions[]>([])
 
-    const { call: trackVisit } = useFrappePostCall('raven.api.raven_channel_member.track_visit')
-
-    const { data: unreadThreads } = useUnreadThreadsCount()
-
-    const unreadThreadsMap = useMemo(() => {
-      return unreadThreads?.message?.threads?.reduce(
-        (acc, thread) => {
-          acc[thread.name] = thread.unread_count
-          return acc
-        },
-        {} as Record<string, number>
-      )
-    }, [unreadThreads])
+    const { data: unreadThreads, markThreadAsRead } = useUnreadThreadsCount()
 
     const handleClick = async () => {
-      const unreadCount = unreadThreadsMap?.[channelID ?? ''] || 0
+      const threadID = channelID ?? ''
 
-      if (unreadCount <= 0) return
+      if (!threadID) return
+
+      const unreadThread = unreadThreads?.message?.threads.find((t) => t.name === threadID)
+      const unreadCount = unreadThread?.unread_count ?? 0
+
+      if (unreadCount > 0) {
+        markThreadAsRead(threadID)
+      }
 
       try {
-        await trackVisit({ channel_id: channelID })
+        // trackseen
         eventBus.emit('user:interacted', {
           source: 'input',
           timestamp: Date.now()

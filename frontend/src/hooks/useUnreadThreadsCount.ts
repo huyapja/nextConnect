@@ -2,7 +2,7 @@ import { FrappeConfig, FrappeContext, useFrappeGetCall, useSWRConfig } from 'fra
 import { useCallback, useContext } from 'react'
 import { useParams } from 'react-router-dom'
 
-// Cấu trúc dữ liệu mới từ backend
+// --- Kiểu dữ liệu ---
 export type UnreadThread = { name: string; unread_count: number }
 
 export interface UnreadThreadResponse {
@@ -10,20 +10,51 @@ export interface UnreadThreadResponse {
   total_unread_threads: number
 }
 
-// Hook chính lấy tất cả unread thread
+// --- Hook chính để fetch và mutate ---
 const useUnreadThreadsCount = () => {
   const { workspaceID } = useParams()
+  const swrKey = ['unread_thread_count', workspaceID]
 
-  return useFrappeGetCall<{ message: UnreadThreadResponse }>(
+  const { data, isValidating, error, mutate } = useFrappeGetCall<{ message: UnreadThreadResponse }>(
     'raven.api.threads.get_unread_threads',
     { workspace: workspaceID },
-    ['unread_thread_count', workspaceID]
+    swrKey
   )
+
+  // ✅ Hàm để mark thread là đã đọc (xóa khỏi danh sách local)
+  const markThreadAsRead = useCallback(
+    (threadID: string) => {
+      mutate(
+        (currentData?: { message: UnreadThreadResponse }) => {
+          const existing = currentData?.message?.threads ?? []
+
+          const updatedThreads = existing.filter((t) => t.name !== threadID)
+
+          const total = updatedThreads.reduce((sum, t) => sum + t.unread_count, 0)
+
+          return {
+            message: {
+              threads: updatedThreads,
+              total_unread_threads: total
+            }
+          }
+        },
+        { revalidate: false }
+      )
+    },
+    [mutate]
+  )
+
+  return {
+    data,
+    isValidating,
+    error,
+    markThreadAsRead,
+    mutateUnreadThreads: mutate
+  }
 }
 
-/**
- * Hook lắng nghe sự kiện reply vào thread → cập nhật lại count cho thread tương ứng.
- */
+// --- Hook dùng cho sự kiện reply vào thread ---
 export const useUnreadThreadsCountEventListener = () => {
   const { workspaceID } = useParams()
   const { call } = useContext(FrappeContext) as FrappeConfig
@@ -56,11 +87,12 @@ export const useUnreadThreadsCountEventListener = () => {
               }
             })()
 
-            const totalMessages = updatedThreads.reduce((sum, t) => sum + t.unread_count, 0)
+            const total = updatedThreads.reduce((sum, t) => sum + t.unread_count, 0)
+
             return {
               message: {
                 threads: updatedThreads,
-                total_unread_threads: totalMessages
+                total_unread_threads: total
               }
             }
           } catch (err) {
