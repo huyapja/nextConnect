@@ -80,7 +80,7 @@ function MultipleUserComboBox({
           placeholder='Type a name...'
           size='3'
           className='w-full'
-          autoFocus={isDesktop}
+          autoFocus={false}
           {...getInputProps(getDropdownProps())}
         ></TextField.Root>
       </div>
