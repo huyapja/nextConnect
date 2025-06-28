@@ -90,12 +90,9 @@ const useChatStream = (
   // Effect để handle khi có message_id trong URL - trigger highlight
   useEffect(() => {
     const messageId = messageState.searchParams.get('message_id')
-    const messageSource = messageState.searchParams.get('message_source')
-
     if (messageId && messages) {
-      if (!messageSource || messageSource !== 'read') {
-        messageState.setHighlightedMessage(messageId)
-      }
+      // Set highlighted message khi có message_id trong URL
+      messageState.setHighlightedMessage(messageId)
     }
   }, [messageState.searchParams, messages, messageState.setHighlightedMessage])
 
