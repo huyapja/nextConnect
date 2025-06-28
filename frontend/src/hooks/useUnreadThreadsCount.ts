@@ -31,7 +31,6 @@ export const useUnreadThreadsCountEventListener = () => {
 
   const onThreadReplyEvent = useCallback(
     (threadID: string) => {
-      console.log('Thread reply event fired')
       mutate(
         ['unread_thread_count', workspaceID],
         async (data?: { message: UnreadThreadResponse }) => {
