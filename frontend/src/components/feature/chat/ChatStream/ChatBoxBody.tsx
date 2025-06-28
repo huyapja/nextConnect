@@ -71,7 +71,7 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
     // Cập nhật cache các tin nhắn của channel
 
     mutate(
-      { path: `get_messages_for_channel_${channelData.name}` },
+      { path: `get_messages_${workspaceID}_${channelData.name}` },
       (data?: GetMessagesResponse) => {
         if (data && data?.message.has_new_messages) {
           return data // Không thay đổi nếu có tin nhắn mới đang được xử lý
@@ -233,6 +233,7 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
   }, [channelMemberProfile, channelData, isLoading])
 
   const { threadID } = useParams()
+  const { workspaceID } = useParams<{ workspaceID: string }>()
 
   const { channel } = useCurrentChannelData(channelData.name)
 

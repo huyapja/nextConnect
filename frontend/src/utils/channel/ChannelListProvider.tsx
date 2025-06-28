@@ -3,6 +3,7 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
 import { RavenChannel } from '@/types/RavenChannelManagement/RavenChannel'
 import { FrappeError, useFrappeEventListener, useFrappeGetCall, useSWRConfig } from 'frappe-react-sdk'
 import { PropsWithChildren, createContext, useContext, useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { KeyedMutator } from 'swr'
 
@@ -86,14 +87,17 @@ export const useChannelList = (): ChannelListContextType => {
  */
 export const useFetchChannelList = (): ChannelListContextType => {
   const isMobile = useIsMobile()
+  const { workspaceID } = useParams()
 
   const { mutate: globalMutate } = useSWRConfig()
+
   const { data, mutate, isLoading, isValidating, ...rest } = useFrappeGetCall<{ message: ChannelList }>(
     'raven.api.raven_channel.get_all_channels',
     {
-      hide_archived: false
+      hide_archived: false,
+      workspace_id: workspaceID // ✅ truyền thêm workspace
     },
-    `channel_list`,
+    `channel_list_${workspaceID}`, // ✅ key cache riêng theo workspace
     {
       revalidateOnFocus: isMobile ? true : false,
       onError: (error) => {
@@ -103,6 +107,7 @@ export const useFetchChannelList = (): ChannelListContextType => {
       }
     }
   )
+
   const [newUpdatesAvailable, setNewUpdatesAvailable] = useState(0)
 
   useEffect(() => {

@@ -10,17 +10,17 @@ from frappe.query_builder import DocType
 
 
 @frappe.whitelist()
-def get_all_channels(hide_archived=True):
+def get_all_channels(hide_archived=True, workspace_id=None):
     """
-    Trả về danh sách channel (gồm group và DMs) mà user hiện tại là thành viên.
-    Bao gồm trạng thái is_done và user_labels (các nhãn do user gán vào channel).
+    Trả về danh sách channel (gồm group và DMs) mà user hiện tại là thành viên
+    thuộc workspace_id, bao gồm is_done và user_labels.
     """
 
     if hide_archived == "false":
         hide_archived = False
 
-    # Lấy danh sách channel đã enrich theo user
-    channels = get_channel_list(hide_archived)
+    # Gọi hàm xử lý chính
+    channels = get_channel_list(hide_archived, workspace_id)
 
     # Bổ sung peer_user_id nếu là DM
     parsed_channels = []
@@ -40,11 +40,10 @@ def get_all_channels(hide_archived=True):
     }
 
 
-def get_channel_list(hide_archived=False):
+def get_channel_list(hide_archived=False, workspace_id=None):
     """
-    Lấy tất cả các channel mà user hiện tại là thành viên.
+    Lấy tất cả các channel mà user hiện tại là thành viên, thuộc workspace chỉ định.
     Enrich thêm is_done từ Raven Channel Member và user_labels từ User Channel Label.
-    user_labels trả về dạng array object: { label_id, label }
     """
 
     channel = frappe.qb.DocType("Raven Channel")
@@ -83,6 +82,9 @@ def get_channel_list(hide_archived=False):
         .where(channel.is_thread == 0)
     )
 
+    if workspace_id:
+        query = query.where(channel.workspace == workspace_id)
+
     if hide_archived:
         query = query.where(channel.is_archived == 0)
 
@@ -90,7 +92,7 @@ def get_channel_list(hide_archived=False):
 
     results = query.run(as_dict=True)
 
-    # Lấy danh sách nhãn người dùng đã gán cho các channel này
+    # Enrich label
     channel_ids = [row["name"] for row in results]
 
     if not channel_ids:
@@ -105,19 +107,17 @@ def get_channel_list(hide_archived=False):
         fields=["channel_id", "label"]
     )
 
-    # Lấy thêm tên label
-    label_ids = list({ row["label"] for row in user_labels })
+    label_ids = list({row["label"] for row in user_labels})
     if label_ids:
         label_names = frappe.get_all(
             "User Label",
-            filters={ "name": ["in", label_ids] },
+            filters={"name": ["in", label_ids]},
             fields=["name", "label"]
         )
-        label_name_map = { row["name"]: row["label"] for row in label_names }
+        label_name_map = {row["name"]: row["label"] for row in label_names}
     else:
         label_name_map = {}
 
-    # Gom nhãn theo channel_id → thành array of object
     label_map = {}
     for row in user_labels:
         label_id = row["label"]
@@ -127,7 +127,6 @@ def get_channel_list(hide_archived=False):
             "label": label_name
         })
 
-    # Gắn nhãn và is_done vào từng channel
     for row in results:
         row["is_done"] = int(row.get("is_done") or 0)
         row["user_labels"] = label_map.get(row["name"], [])
@@ -261,15 +260,13 @@ def get_peer_user_id(
 
 
 @frappe.whitelist(methods=["POST"])
-def create_direct_message_channel(user_id):
+def create_direct_message_channel(user_id, workspace_id=None):
 	"""
-	Creates a direct message channel between current user and the user with user_id
-	The user_id can be the peer or the user themself
-	1. Check if a channel already exists between the two users
-	2. If not, create a new channel
-	3. Check if the user_id is the current user and set is_self_message accordingly
+	Tạo channel nhắn tin trực tiếp giữa current user và user_id.
+	Gán cả hai người làm thành viên của channel.
 	"""
-	# TODO: this logic might break if the user_id changes
+
+	# Kiểm tra đã tồn tại channel chưa
 	channel_name = frappe.db.get_value(
 		"Raven Channel",
 		filters={
@@ -283,18 +280,38 @@ def create_direct_message_channel(user_id):
 	)
 	if channel_name:
 		return channel_name
-	# create direct message channel with user and current user
-	else:
-		channel = frappe.get_doc(
-			{
-				"doctype": "Raven Channel",
-				"channel_name": frappe.session.user + " _ " + user_id,
-				"is_direct_message": 1,
-				"is_self_message": frappe.session.user == user_id,
-			}
-		)
-		channel.insert()
-		return channel.name
+
+	# Fallback workspace nếu không được truyền
+	if not workspace_id:
+		workspace_id = frappe.db.get_value(
+			"Raven Workspace Member",
+			{"user": frappe.session.user},
+			"workspace"
+	 )
+
+	if not workspace_id:
+		frappe.throw("Không tìm thấy workspace phù hợp")
+
+	# Tạo channel mới
+	channel = frappe.get_doc({
+		"doctype": "Raven Channel",
+		"channel_name": frappe.session.user + " _ " + user_id,
+		"is_direct_message": 1,
+		"is_self_message": frappe.session.user == user_id,
+		"workspace": workspace_id
+	})
+	channel.insert()
+
+	# Gán cả 2 người làm thành viên
+	for uid in [frappe.session.user, user_id]:
+		if not frappe.db.exists("Raven Channel Member", {"user_id": uid, "channel_id": channel.name}):
+			frappe.get_doc({
+				"doctype": "Raven Channel Member",
+				"user_id": uid,
+				"channel_id": channel.name
+			}).insert(ignore_permissions=True)
+
+	return channel.name
 
 
 @frappe.whitelist(methods=["POST"])

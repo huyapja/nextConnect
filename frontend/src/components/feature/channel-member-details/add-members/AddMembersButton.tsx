@@ -3,7 +3,6 @@ import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { useState } from 'react'
 import { Button, Dialog } from '@radix-ui/themes'
 import { ButtonProps } from '@radix-ui/themes/dist/cjs/components/button'
-import { DIALOG_CONTENT_CLASS } from '@/utils/layout/dialog'
 import clsx from 'clsx'
 import { useIsDesktop } from '@/hooks/useMediaQuery'
 import { Drawer, DrawerContent, DrawerTrigger } from '@/components/layout/Drawer'
@@ -12,6 +11,7 @@ interface AddMembersButtonProps extends ButtonProps {
   channelData: ChannelListItem
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const AddMembersButton = ({ channelData, ...props }: AddMembersButtonProps) => {
   const [open, setOpen] = useState(false)
   const onClose = () => {
@@ -25,7 +25,7 @@ export const AddMembersButton = ({ channelData, ...props }: AddMembersButtonProp
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Trigger>
           <Button variant='ghost' size='1' {...props} className={clsx('text-nowrap', props.className)}>
-            Add Members
+            Thêm thành viên
           </Button>
         </Dialog.Trigger>
 
@@ -39,7 +39,7 @@ export const AddMembersButton = ({ channelData, ...props }: AddMembersButtonProp
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerTrigger asChild>
           <Button variant='ghost' size='1' {...props} className={clsx('text-nowrap', props.className)}>
-            Add Members
+            Thêm thành viên
           </Button>
         </DrawerTrigger>
         <DrawerContent>

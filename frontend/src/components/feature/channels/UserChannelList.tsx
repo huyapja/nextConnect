@@ -83,6 +83,8 @@ const UserWithoutDMItem = ({ userID }: { userID: string }) => {
   const isActive = useIsUserActive(userID)
   const navigate = useNavigate()
 
+  console.log(workspaceID)
+
   const { call, loading } = useFrappePostCall<{ message: string }>(
     'raven.api.raven_channel.create_direct_message_channel'
   )
@@ -90,9 +92,9 @@ const UserWithoutDMItem = ({ userID }: { userID: string }) => {
   const { mutate } = useSWRConfig()
 
   const onClick = () => {
-    call({ user_id: userID })
+    call({ user_id: userID, workspace_id: workspaceID })
       .then((res) => {
-        mutate('channel_list')
+        mutate(`channel_list_${workspaceID}`)
         if (workspaceID) {
           navigate(`/${workspaceID}/${res?.message}`)
         } else {
