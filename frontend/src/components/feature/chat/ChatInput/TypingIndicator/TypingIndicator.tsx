@@ -45,7 +45,7 @@ const TypingIndicator = memo(({ channel, maxDisplay = 3, showAnimation = true }:
 
   return (
     <HStack
-      className='gap-1.5 pl-0.5 pt-1 relative sm:bottom-0 bottom-16 sm:pb-0 pb-2'
+      className='gap-1.5 pl-0.5 pt-1 relative bottom-0 pb-0'
       align='center'
       role='status'
       aria-live='polite'

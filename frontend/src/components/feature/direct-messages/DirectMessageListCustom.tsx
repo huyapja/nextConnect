@@ -11,33 +11,34 @@ import { ChannelWithUnreadCount, DMChannelWithUnreadCount } from '@/components/l
 import { useChannelActions } from '@/hooks/useChannelActions'
 import { useChannelDone } from '@/hooks/useChannelDone'
 import { useIsLaptop, useIsTablet } from '@/hooks/useMediaQuery'
+import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
 import { manuallyMarkedAtom } from '@/utils/atoms/manuallyMarkedAtom'
 import { LabelType, useEnrichedSortedChannels, useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
 import { useFormattedLastMessageParts } from '@/utils/channel/useFormatLastMessage'
 import { ChannelIcon } from '@/utils/layout/channelIcon'
 import { useSidebarMode } from '@/utils/layout/sidebar'
 import { truncateText } from '@/utils/textUtils/truncateText'
+import clsx from 'clsx'
+import { useFrappePostCall } from 'frappe-react-sdk'
 import { useAtomValue, useSetAtom } from 'jotai'
+import { GoPlus } from 'react-icons/go'
 import { HiCheck } from 'react-icons/hi'
+import { MdLabelOutline } from 'react-icons/md'
+import { toast } from 'sonner'
 import { SidebarBadge, SidebarGroup, SidebarIcon } from '../../layout/Sidebar/SidebarComp'
 import { DoneChannelList } from '../channels/DoneChannelList'
 import UserChannelList from '../channels/UserChannelList'
 import MentionList from '../chat/ChatInput/MentionListCustom'
 import ChatbotAIStream from '../chatbot-ai/ChatbotAIStream'
+import { labelListAtom, useLabelListValue } from '../labels/conversations/atoms/labelAtom'
+import { createLabelModalAtom } from '../labels/CreateLabelModal'
 import LabelByUserList from '../labels/LabelByUserList'
+import { MissedCallsList } from '../missed-calls/MissedCallsList'
 import ThreadsCustom from '../threads/ThreadsCustom'
 import { MessageSaved } from './DirectMessageSaved'
-import { MissedCallsList } from '../missed-calls/MissedCallsList'
-import clsx from 'clsx'
-import { labelListAtom, useLabelListValue } from '../labels/conversations/atoms/labelAtom'
-import { MdLabelOutline } from 'react-icons/md'
-import { GoPlus } from 'react-icons/go'
-import { createLabelModalAtom } from '../labels/CreateLabelModal'
-import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
-import { toast } from 'sonner'
-import { useFrappePostCall } from 'frappe-react-sdk'
 
 import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
+import { lastReadStorage } from '@/utils/lastReadStorage'
 
 type UnifiedChannel = ChannelWithUnreadCount | DMChannelWithUnreadCount | any
 
@@ -326,7 +327,16 @@ export const DirectMessageItemElement = ({
   const shouldShowBadge = channel.unread_count > 0 || isManuallyMarked
 
   const handleNavigate = () => {
-    navigate(`/${workspaceID}/${channel.name}`)
+    const lastRead = lastReadStorage.get(channel.name)
+
+    const params = new URLSearchParams()
+
+    if (lastRead) {
+      params.set('message_id', lastRead)
+      params.set('message_source', 'read') // 👈 phân biệt nguồn
+    }
+
+    navigate(`/${workspaceID}/${channel.name}?${params.toString()}`)
     clearManualMark(channel.name)
   }
 
