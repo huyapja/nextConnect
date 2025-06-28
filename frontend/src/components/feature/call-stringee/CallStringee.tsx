@@ -1598,11 +1598,35 @@ export default function StringeeCallComponent({
           callDuration
         )
       } else if (callStatus === 'connecting') {
-        // Cuộc gọi chưa được trả lời
-        await saveCallHistoryToChat(
-          isVideoCall ? 'video' : 'audio',
-          'ended'
-        )
+        // Kiểm tra nếu đây là outgoing call (người gọi hangup trước khi người nhận answer)
+        if (call && !incoming) {
+          // Đây là outgoing call - tạo missed call cho người nhận
+          await saveCallHistoryToChat(
+            isVideoCall ? 'video' : 'audio',
+            'missed'
+          )
+          
+          // Tạo missed call record cho người nhận
+          const callerId = data?.message?.user_id
+          const calleeId = toUserId
+          if (callerId && calleeId) {
+            try {
+              await createMissedCall({
+                caller_id: callerId,
+                callee_id: calleeId,
+                call_type: isVideoCall ? 'video' : 'audio'
+              })
+            } catch (error) {
+              // Failed to create missed call
+            }
+          }
+        } else {
+          // Cuộc gọi chưa được trả lời (trường hợp khác)
+          await saveCallHistoryToChat(
+            isVideoCall ? 'video' : 'audio',
+            'ended'
+          )
+        }
       }
     }
     
