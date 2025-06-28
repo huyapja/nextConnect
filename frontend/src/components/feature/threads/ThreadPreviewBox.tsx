@@ -81,6 +81,8 @@ export const ThreadPreviewBox = ({ thread, unreadCount }: { thread: ThreadMessag
                   user={user}
                   currentUser={currentUser}
                   forceHideLinkPreview
+                  removePendingMessage={() => {}}
+                  sendOnePendingMessage={() => {}}
                 />
               </Flex>
             </Flex>

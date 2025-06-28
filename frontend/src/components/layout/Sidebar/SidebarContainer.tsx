@@ -144,8 +144,6 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
   const { data: unreadThreads } = useUnreadThreadsCount()
   const totalSaved = useSavedMessageCount()
 
-  console.log('unreadThreads', unreadThreads?.message.total_unread_threads)
-
   const enrichedChannels = useEnrichedSortedChannels(0) // chỉ lấy channel chưa xong
   const enrichedDoneChannels = useEnrichedSortedChannels(1) // lấy channel đã xong
 
