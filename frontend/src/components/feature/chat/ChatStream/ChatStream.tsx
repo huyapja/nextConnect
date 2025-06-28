@@ -6,7 +6,6 @@ import { useCurrentChannelData } from '@/hooks/useCurrentChannelData'
 import { useDebounceDynamic } from '@/hooks/useDebounce'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useUserData } from '@/hooks/useUserData'
-import { lastReadStorage } from '@/utils/lastReadStorage'
 import { getFileExtension } from '@/utils/operations'
 import { virtuosoSettings } from '@/utils/VirtuosoSettings'
 import {
@@ -309,6 +308,7 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
             })
           }
 
+          // Batch process visible messages
           if (range && newMessageIds.size > 0) {
             const visibleMessages = messages.slice(range.startIndex, range.endIndex + 1)
             const messagesToMark = visibleMessages
@@ -319,16 +319,6 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
               safeSetTimeout(() => {
                 messagesToMark.forEach((messageName) => markMessageAsSeen(messageName))
               }, 2000)
-            }
-          }
-
-          if (range && messages && messages.length > 0) {
-            const visibleMessages = messages.slice(range.startIndex, range.endIndex + 1)
-            if (visibleMessages.length > 0) {
-              const lastVisibleMessage = visibleMessages[visibleMessages.length - 1]
-              if (lastVisibleMessage?.name) {
-                lastReadStorage.set(channelID, lastVisibleMessage.name)
-              }
             }
           }
         },

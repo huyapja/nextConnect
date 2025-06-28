@@ -8,12 +8,12 @@ import { useMemo, useState } from 'react'
 import { FaAngleDown, FaAngleUp, FaUsers } from 'react-icons/fa6'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
-import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
+import { UserAvatar } from '@/components/common/UserAvatar'
 import { useGetUser } from '@/hooks/useGetUser'
 import { useIsMobile } from '@/hooks/useMediaQuery'
-import { FaAngleDoubleDown, FaAngleDoubleUp, FaRegTimesCircle } from 'react-icons/fa'
-import { UserAvatar } from '@/components/common/UserAvatar'
+import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
+import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
+import { FaRegTimesCircle } from 'react-icons/fa'
 
 export const useClickWithoutDrag = (onClick: () => void, threshold = 5) => {
   const [start, setStart] = useState<{ x: number; y: number } | null>(null)
@@ -97,9 +97,6 @@ const PinnedChannelItem = ({ channel }: Props) => {
     navigate(`/${workspaceID}/${channel.name}`)
   })
 
-  console.log(channel);
-  
-
   return (
     <div
       className={clsx(
@@ -119,7 +116,7 @@ const PinnedChannelItem = ({ channel }: Props) => {
             className='absolute -top-2 -right-3 z-9'
           >
             <FaRegTimesCircle
-              className='bg-white dark:bg-gray-800 text-[10px] font-bold w-4 h-4 flex items-center justify-center 
+              className='bg-white dark:bg-gray-800 text-[10px] font-bold w-4 h-4 flex items-center justify-center
              rounded-full border border-white dark:border-gray-800 text-gray-800 dark:text-gray-100'
               size={8}
             />
@@ -128,10 +125,7 @@ const PinnedChannelItem = ({ channel }: Props) => {
           {/* Avatar */}
           <div className='w-8 h-8'>
             {isDM ? (
-              <UserAvatar
-                src={userInfo?.user_image}
-                alt={userInfo?.full_name ?? channel.peer_user_id}
-              />
+              <UserAvatar src={userInfo?.user_image} alt={userInfo?.full_name ?? channel.peer_user_id} />
             ) : (
               <div className='border-2 border-teal-400 text-teal-600 w-7 h-7 rounded-full flex items-center justify-center'>
                 <FaUsers className='w-4 h-4 text-teal-500' />
@@ -174,8 +168,8 @@ export const PinnedChannels = () => {
     const { active, over } = event
     if (!over || active.id === over.id) return
 
-    const oldIdx = pinnedIDs.indexOf(active?.id)
-    const newIdx = pinnedIDs.indexOf(over?.id)
+    const oldIdx = pinnedIDs.indexOf(active?.id as string)
+    const newIdx = pinnedIDs.indexOf(over?.id as string)
     if (oldIdx < 0 || newIdx < 0) return
 
     const next = arrayMove(pinnedIDs, oldIdx, newIdx)

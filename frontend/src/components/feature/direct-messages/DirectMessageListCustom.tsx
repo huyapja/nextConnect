@@ -38,7 +38,6 @@ import ThreadsCustom from '../threads/ThreadsCustom'
 import { MessageSaved } from './DirectMessageSaved'
 
 import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
-import { lastReadStorage } from '@/utils/lastReadStorage'
 
 type UnifiedChannel = ChannelWithUnreadCount | DMChannelWithUnreadCount | any
 
@@ -327,16 +326,16 @@ export const DirectMessageItemElement = ({
   const shouldShowBadge = channel.unread_count > 0 || isManuallyMarked
 
   const handleNavigate = () => {
-    const lastRead = lastReadStorage.get(channel.name)
+    // const lastRead = lastReadStorage.get(channel.name)
 
-    const params = new URLSearchParams()
+    // const params = new URLSearchParams()
 
-    if (lastRead) {
-      params.set('message_id', lastRead)
-      params.set('message_source', 'read') // 👈 phân biệt nguồn
-    }
+    // if (lastRead) {
+    //   params.set('message_id', lastRead)
+    //   params.set('message_source', 'read') // 👈 phân biệt nguồn
+    // }
 
-    navigate(`/${workspaceID}/${channel.name}?${params.toString()}`)
+    navigate(`/${workspaceID}/${channel.name}`)
     clearManualMark(channel.name)
   }
 

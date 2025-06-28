@@ -1,6 +1,7 @@
 import { useSidebarMode } from '@/utils/layout/sidebar'
 import { Tooltip } from '@radix-ui/themes'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { FiPhoneMissed } from 'react-icons/fi'
 import {
   HiMenuAlt2,
   HiOutlineAtSymbol,
@@ -15,12 +16,12 @@ import {
   HiOutlineUserGroup,
   HiOutlineUsers
 } from 'react-icons/hi'
-import { FiPhoneMissed } from 'react-icons/fi'
 
 import { CreateLabelButton } from '@/components/feature/labels/CreateLabelModal'
 import LabelList from '@/components/feature/labels/LabelListSidebar'
-import { useSavedMessageCount } from '@/hooks/useSavedMessageCount'
 import { useMissedCallCount } from '@/hooks/useMissedCallCount'
+import { useSavedMessageCount } from '@/hooks/useSavedMessageCount'
+import useUnreadThreadsCount from '@/hooks/useUnreadThreadsCount'
 import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
 import clsx from 'clsx'
 import { useFrappeEventListener, useFrappeGetCall } from 'frappe-react-sdk'
@@ -144,6 +145,8 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
   const isIconOnly = tempMode === 'show-only-icons'
   const { mentionUnreadCount, resetMentions } = useMentionUnreadCount()
   const { unreadMissedCallCount } = useMissedCallCount()
+  const { data: unreadThreads } = useUnreadThreadsCount()
+  const totalSaved = useSavedMessageCount()
 
   const enrichedChannels = useEnrichedSortedChannels(0) // chỉ lấy channel chưa xong
   const enrichedDoneChannels = useEnrichedSortedChannels(1) // lấy channel đã xong
@@ -172,26 +175,37 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
     (label: string) => {
       setTitle(label)
       setLabelID('')
-      // if (label === 'Nhắc đến') resetMentions()
+
       if (onClose) onClose()
       if (channelID) navigate(`/${workspaceID}`)
     },
     [setTitle, setLabelID, resetMentions, onClose, channelID, workspaceID, navigate]
   )
 
-  const totalSaved = useSavedMessageCount()
-
   const renderedFilterItems = useMemo(() => {
+    const getBadgeCount = (label: string): number => {
+      switch (label) {
+        case 'Trò chuyện':
+        case 'Chưa đọc':
+          return totalUnreadCountFiltered
+        case 'Nhắc đến':
+          return mentionUnreadCount
+        case 'Đã gắn cờ':
+          return totalSaved as unknown as number
+        case 'Nhãn':
+          return labelChannelsUnreadCount
+        case 'Chủ đề':
+          return unreadThreads?.message.total_unread_threads ?? 0
+        case 'Xong':
+          return totalDoneCount
+        default:
+          return 0
+      }
+    }
+
     return filterItems.map((item, idx) => {
       const isActive = item.label === title
-      let badgeCount = 0
-
-      if (['Trò chuyện', 'Chưa đọc'].includes(item.label)) badgeCount = totalUnreadCountFiltered
-      if (item.label === 'Cuộc gọi nhỡ') badgeCount = unreadMissedCallCount
-      if (item.label === 'Nhắc đến') badgeCount = mentionUnreadCount
-      if (item.label === 'Đã gắn cờ') badgeCount = totalSaved as unknown as number
-      if (item.label === 'Nhãn') badgeCount = labelChannelsUnreadCount
-      if (item.label === 'Xong') badgeCount = totalDoneCount
+      const badgeCount = getBadgeCount(item.label)
 
       if (item.label === 'Nhãn') {
         return (
@@ -247,7 +261,7 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
                 onClickLabel={(label) => {
                   setTitle(label.labelName)
                   setLabelID(label.labelId)
-                  if (onClose) onClose()
+                  onClose?.()
                   if (channelID) navigate(`/${workspaceID}`)
                 }}
               />
@@ -259,9 +273,7 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
       return (
         <li
           key={idx}
-          onClick={() => {
-            handleClick(item.label)
-          }}
+          onClick={() => handleClick(item.label)}
           className={clsx(
             `flex ${isIconOnly ? 'justify-center' : 'justify-between'} relative items-center gap-2 py-1.5 rounded-md cursor-pointer hover:bg-gray-3`,
             isActive && 'bg-gray-4 font-semibold'
@@ -278,21 +290,10 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
 
           {badgeCount > 0 && (
             <span
-              style={{
-                position: isIconOnly ? 'absolute' : 'static',
-                right: isIconOnly ? '3%' : undefined,
-                fontSize: isIconOnly ? '0.5rem' : '0.8rem',
-                backgroundColor: isIconOnly ? 'red' : undefined,
-                color: isIconOnly ? 'white' : undefined,
-                borderRadius: isIconOnly ? '50%' : undefined,
-                width: isIconOnly ? '14px' : undefined,
-                height: isIconOnly ? '14px' : undefined,
-                display: isIconOnly ? 'flex' : undefined,
-                alignItems: isIconOnly ? 'center' : undefined,
-                justifyContent: isIconOnly ? 'center' : undefined,
-                fontWeight: 500,
-                marginRight: isIconOnly ? '0px' : '1rem'
-              }}
+              className={clsx(
+                'font-medium rounded-full text-white text-[11px] min-w-[16px] h-[16px] px-[6px] flex items-center justify-center',
+                isIconOnly ? 'absolute right-[4px] bg-red-500 text-[10px] w-[16px] h-[16px] px-0' : 'bg-gray-700 mr-4'
+              )}
             >
               {badgeCount > 99 ? '99+' : badgeCount}
             </span>
@@ -302,12 +303,11 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
     })
   }, [
     filterItems,
-    enrichedChannels,
-    enrichedDoneChannels,
     totalUnreadCountFiltered,
     totalDoneCount,
     labelChannelsUnreadCount,
     mentionUnreadCount,
+    unreadThreads?.message.total_unread_threads,
     isIconOnly,
     title,
     isLabelOpen,
