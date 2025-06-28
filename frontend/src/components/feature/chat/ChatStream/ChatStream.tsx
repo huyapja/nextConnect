@@ -419,7 +419,7 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
 
       const processedMessages = (messages ?? []).map((m: any) => ({
         ...m,
-        sort_time: m.resend_at ?? new Date(m.modified || m.creation || 0).getTime()
+        sort_time: m.sort_parent_time || m.resend_at || new Date(m.creation || m.modified || 0).getTime()
       }))
 
       const pending = (pendingMessages ?? []).map((m) => {
