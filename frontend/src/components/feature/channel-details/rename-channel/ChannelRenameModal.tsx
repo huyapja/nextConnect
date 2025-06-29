@@ -5,7 +5,7 @@ import { useIsDesktop } from '@/hooks/useMediaQuery'
 import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { ChannelIcon } from '@/utils/layout/channelIcon'
 import { Box, Button, Dialog, Flex, Text, TextField } from '@radix-ui/themes'
-import { useFrappeUpdateDoc } from 'frappe-react-sdk'
+import { useFrappeUpdateDoc, useSWRConfig } from 'frappe-react-sdk'
 import { ChangeEvent, useCallback } from 'react'
 import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -39,12 +39,14 @@ export const RenameChannelModalContent = ({
     formState: { errors }
   } = methods
   const { updateDoc, loading: updatingDoc, error } = useFrappeUpdateDoc()
+  const {mutate} = useSWRConfig();
 
   const onSubmit = async (data: RenameChannelForm) => {
     return updateDoc('Raven Channel', channelID ?? null, {
       channel_name: data.channel_name
     }).then(() => {
       toast.success('Channel name updated')
+      mutate('channel_list')
       onClose()
     })
   }
