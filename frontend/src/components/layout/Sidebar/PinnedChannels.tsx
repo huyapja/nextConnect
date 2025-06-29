@@ -8,9 +8,9 @@ import { useMemo, useState } from 'react'
 import { FaAngleDown, FaAngleUp, FaUsers } from 'react-icons/fa6'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { UserAvatar } from '@/components/common/UserAvatar'
 import { useGetUser } from '@/hooks/useGetUser'
 import { useIsMobile } from '@/hooks/useMediaQuery'
+import { UserAvatar } from '@/components/common/UserAvatar'
 import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
 import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
 import { FaRegTimesCircle } from 'react-icons/fa'
@@ -86,7 +86,6 @@ const PinnedChannelItem = ({ channel }: Props) => {
   const navigate = useNavigate()
   const isActive = channel.name === channelID
   const isMobile = useIsMobile()
-  const togglePin = useSetAtom(togglePinnedChannelAtom)
 
   const shortName = useMemo(() => {
     const w = displayName?.split(' ')[0] || ''
@@ -106,22 +105,6 @@ const PinnedChannelItem = ({ channel }: Props) => {
     >
       <div onPointerDown={onPointerDown} onPointerUp={onPointerUp} className='w-full flex flex-col items-center'>
         <div className='relative'>
-          {/* Nút X riêng, tách khỏi phần onPointerDown/up */}
-          <div
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation()
-              togglePin(channel.name)
-            }}
-            className='absolute -top-2 -right-3 z-9'
-          >
-            <FaRegTimesCircle
-              className='bg-white dark:bg-gray-800 text-[10px] font-bold w-4 h-4 flex items-center justify-center
-             rounded-full border border-white dark:border-gray-800 text-gray-800 dark:text-gray-100'
-              size={8}
-            />
-          </div>
-
           {/* Avatar */}
           <div className='w-8 h-8'>
             {isDM ? (
@@ -134,7 +117,7 @@ const PinnedChannelItem = ({ channel }: Props) => {
           </div>
           {/* Noti */}
           {channel.unread_count > 0 && (
-            <div className='absolute -bottom-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-white'>
+            <div className='absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-white'>
               {channel.unread_count > 9 ? '9+' : channel.unread_count}
             </div>
           )}
@@ -181,8 +164,6 @@ export const PinnedChannels = () => {
 
   return (
     <div className='mb-2'>
-      <div className='text-xs text-gray-500 px-2 mb-1'>Đã ghim</div>
-
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={pinnedChannels?.map((c) => c.name)} strategy={rectSortingStrategy}>
           {/* Hàng đầu tiên: topRowChannels + toggle */}

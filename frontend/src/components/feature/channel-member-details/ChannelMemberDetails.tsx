@@ -39,7 +39,7 @@ export const ChannelMemberDetails = ({
     <Flex direction='column' gap='4' className={'h-[66vh] pb-2 sm:h-96'}>
       <Flex gap='2' justify='between'>
         <div className={'w-full sm:w-full'}>
-          <TextField.Root autoFocus placeholder='Find members' onChange={handleChange} value={searchText}>
+          <TextField.Root autoFocus placeholder='Tìm kiếm thành viên' onChange={handleChange} value={searchText}>
             <TextField.Slot side='left'>
               <BiSearch />
             </TextField.Slot>
@@ -133,7 +133,7 @@ const MemberList = ({ channelData, channelMembers, activeUsers, updateMembers, i
         ) : (
           <Box className={'text-center h-10'}>
             <Text size='1'>
-              No matches found for <strong>{input}</strong>
+              Không tìm thấy kết quả phù hợp với <strong>{input}</strong>
             </Text>
           </Box>
         )}

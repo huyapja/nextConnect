@@ -19,7 +19,7 @@ const AddMembersDropdown = ({
   setSelectedUsers,
   workspaceID
 }: AddMembersDropdownProps) => {
-  const { data: workspaceMembers } = useFetchWorkspaceMembers(workspaceID)
+  const { data: workspaceMembers, isLoading } = useFetchWorkspaceMembers(workspaceID)
 
   const { channelMembers } = useFetchChannelMembers(channelID)
 
@@ -42,15 +42,15 @@ const AddMembersDropdown = ({
 
   /** Function to filter users */
   const getFilteredUsers = useCallback(
-    (selectedUsers: UserFields[], inputValue: string) => {
+    (_selectedUsers: UserFields[], inputValue: string) => {
       const lowerCasedInputValue = inputValue.toLowerCase()
 
-      return nonChannelMembers.filter((user: UserFields) => {
-        const isUserSelected = selectedUsers.find((selectedUser) => selectedUser.name === user.name)
+      return nonChannelMembers.filter((user) => {
+        if (inputValue === '') return true
+
         return (
-          !isUserSelected &&
-          (user.full_name.toLowerCase().includes(lowerCasedInputValue) ||
-            user.name.toLowerCase().includes(lowerCasedInputValue))
+          user.full_name.toLowerCase().includes(lowerCasedInputValue) ||
+          user.name.toLowerCase().includes(lowerCasedInputValue)
         )
       })
     },
@@ -63,6 +63,7 @@ const AddMembersDropdown = ({
       setSelectedUsers={setSelectedUsers}
       getFilteredUsers={getFilteredUsers}
       label={label}
+      loading={isLoading}
     />
   )
 }

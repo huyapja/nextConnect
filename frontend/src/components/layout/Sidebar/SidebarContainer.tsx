@@ -27,6 +27,7 @@ import clsx from 'clsx'
 import { useFrappeEventListener, useFrappeGetCall } from 'frappe-react-sdk'
 import { FiChevronDown, FiChevronRight } from 'react-icons/fi'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useIsLaptop } from '@/hooks/useMediaQuery'
 
 export const useMentionUnreadCount = () => {
   const { data: mentionsCount, mutate } = useFrappeGetCall<{ message: number }>(
@@ -67,22 +68,6 @@ export const filterItems = [
 ]
 
 export default function SidebarContainer({ sidebarRef }: { sidebarRef: React.RefObject<any> }) {
-  // const enrichedChannels = useEnrichedSortedChannels()
-
-  // const labelChannelsUnreadCount = useMemo(() => {
-  //   const seen = new Set<string>()
-  //   let total = 0
-
-  //   for (const ch of enrichedChannels) {
-  //     if (Array.isArray(ch.user_labels) && ch.user_labels.length > 0 && !seen.has(ch.name)) {
-  //       seen.add(ch.name)
-  //       total += ch.unread_count ?? 0
-  //     }
-  //   }
-
-  //   return total
-  // }, [enrichedChannels])
-
   const { mode, setMode, tempMode } = useSidebarMode()
 
   const isCollapsed = false
@@ -125,10 +110,6 @@ export default function SidebarContainer({ sidebarRef }: { sidebarRef: React.Ref
           </span>
           {!isCollapsed && !isIconOnly && <span className='text-base'>Bộ lọc</span>}
         </div>
-        {/*
-        {tempMode === 'default' && (
-          <HiOutlineCog className='w-5 h-5 pr-3 cursor-pointer hover:text-gray-900 dark:hover:text-white' />
-        )} */}
       </div>
 
       {tempMode === 'default' && <FilterList />}
@@ -138,6 +119,7 @@ export default function SidebarContainer({ sidebarRef }: { sidebarRef: React.Ref
 }
 
 export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => {
+  const isLaptop = useIsLaptop()
   const [isLabelOpen, setIsLabelOpen] = useState(false)
   const navigate = useNavigate()
   const { workspaceID, channelID } = useParams()
@@ -291,8 +273,10 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
           {badgeCount > 0 && (
             <span
               className={clsx(
-                'font-medium rounded-full text-white text-[11px] min-w-[16px] h-[16px] px-[6px] flex items-center justify-center',
-                isIconOnly ? 'absolute right-[4px] bg-red-500 text-[10px] w-[16px] h-[16px] px-0' : 'bg-gray-700 mr-4'
+                'font-medium rounded-full text-white text-[10px] flex items-center justify-center',
+                isIconOnly
+                  ? `absolute bottom-0 ${isLaptop ? 'right-[-5px]' : 'right-0'}  bg-red-500 p-1 w-[11px] h-[11px]`
+                  : 'bg-gray-700 mr-4 px-[6px] w-[14px] h-[14px]'
               )}
             >
               {badgeCount > 99 ? '99+' : badgeCount}
