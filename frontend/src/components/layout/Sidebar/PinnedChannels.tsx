@@ -8,11 +8,12 @@ import { useMemo, useState } from 'react'
 import { FaAngleDown, FaAngleUp, FaUsers } from 'react-icons/fa6'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
-import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
 import { useGetUser } from '@/hooks/useGetUser'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { UserAvatar } from '@/components/common/UserAvatar'
+import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
+import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
+import { FaRegTimesCircle } from 'react-icons/fa'
 
 export const useClickWithoutDrag = (onClick: () => void, threshold = 5) => {
   const [start, setStart] = useState<{ x: number; y: number } | null>(null)
@@ -104,7 +105,6 @@ const PinnedChannelItem = ({ channel }: Props) => {
     >
       <div onPointerDown={onPointerDown} onPointerUp={onPointerUp} className='w-full flex flex-col items-center'>
         <div className='relative'>
-
           {/* Avatar */}
           <div className='w-8 h-8'>
             {isDM ? (
@@ -151,8 +151,8 @@ export const PinnedChannels = () => {
     const { active, over } = event
     if (!over || active.id === over.id) return
 
-    const oldIdx = pinnedIDs.indexOf(active?.id)
-    const newIdx = pinnedIDs.indexOf(over?.id)
+    const oldIdx = pinnedIDs.indexOf(active?.id as string)
+    const newIdx = pinnedIDs.indexOf(over?.id as string)
     if (oldIdx < 0 || newIdx < 0) return
 
     const next = arrayMove(pinnedIDs, oldIdx, newIdx)

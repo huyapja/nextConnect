@@ -53,7 +53,7 @@ const ThreadsList = ({
   const { data: unreadThreads } = useUnreadThreadsCount()
 
   const unreadThreadsMap = useMemo(() => {
-    return unreadThreads?.message.reduce(
+    return unreadThreads?.message?.threads?.reduce(
       (acc, thread) => {
         acc[thread.name] = thread.unread_count
         return acc

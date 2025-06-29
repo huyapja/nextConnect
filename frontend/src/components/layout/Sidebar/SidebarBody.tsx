@@ -26,7 +26,7 @@ export const SidebarBody = () => {
     return channels.filter((channel) => channel.workspace === workspaceID)
   }, [channels, workspaceID])
 
-  const { unreadChannels, readChannels, unreadDMs, readDMs } = useGetChannelUnreadCounts({
+  const { unreadChannels, readChannels, unreadDMs } = useGetChannelUnreadCounts({
     channels: workspaceChannels,
     dm_channels,
     unread_count: unread_count?.message
@@ -44,32 +44,32 @@ export const SidebarBody = () => {
             iconLabel='Saved Message'
           />
         </Flex>
-        <PinnedChannels unread_count={unread_count?.message} />
+        {/* <PinnedChannels unread_count={unread_count?.message} /> */}
         {(unreadChannels?.length > 0 || unreadDMs?.length > 0) && (
           <UnreadList unreadChannels={unreadChannels} unreadDMs={unreadDMs} />
         )}
         <ChannelList channels={readChannels} />
-        <DirectMessageList dm_channels={readDMs} />
+        {/* <DirectMessageList dm_channels={readDMs} /> */}
       </Flex>
     </ScrollArea>
   )
 }
 
 const ThreadsButton = () => {
-  const { threadID } = useParams()
+  // const { threadID } = useParams()
 
-  const { data: unreadThreads } = useUnreadThreadsCount()
+  // const { data: unreadThreads } = useUnreadThreadsCount()
 
-  const totalUnreadThreads = useMemo(() => {
-    // Need to remove the current thread ID from the unread threads if it exists. The current thread is not included in the unread threads since the user is already on the thread
-    return unreadThreads?.message.filter((t) => t.name !== threadID)?.length || 0
-  }, [unreadThreads, threadID])
+  // const totalUnreadThreads = useMemo(() => {
+  //   // Need to remove the current thread ID from the unread threads if it exists. The current thread is not included in the unread threads since the user is already on the thread
+  //   return unreadThreads?.message.filter((t) => t.name !== threadID)?.length || 0
+  // }, [unreadThreads, threadID])
 
   return (
     <SidebarItemForPage
       to={'threads'}
       label='Threads'
-      unreadCount={totalUnreadThreads}
+      unreadCount={0}
       icon={<BiMessageAltDetail className='text-gray-12 dark:text-gray-300 mt-1 sm:text-sm text-base' />}
       iconLabel='Threads'
     />

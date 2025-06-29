@@ -200,8 +200,9 @@ def get_other_threads(
 @frappe.whitelist(methods=["GET"])
 def get_unread_threads(workspace: str = None, thread_id: str = None):
 	"""
-	Get the number of threads in which the user is a participant and has unread messages > 0
+	Get unread thread count and unread message count per thread for current user.
 	"""
+	from pypika.terms import Case
 
 	channel = frappe.qb.DocType("Raven Channel")
 	channel_member = frappe.qb.DocType("Raven Channel Member")
@@ -211,9 +212,7 @@ def get_unread_threads(workspace: str = None, thread_id: str = None):
 		frappe.qb.from_(channel)
 		.select(channel.name, Count(message.name).as_("unread_count"))
 		.left_join(channel_member)
-		.on(
-			(channel.name == channel_member.channel_id) & (channel_member.user_id == frappe.session.user)
-		)
+		.on((channel.name == channel_member.channel_id) & (channel_member.user_id == frappe.session.user))
 		.left_join(message)
 		.on(channel.name == message.channel_id)
 		.where(channel.is_thread == 1)
@@ -230,7 +229,15 @@ def get_unread_threads(workspace: str = None, thread_id: str = None):
 	if thread_id:
 		query = query.where(channel.name == thread_id)
 
-	return query.run(as_dict=True)
+	results = query.run(as_dict=True)
+
+	unread_threads = [r for r in results if r["unread_count"] > 0]
+
+	return {
+		"threads": results,
+		"total_unread_threads": sum(r["unread_count"] for r in unread_threads)
+	}
+
 
 
 @frappe.whitelist(methods=["POST"])
