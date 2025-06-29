@@ -6,10 +6,11 @@ import { Button, Text, Tooltip } from '@radix-ui/themes'
 import clsx from 'clsx'
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { BiSolidSend } from 'react-icons/bi'
-import { FiArrowLeft, FiCpu, FiPaperclip, FiRefreshCw } from 'react-icons/fi'
+import { FiArrowLeft, FiCpu, FiPaperclip, FiRefreshCw, FiX } from 'react-icons/fi'
 import { useNavigate, useParams } from 'react-router-dom'
 import { commonButtonStyle } from '../labels/LabelItemMenu'
 import ChatbotFileMessage from './ChatbotFileMessage'
+import { CustomFile } from '../file-upload/FileDrop'
 
 interface Props {
   session: { id: string; title: string; messages: Message[] }
@@ -19,10 +20,12 @@ interface Props {
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
   onSubmit: (e: React.FormEvent) => void
   // File props
-  selectedFile: File | null
+  files: CustomFile[]
   fileError: string | null
   onFileSelect: (file: File) => void
-  onRemoveFile: () => void
+  onFilesSelect: (files: File[]) => void
+  onRemoveFile: (fileId: string) => void
+  onClearAllFiles: () => void
   allowedFileTypes: string[]
   maxFileSize: number
   // Message props
@@ -55,10 +58,12 @@ const ChatbotAIChatBox: React.FC<Props> = ({
   onInputChange,
   onKeyDown,
   onSubmit,
-  selectedFile,
+  files,
   fileError,
   onFileSelect,
+  onFilesSelect,
   onRemoveFile,
+  onClearAllFiles,
   allowedFileTypes,
   isThinking,
   hasMore,
@@ -131,12 +136,16 @@ const ChatbotAIChatBox: React.FC<Props> = ({
   // File input handlers
   const handleFileInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
-      if (file) {
-        onFileSelect(file)
+      const fileList = e.target.files
+      if (fileList && fileList.length > 0) {
+        if (fileList.length === 1) {
+          onFileSelect(fileList[0])
+        } else {
+          onFilesSelect(Array.from(fileList))
+        }
       }
     },
-    [onFileSelect]
+    [onFileSelect, onFilesSelect]
   )
 
   const handleFileClick = useCallback(() => {
@@ -144,22 +153,26 @@ const ChatbotAIChatBox: React.FC<Props> = ({
   }, [])
 
   const handleRemoveFileClick = useCallback(() => {
-    onRemoveFile()
+    onClearAllFiles()
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
-  }, [onRemoveFile])
+  }, [onClearAllFiles])
 
   // Drag and drop handlers
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault()
-      const file = e.dataTransfer.files?.[0]
-      if (file) {
-        onFileSelect(file)
+      const fileList = e.dataTransfer.files
+      if (fileList && fileList.length > 0) {
+        if (fileList.length === 1) {
+          onFileSelect(fileList[0])
+        } else {
+          onFilesSelect(Array.from(fileList))
+        }
       }
     },
-    [onFileSelect]
+    [onFileSelect, onFilesSelect]
   )
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -301,23 +314,40 @@ const ChatbotAIChatBox: React.FC<Props> = ({
                   {/* File message content */}
                   {msg.message_type === 'File' && (
                     <div className={`${msg.pending ? 'opacity-70' : ''}`}>
-                      {/* Text content if any */}
+                      {/* Text content LUÔN hiển thị ở trên nếu có */}
                       {msg.content && (
                         <div className='mb-3'>
                           <div
                             className='text-gray-800 dark:text-gray-200 text-[15px] font-normal leading-relaxed'
                             style={{ whiteSpace: 'pre-wrap' }}
                           >
-                            {msg.content}
+                            {msg.content.split('\n\n[Đang tải')[0] || msg.content}
                           </div>
                         </div>
                       )}
 
-                      {/* File attachment */}
-                      {msg.file && (
-                        <div className={`${msg.pending ? 'opacity-70' : ''} mt-2`}>
-                          <ChatbotFileMessage fileUrl={msg.file} fileName={getFileName(msg.file)} />
+                      {/* Files hiển thị ở dưới text */}
+                      {/* Check if this is a grouped message with multiple files */}
+                      {(msg as any).groupedFiles && (msg as any).groupedFiles.length > 1 ? (
+                        <div className='space-y-2'>
+                          <div className='text-sm text-gray-600 dark:text-gray-400'>
+                            {(msg as any).groupedFiles.length} files đính kèm:
+                          </div>
+                          {(msg as any).groupedFiles.map((fileMsg: any, index: number) => (
+                            fileMsg.file && (
+                              <div key={index} className='bg-gray-50 dark:bg-gray-800 p-2 rounded'>
+                                <ChatbotFileMessage fileUrl={fileMsg.file} fileName={getFileName(fileMsg.file)} />
+                              </div>
+                            )
+                          ))}
                         </div>
+                      ) : (
+                        /* Single file attachment */
+                        msg.file && (
+                          <div className={`${msg.pending ? 'opacity-70' : ''}`}>
+                            <ChatbotFileMessage fileUrl={msg.file} fileName={getFileName(msg.file)} />
+                          </div>
+                        )
                       )}
                     </div>
                   )}
@@ -383,18 +413,38 @@ const ChatbotAIChatBox: React.FC<Props> = ({
       <div className='border-t border-gray-200 dark:border-white/10 bg-white dark:bg-gray-2 px-4 py-4'>
         <div className='max-w-3xl mx-auto'>
           {/* File preview */}
-          {selectedFile && (
+          {files.length > 0 && (
             <div className='mb-3'>
-              <ChatbotFileMessage fileUrl={URL.createObjectURL(selectedFile)} fileName={selectedFile.name} />
-              <div className='mt-2 text-xs text-gray-500 dark:text-gray-400'>
-                Dung lượng: {formatFileSize(selectedFile.size)}
+              <div className='flex items-center justify-between mb-2'>
+                <Text className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+                  Files đính kèm ({files.length})
+                </Text>
                 <button
-                  onClick={handleRemoveFileClick}
-                  className='ml-4 text-red-500 hover:underline text-xs cursor-pointer'
+                  onClick={onClearAllFiles}
+                  className='text-xs text-red-500 hover:underline cursor-pointer'
                 >
-                  Xoá tệp
+                  Xoá tất cả
                 </button>
               </div>
+              {files.map((file) => (
+                <div key={file.fileID} className='mb-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg'>
+                  <div className='flex items-center justify-between'>
+                    <div className='flex-1'>
+                      <ChatbotFileMessage fileUrl={URL.createObjectURL(file)} fileName={file.name} />
+                      <div className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
+                        Dung lượng: {formatFileSize(file.size)}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => onRemoveFile(file.fileID)}
+                      className='ml-2 p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900 rounded-full transition-colors'
+                      title='Xoá file này'
+                    >
+                      <FiX size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
           {/* File error */}
@@ -417,6 +467,7 @@ const ChatbotAIChatBox: React.FC<Props> = ({
               onChange={handleFileInputChange}
               className='hidden'
               accept={allowedFileTypes.join(',')}
+              multiple
             />
 
             {/* File attachment button */}
@@ -449,9 +500,9 @@ const ChatbotAIChatBox: React.FC<Props> = ({
 
             <button
               type='submit'
-              disabled={(!input.trim() && !selectedFile) || loading}
+              disabled={(!input.trim() && files.length === 0) || loading}
               className={`p-2 rounded-full transition-colors ${
-                (!input.trim() && !selectedFile) || loading
+                (!input.trim() && files.length === 0) || loading
                   ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-300 cursor-not-allowed'
                   : 'bg-blue-600 dark:bg-white text-white dark:text-black hover:bg-blue-700 dark:hover:bg-gray-200'
               }`}

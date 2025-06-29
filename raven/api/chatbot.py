@@ -205,6 +205,38 @@ def send_message(conversation_id, message, is_user=True, message_type="Text", fi
         frappe.throw(_("Có lỗi xảy ra khi gửi tin nhắn"))
 
 
+@frappe.whitelist()
+def trigger_ai_reply(conversation_id, message_text=None):
+    """
+    API để trigger AI reply cho conversation sau khi upload files
+    """
+    try:
+        if not frappe.db.exists("ChatConversation", conversation_id):
+            frappe.throw(_("Cuộc trò chuyện không tồn tại"))
+        
+        # Tạo message từ user nếu có message_text
+        if message_text:
+            create_message(conversation_id, message_text, is_user=True, message_type="Text")
+            frappe.db.commit()
+        
+        # Enqueue AI reply
+        frappe.enqueue(
+            "raven.api.chatbot.handle_ai_reply",
+            conversation_id=conversation_id,
+            now=False,
+            timeout=300  # 5 phút timeout
+        )
+        
+        return {"success": True, "message": "AI reply đã được trigger"}
+        
+    except Exception as e:
+        frappe.log_error(
+            f"{str(e)}\n{traceback.format_exc()}",
+            "Trigger AI Reply Error"
+        )
+        frappe.throw(_("Có lỗi xảy ra khi gọi AI reply"))
+
+
 def handle_ai_reply(conversation_id):
     try:
         max_retries = 5
