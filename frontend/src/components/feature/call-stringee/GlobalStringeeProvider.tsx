@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { useFrappeGetCall, useFrappeEventListener, useFrappePostCall, useFrappeGetDoc } from 'frappe-react-sdk'
 import { toast } from 'sonner'
 import CallStringee from './CallStringee'
+import { CallErrorBoundary } from './ErrorBoundary'
 
 declare global {
   interface Window {
@@ -124,7 +125,7 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
         '📞 Cuộc gọi nhỡ',
         {
           description: 'Bạn đang trong cuộc gọi khác. Cuộc gọi đã được từ chối tự động.',
-          duration: 6000
+          duration: 5000
         }
       )
     }
@@ -247,7 +248,7 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
             `📞 Bạn có cuộc gọi nhỡ từ ${callerName}`,
             {
               description: 'Nhấn để gọi lại ngay bây giờ',
-              duration: 10000,
+              duration: 5000,
               action: {
                 label: 'Gọi lại',
                 onClick: () => {
@@ -273,7 +274,7 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
           `📞 Bạn có ${missedCalls.length} cuộc gọi nhỡ`,
           {
             description: 'Kiểm tra danh sách tin nhắn để xem chi tiết',
-            duration: 8000,
+            duration: 5000,
             action: {
               label: 'Xem',
               onClick: () => {
@@ -323,41 +324,7 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
     }
   }, [data?.message?.user_id])
 
-  // Handle call back from missed calls
-  useEffect(() => {
-    const handleCallBack = (event: CustomEvent) => {
-      const { toUserId, isVideoCall, callerName } = event.detail
-      
-      // Set up call data for callback
-      const currentUserId = data?.message?.user_id
-      const channelId = currentUserId && currentUserId < toUserId 
-        ? `${currentUserId} _ ${toUserId}` 
-        : `${toUserId} _ ${currentUserId}`
-      
-      setGlobalCallData({
-        toUserId: toUserId,
-        channelId: channelId
-      })
-      setShowGlobalCall(true)
-      
-      toast.success(`Đang gọi lại ${callerName}...`)
-      
-      // Small delay to let modal open, then trigger call
-      setTimeout(() => {
-        // Use DOM event to trigger call
-        const makeCallEvent = new CustomEvent('makeCallFromMissed', {
-          detail: { isVideoCall }
-        })
-        window.dispatchEvent(makeCallEvent)
-      }, 500)
-    }
-    
-    window.addEventListener('triggerCallBack', handleCallBack as EventListener)
-    
-    return () => {
-      window.removeEventListener('triggerCallBack', handleCallBack as EventListener)
-    }
-  }, [data?.message?.user_id])
+  // Removed complex global call logic - now using simple 1-1 call flow via DM channel navigation
 
   // Cleanup audio refs on unmount
   useEffect(() => {
@@ -446,18 +413,20 @@ export const GlobalStringeeProvider = ({ children }: GlobalStringeeProviderProps
       
       {/* 🌐 Global Call Modal */}
       {showGlobalCall && globalCallData && (
-        <CallStringee 
-          toUserId={globalCallData.toUserId}
-          channelId={globalCallData.channelId}
-          globalClient={client}
-          globalIncomingCall={globalIncomingCall}
-          isGlobalCall={true}
-          onClose={() => {
-            setShowGlobalCall(false)
-            setGlobalIncomingCall(null)
-            setGlobalCallData(null)
-          }}
-        />
+        <CallErrorBoundary>
+          <CallStringee 
+            toUserId={globalCallData.toUserId}
+            channelId={globalCallData.channelId}
+            globalClient={client}
+            globalIncomingCall={globalIncomingCall}
+            isGlobalCall={true}
+            onClose={() => {
+              setShowGlobalCall(false)
+              setGlobalIncomingCall(null)
+              setGlobalCallData(null)
+            }}
+          />
+        </CallErrorBoundary>
       )}
 
       {/* 🔄 Rejoin Call Dialog */}

@@ -6,7 +6,7 @@ import { Box, Flex, Text, Tooltip } from '@radix-ui/themes'
 import { FiPhone, FiVideo, FiPhoneMissed } from 'react-icons/fi'
 import { useFrappePostCall } from 'frappe-react-sdk'
 import { toast } from 'sonner'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useIsTablet } from '@/hooks/useMediaQuery'
 import { useTheme } from '@/ThemeProvider'
 import clsx from 'clsx'
@@ -52,9 +52,11 @@ interface MissedCallItemProps {
 const MissedCallItem = ({ call, isExpanded, onToggleExpand, onUpdate }: MissedCallItemProps) => {
   const callerUser = useGetUser(call.caller_id)
   const navigate = useNavigate()
+  const { workspaceID } = useParams()
   const { appearance } = useTheme()
   
   const { call: markAsRead } = useFrappePostCall('raven.api.missed_calls.mark_as_read')
+  const { call: createDMChannel } = useFrappePostCall<{ message: string }>('raven.api.raven_channel.create_direct_message_channel')
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString)
@@ -88,24 +90,51 @@ const MissedCallItem = ({ call, isExpanded, onToggleExpand, onUpdate }: MissedCa
 
   const handleCallBack = useCallback(async (isVideo: boolean) => {
     try {
+      console.log('📞 [MissedCallsList] Starting callback for:', { 
+        callerId: call.caller_id, 
+        callerName: call.caller_name,
+        isVideo 
+      })
+
       if (!call.is_read) {
         await handleMarkAsRead()
       }
 
-      // Trigger call back via global event
-      window.dispatchEvent(new CustomEvent('triggerCallBack', { 
-        detail: { 
-          toUserId: call.caller_id, 
-          isVideoCall: isVideo,
-          callerName: call.caller_name
-        } 
+
+
+      // 🎯 Sử dụng logic call 1-1 thông thường:
+      // 1. Tạo/tìm DM channel với user đó
+      const dmChannelResponse = await createDMChannel({
+        user_id: call.caller_id
+      })
+
+      // 2. Lưu thông tin cuộc gọi cần trigger vào sessionStorage
+      sessionStorage.setItem('pendingCall', JSON.stringify({
+        toUserId: call.caller_id,
+        isVideoCall: isVideo,
+        callerName: call.caller_name,
+        timestamp: Date.now()
       }))
+
+      // 3. Navigate đến DM channel
+      const channelId = dmChannelResponse?.message
+      if (channelId) {
+        if (workspaceID) {
+          navigate(`/${workspaceID}/${channelId}`)
+        } else {
+          navigate(`/channel/${channelId}`)
+        }
+        
+        console.log('📞 [MissedCallsList] Navigated to DM channel:', channelId)
+      } else {
+        throw new Error('Failed to get channel ID')
+      }
       
     } catch (error) {
-      console.error('Error calling back:', error)
-      toast.error('Không thể gọi lại')
+      console.error('📞 [MissedCallsList] Error calling back:', error)
+      toast.error('Không thể tạo cuộc trò chuyện. Vui lòng thử lại.')
     }
-  }, [call, handleMarkAsRead])
+  }, [call, handleMarkAsRead, createDMChannel, navigate, workspaceID])
 
   const handleItemClick = useCallback(() => {
     onToggleExpand()

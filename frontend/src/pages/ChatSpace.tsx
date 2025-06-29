@@ -9,6 +9,7 @@ import { Box, Grid } from '@radix-ui/themes'
 import { useSWRConfig } from 'frappe-react-sdk'
 import { useEffect } from 'react'
 import { Outlet, useParams, useSearchParams } from 'react-router-dom'
+import { toast } from 'sonner'
 
 const ChatSpace = () => {
   // only if channelID is present render ChatSpaceArea component'
@@ -67,6 +68,36 @@ const ChatSpaceArea = ({ channelID }: { channelID: string }) => {
             revalidate: false
           }
         )
+      }
+    }
+
+    // 📞 Check for pending call from missed calls
+    const pendingCallData = sessionStorage.getItem('pendingCall')
+    if (pendingCallData) {
+      try {
+        const callInfo = JSON.parse(pendingCallData)
+        const { toUserId, isVideoCall, callerName, timestamp } = callInfo
+        
+        // Check if the call is not too old (within 1 minute)
+        const now = Date.now()
+        if (now - timestamp < 60000) {
+          console.log('📞 [ChatSpace] Found pending call, triggering:', callInfo)
+          
+                     // Small delay to ensure CallStringee component is ready
+           setTimeout(() => {
+             window.dispatchEvent(new CustomEvent('makeCallFromMissed', {
+               detail: { isVideoCall }
+             }))
+           }, 500)
+        } else {
+          console.log('📞 [ChatSpace] Pending call too old, ignoring')
+        }
+        
+        // Clear the pending call data
+        sessionStorage.removeItem('pendingCall')
+      } catch (error) {
+        console.error('📞 [ChatSpace] Error parsing pending call data:', error)
+        sessionStorage.removeItem('pendingCall')
       }
     }
   }, [channelID, baseMessage])

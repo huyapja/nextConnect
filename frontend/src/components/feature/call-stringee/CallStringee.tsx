@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useFrappeGetCall, useFrappeEventListener, useFrappeGetDoc, useFrappePostCall } from 'frappe-react-sdk'
 import { 
   FiPhone, FiPhoneCall, FiPhoneOff, 
-  FiVideo, FiVideoOff, FiMic, FiMicOff, FiHeadphones, FiChevronDown,
+  FiVideo, FiVideoOff, FiMic, FiMicOff, FiHeadphones,
   FiVolume2, FiVolumeX 
 } from 'react-icons/fi'
 import { useTheme } from '@/ThemeProvider'
@@ -44,6 +44,12 @@ export default function StringeeCallComponent({
   isGlobalCall = false,
   onClose 
 }: CallStringeeProps) {
+
+  // 🛡️ Early return for invalid props to prevent white screen
+  if (!toUserId) {
+    console.error('📞 [CallStringee] toUserId is required')
+    return null
+  }
   
   const { appearance } = useTheme()
   const { isInCall: globalIsInCall, setIsInCall: setGlobalIsInCall } = useGlobalStringee()
@@ -327,25 +333,7 @@ export default function StringeeCallComponent({
     }
   }, [])
 
-  // Handle make call from missed calls - moved after makeCall definition
-  useEffect(() => {
-    const handleMakeCallFromMissed = (event: CustomEvent) => {
-      const { isVideoCall } = event.detail
-      
-      // Small delay to ensure call modal is ready
-      setTimeout(() => {
-        if (makeCall) {
-          makeCall(isVideoCall)
-        }
-      }, 100)
-    }
-    
-    window.addEventListener('makeCallFromMissed', handleMakeCallFromMissed as EventListener)
-    
-    return () => {
-      window.removeEventListener('makeCallFromMissed', handleMakeCallFromMissed as EventListener)
-    }
-  }, [])
+
 
     // Listen for realtime call status updates using frappe-react-sdk hook
   useFrappeEventListener('call_status_update', (data: any) => {
@@ -1458,6 +1446,37 @@ export default function StringeeCallComponent({
     }
   }, [stopAllAudio, isGlobalCall, onClose])
 
+  // Handle make call from missed calls - placed after makeCall definition
+  useEffect(() => {
+    const handleMakeCallFromMissed = (event: CustomEvent) => {
+      try {
+        const { isVideoCall } = event.detail
+        
+        console.log('📞 [MissedCall] Received makeCallFromMissed event:', { isVideoCall })
+        
+        // Small delay to ensure modal is ready
+        setTimeout(() => {
+          try {
+            makeCall(isVideoCall)
+            console.log('📞 [MissedCall] Making call with makeCall function')
+          } catch (callError) {
+            console.error('📞 [MissedCall] Error making call:', callError)
+            toast.error('Lỗi không thể khởi tạo cuộc gọi. Vui lòng thử lại.')
+          }
+        }, 100)
+      } catch (error) {
+        console.error('📞 [MissedCall] Error handling makeCallFromMissed:', error)
+        toast.error('Lỗi không thể khởi tạo cuộc gọi. Vui lòng tải lại trang.')
+      }
+    }
+    
+    window.addEventListener('makeCallFromMissed', handleMakeCallFromMissed as EventListener)
+    
+    return () => {
+      window.removeEventListener('makeCallFromMissed', handleMakeCallFromMissed as EventListener)
+    }
+  }, [makeCall]) // Add makeCall as dependency
+
   const answerCall = async () => {
     if (!incoming) return
     
@@ -1924,9 +1943,11 @@ export default function StringeeCallComponent({
 
 
 
-  return (
-    <>
-      {/* CSS Animation for pulse effects and progress ring */}
+  // 🛡️ Safe render with try-catch to prevent white screen
+  try {
+    return (
+      <>
+        {/* CSS Animation for pulse effects and progress ring */}
       <style>{`
         @keyframes pulse {
           0% {
@@ -1990,7 +2011,6 @@ export default function StringeeCallComponent({
               title={globalIsInCall ? "Cuộc gọi đang diễn ra" : "Tùy chọn cuộc gọi"}
             >
               <FiPhone size={18} />
-              <FiChevronDown size={12} style={{ position: 'absolute', bottom: '-2px', right: '2px' }} />
             </button>
           </DropdownMenu.Trigger>
           
@@ -2924,5 +2944,51 @@ export default function StringeeCallComponent({
         </div>
       )}
     </>
-  )
+    )
+  } catch (error) {
+    console.error('📞 [CallStringee] Component render error:', error)
+    // Return a fallback UI instead of crashing
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white'
+      }}>
+        <div style={{
+          backgroundColor: '#1f2937',
+          padding: '40px',
+          borderRadius: '20px',
+          textAlign: 'center',
+          maxWidth: '400px'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}>⚠️</div>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: '20px' }}>Lỗi cuộc gọi</h3>
+          <p style={{ margin: '0 0 24px 0', color: '#9ca3af' }}>
+            Đã xảy ra lỗi khi hiển thị cuộc gọi.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              cursor: 'pointer'
+            }}
+          >
+            Tải lại trang
+          </button>
+        </div>
+      </div>
+    )
+  }
 } 

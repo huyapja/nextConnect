@@ -30,7 +30,7 @@ export const CallProvider = ({ children }: CallProviderProps) => {
       
       // Hiển thị thông báo
       toast.info(`Cuộc gọi đến từ ${data.caller_name}`, {
-        duration: 10000,
+        duration: 5000,
         action: {
           label: 'Trả lời',
           onClick: () => {

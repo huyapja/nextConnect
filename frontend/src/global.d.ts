@@ -17,8 +17,14 @@ declare global {
     time_zone: any
   }
 
+  interface FrappeRealtime {
+    on(event: string, callback: (data: any) => void): void
+    off(event: string, callback: (data: any) => void): void
+  }
+
   interface Frappe {
     boot?: FrappeBoot
+    realtime?: FrappeRealtime
   }
 
   interface Window {
