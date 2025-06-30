@@ -176,7 +176,7 @@ def get_messages(conversation_id=None):
 
 
 @frappe.whitelist()
-def send_message(conversation_id, message, is_user=True, message_type="Text", file=None):
+def send_message(conversation_id, message, is_user=True, message_type="Text", file=None, trigger_ai=True):
     try:
         if not frappe.db.exists("ChatConversation", conversation_id):
             frappe.throw(_("Cuộc trò chuyện không tồn tại"))
@@ -186,7 +186,8 @@ def send_message(conversation_id, message, is_user=True, message_type="Text", fi
         # Commit message trước khi enqueue AI reply
         frappe.db.commit()
 
-        if is_user:
+        # Chỉ trigger AI reply nếu trigger_ai = True và là user message
+        if is_user and trigger_ai:
             # Delay nhỏ để đảm bảo message đã được commit
             frappe.enqueue(
                 "raven.api.chatbot.handle_ai_reply",
@@ -238,7 +239,18 @@ def trigger_ai_reply(conversation_id, message_text=None):
 
 
 def handle_ai_reply(conversation_id):
+    # Tạo lock key để tránh duplicate processing
+    lock_key = f"ai_reply_lock_{conversation_id}"
+    
     try:
+        # Kiểm tra xem có process nào đang xử lý conversation này không
+        if frappe.cache().get(lock_key):
+            frappe.logger().info(f"[AI SKIPPED] Another AI reply process is already running for conversation {conversation_id}")
+            return
+        
+        # Set lock với timeout 60 giây
+        frappe.cache().setex(lock_key, 60, "processing")
+        
         max_retries = 5
         delay_base = 1
         context = []
@@ -268,6 +280,21 @@ def handle_ai_reply(conversation_id):
             )
             return
 
+        # Kiểm tra xem có AI message nào đang pending không (tránh duplicate reply)
+        recent_ai_messages = frappe.get_all(
+            "ChatMessage",
+            filters={
+                "parent": conversation_id,
+                "is_user": 0,
+                "creation": [">=", frappe.utils.add_to_date(frappe.utils.now(), minutes=-2)]
+            },
+            limit_page_length=1
+        )
+        
+        if recent_ai_messages:
+            frappe.logger().info(f"[AI SKIPPED] Recent AI message found for conversation {conversation_id}, skipping duplicate reply")
+            return
+
         ai_reply = call_openai(context)
         chat_message = create_message(conversation_id, ai_reply, is_user=False)
         frappe.db.commit()
@@ -282,11 +309,16 @@ def handle_ai_reply(conversation_id):
             after_commit=True
         )
 
+        frappe.logger().info(f"[AI SUCCESS] AI reply completed for conversation {conversation_id}")
+
     except Exception as e:
         frappe.log_error(
             f"Error handling AI reply:\n{str(e)}\n{traceback.format_exc()}",
             "AI Handler Error"
         )
+    finally:
+        # Luôn clear lock khi hoàn thành
+        frappe.cache().delete(lock_key)
 
 
 

@@ -222,30 +222,39 @@ const ChatbotAIBody = ({ botID }: { botID?: string }) => {
     try {
       const context = createContext()
 
-      // STEP 1: Gửi text message trước (nếu có)
+      // Logic mới để tránh duplicate AI calls:
+      if (hasFile) {
+        // Nếu có file: 
+        // 1. Gửi text message với flag để KHÔNG trigger AI (nếu có text)
+        // 2. Upload files với batch_upload = true  
+        // 3. Trigger AI reply một lần duy nhất ở cuối
+        
       if (hasText) {
+          // Gửi text message trước nhưng không trigger AI
+          await call.post('raven.api.chatbot.send_message', {
+            conversation_id: botID!,
+            message: trimmedInput,
+            is_user: true,
+            message_type: 'Text',
+            trigger_ai: false // Custom flag để không trigger AI
+          })
+        }
+
+        // Upload files (đã có batch_upload = true trong useUploadChatbotFile)
+        await uploadFiles()
+        
+        // Trigger AI reply một lần duy nhất sau khi upload xong
+        await call.post('raven.api.chatbot.trigger_ai_reply', {
+          conversation_id: botID!,
+          message_text: null
+        })
+      } else {
+        // Nếu chỉ có text: gửi message bình thường (auto trigger AI)
         await sendMessage({
           conversation_id: botID!,
           message: trimmedInput,
           context
         })
-      }
-
-      // STEP 2: Upload files sau (nếu có)
-      if (hasFile) {
-        await uploadFiles()
-      }
-
-      // STEP 3: Trigger AI reply để xử lý toàn bộ conversation
-      if (hasText || hasFile) {
-        try {
-          await call.post('raven.api.chatbot.trigger_ai_reply', {
-            conversation_id: botID!,
-            message_text: null // Không cần message text vì đã gửi rồi
-          })
-        } catch (error) {
-          console.error('Error triggering AI reply:', error)
-        }
       }
 
       await mutateMessages()
