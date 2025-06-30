@@ -20,7 +20,7 @@ const UserList = () => {
   const { users } = useContext(UserListContext)
 
   const usersWithoutChannels = users?.filter(
-    (user) => !dm_channels.find((channel) => channel.peer_user_id === user.name)
+    (user) => !dm_channels?.find((channel) => channel?.peer_user_id === user.name)
   )
   const filteredDmChannels = dm_channels?.filter((channel) => {
     const peerUser = users?.find((user) => user.name === channel.peer_user_id)

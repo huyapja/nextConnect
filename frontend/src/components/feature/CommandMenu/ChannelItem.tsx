@@ -7,8 +7,10 @@ import { useSetAtom } from 'jotai'
 import { commandMenuOpenAtom } from './CommandMenu'
 import { BiBuildings } from 'react-icons/bi'
 import { HStack } from '@/components/layout/Stack'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 
 const ChannelItem = ({ channel }: { channel: ChannelListItem }) => {
+  const isMobile = useIsMobile()
   const navigate = useNavigate()
 
   const setOpen = useSetAtom(commandMenuOpenAtom)
@@ -23,7 +25,9 @@ const ChannelItem = ({ channel }: { channel: ChannelListItem }) => {
       <Flex gap='2' align='center' justify={'between'} width='100%'>
         <Flex gap='2' align='center'>
           <ChannelIcon type={channel.type} size='18' />
-          {channel.channel_name}
+          <div className={`max-w-[${isMobile ? '200px' : '350px'}] truncate`}>
+            <span className='truncate'> {channel.channel_name}</span>
+          </div>
           {channel.is_archived ? (
             <Badge color='red' variant='soft'>
               Archived

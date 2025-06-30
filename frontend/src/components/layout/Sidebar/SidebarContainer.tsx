@@ -271,7 +271,7 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
               className={clsx(
                 'font-medium rounded-full text-white text-[10px] flex items-center justify-center',
                 isIconOnly
-                  ? `absolute bottom-0 ${isLaptop ? 'right-[-5px]' : 'right-0'}  bg-red-500 p-1 w-[11px] h-[11px]`
+                  ? `absolute bottom-0 ${isLaptop ? 'right-[-5px]' : 'right-0'}  bg-red-500 p-1 w-[8px] h-[8px]`
                   : 'bg-gray-700 mr-4 px-[6px] w-[14px] h-[14px]'
               )}
             >

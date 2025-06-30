@@ -113,7 +113,7 @@ export const SidebarHeader = () => {
                   availabilityStatus={myProfile?.availability_status}
                   isActive={isActive}
                 />
-                <h4 className='text-sm ml-2'>{myProfile?.full_name}</h4>
+                <h4 className='text-xs ml-2 truncate'>{myProfile?.full_name}</h4>
               </IconButton>
             </DropdownMenu.Trigger>
             <DropdownMenu.Content variant='soft'>

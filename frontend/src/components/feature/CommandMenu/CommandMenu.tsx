@@ -74,43 +74,13 @@ export const CommandList = () => {
     <Command label='Global Command Menu' className='command-menu' filter={customFilter}>
       <Command.Input autoFocus={isDesktop} placeholder='Tìm kiếm hoặc gõ lệnh...' />
       <Command.List>
-        <Command.Empty>No results found.</Command.Empty>
+        <Command.Empty>Không tìm thấy kết quả tìm kiếm</Command.Empty>
         <ChannelList />
         <UserList />
-        <SettingsList />
+        {/* <SettingsList /> */}
         <Command.Group heading='Commands'>
           <ToggleThemeCommand />
         </Command.Group>
-
-        {/* TODO: Make these commands work */}
-        {/* <Command.Group heading="Commands">
-            <Command.Item>
-                <BiSearch size={ICON_SIZE} />
-                Search
-            </Command.Item>
-            <Command.Item>
-                <BiSearch size={ICON_SIZE} />
-                Search in #general
-            </Command.Item>
-            <Command.Item>
-                <BiFile size={ICON_SIZE} />
-                View files in #general
-            </Command.Item>
-            <Command.Item>
-                <BiSmile size={ICON_SIZE} />
-                Set status
-            </Command.Item>
-            <Command.Item>
-                <BiMoon size={ICON_SIZE} />
-                Toggle Theme
-            </Command.Item>
-            <Command.Item>
-                <BiCog size={ICON_SIZE} />
-                Settings
-            </Command.Item>
-        </Command.Group> */}
-
-        {/* <ArchivedChannelList /> */}
       </Command.List>
     </Command>
   )

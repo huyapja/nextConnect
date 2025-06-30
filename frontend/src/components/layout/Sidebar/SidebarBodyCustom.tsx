@@ -21,6 +21,7 @@ export const SidebarBody: FC = () => {
 
   const currentChannelIsDone = useAtomValue(channelIsDoneAtom)
 
+  // ko xóa dòng này
   const { refreshLabelList } = useLabelList()
   const prev = useAtomValue(sortedChannelsAtom)
 
