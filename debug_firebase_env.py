@@ -74,10 +74,13 @@ def debug_firebase_env():
             print(f"  Length: {len(private_key)}")
             print(f"  Starts with BEGIN: {private_key.startswith('-----BEGIN')}")
             print(f"  Ends with END: {private_key.endswith('-----')}")
-            print(f"  Contains newlines: {'\\n' in private_key}")
+            
+            # Define newline character outside f-string to avoid syntax error
+            newline_char = '\\n'
+            print(f"  Contains newlines: {newline_char in private_key}")
             
             # Count newlines
-            newline_count = private_key.count('\\n')
+            newline_count = private_key.count(newline_char)
             print(f"  Newline count: {newline_count}")
             
             if newline_count < 25:  # Typical private key has ~26-27 lines
