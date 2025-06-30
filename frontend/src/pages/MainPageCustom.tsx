@@ -27,6 +27,7 @@ import { UserListProvider } from '@/utils/users/UserListProvider'
 import { useFrappeEventListener, useSWRConfig } from 'frappe-react-sdk'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { ChannelListProvider } from '../utils/channel/ChannelListProvider'
+import { useAddChannelRealtimeListener } from '@/hooks/useAddChannelRealtimeListener'
 
 const AddRavenUsersPage = lazy(() => import('@/pages/AddRavenUsersPage'))
 
@@ -64,7 +65,7 @@ const MainPageContent = () => {
   useFetchActiveUsersRealtime()
   useActiveSocketConnection()
   useChannelDoneListener()
-
+  useAddChannelRealtimeListener()
   useLastMessageUpdatedListener()
 
   const { mutate } = useSWRConfig()

@@ -6,7 +6,7 @@ import { useChannelList } from '@/utils/channel/ChannelListProvider'
 import { UserListContext } from '@/utils/users/UserListProvider'
 import { Badge, Flex } from '@radix-ui/themes'
 import { Command } from 'cmdk'
-import { useFrappePostCall } from 'frappe-react-sdk'
+import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
 import { useSetAtom } from 'jotai'
 import { useContext } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -52,6 +52,8 @@ const UserWithoutDMItem = ({ userID }: { userID: string }) => {
     'raven.api.raven_channel.create_direct_message_channel'
   )
 
+  const { mutate } = useSWRConfig()
+
   const onSelect = () => {
     call({
       user_id: userID
@@ -62,7 +64,7 @@ const UserWithoutDMItem = ({ userID }: { userID: string }) => {
         } else {
           navigate(`/channel/${res?.message}`)
         }
-
+        mutate('channel_list')
         setOpen(false)
       })
       .catch((err) => {

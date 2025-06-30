@@ -1,10 +1,8 @@
-import { Box, Button, Flex, Text } from '@radix-ui/themes'
+import { Box, Flex, Text } from '@radix-ui/themes'
 import { memo } from 'react'
 import { TextMessage } from '../../../../../../../types/Messaging/Message'
 import { UserFields } from '@/utils/users/UserListProvider'
 import { TiptapRenderer } from './TiptapRenderer/TiptapRenderer'
-import { PiWarningCircleLight } from 'react-icons/pi'
-import { IoIosRefresh } from 'react-icons/io'
 import { RetryStatusIcon } from '@/components/common/RetryStatusIcon'
 import { RetryActionButtons } from '@/components/common/RetryActionButton'
 
@@ -24,7 +22,6 @@ export const TextMessageBlock = memo(
     const isError = message.is_error
 
     const showRetryButton = isError || isPending
-
     // @ts-ignore
     const CHAT_STYLE = window.frappe?.boot?.chat_style ?? 'Simple' // Lấy kiểu chat từ cấu hình
 

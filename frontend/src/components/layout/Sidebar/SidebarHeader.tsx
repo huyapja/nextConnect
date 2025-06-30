@@ -1,6 +1,5 @@
-import { useTheme } from '@/ThemeProvider'
 import { UserAvatar } from '@/components/common/UserAvatar'
-import { commandMenuOpenAtom } from '@/components/feature/CommandMenu/CommandMenu'
+import { commandMenuOpenAtom, settingsDrawerOpenAtom } from '@/components/feature/CommandMenu/CommandMenu'
 import { CreateChannelButton } from '@/components/feature/channels/CreateChannelModal'
 import { CreateLabelButton } from '@/components/feature/labels/CreateLabelModal'
 import { SetUserAvailabilityMenu } from '@/components/feature/userSettings/AvailabilityStatus/SetUserAvailabilityMenu'
@@ -13,15 +12,13 @@ import { UserContext } from '@/utils/auth/UserProvider'
 import { useSidebarMode } from '@/utils/layout/sidebar'
 import { truncateText } from '@/utils/textUtils/truncateText'
 import { __ } from '@/utils/translations'
-import { Box, DropdownMenu, Flex, IconButton, Text, Tooltip } from '@radix-ui/themes'
+import { Box, DropdownMenu, Flex, IconButton, Tooltip } from '@radix-ui/themes'
 import { useSetAtom } from 'jotai'
 import { useContext, useState, Suspense, lazy } from 'react'
-import { BiMoon, BiSun } from 'react-icons/bi'
 import { FiPlus } from 'react-icons/fi'
 import { LuSettings } from 'react-icons/lu'
 import { MdOutlineExitToApp } from 'react-icons/md'
 import { TbSearch } from 'react-icons/tb'
-import { useNavigate } from 'react-router-dom'
 
 const CreateConversationModal = lazy(() => import('../../feature/labels/conversations/CreateConversationModal'))
 
@@ -34,7 +31,7 @@ export const SidebarHeader = () => {
   const isTablet = useIsTablet()
   const isMobile = useIsMobile()
   const { mode, title, labelID } = useSidebarMode()
-  const navigate = useNavigate()
+  const setSettingsOpen = useSetAtom(settingsDrawerOpenAtom)
   const userData = useUserData()
   const { logout } = useContext(UserContext)
   const { myProfile } = useCurrentRavenUser()
@@ -77,10 +74,10 @@ export const SidebarHeader = () => {
                   <FiPlus size='16' />
                 </IconButton>
               ) : (
-                <>
+                <Flex justify='between' align='center' gap='1'>
                   <SearchButton />
                   <CreateChannelButton />
-                </>
+                </Flex>
               )}
             </Box>
           </Flex>
@@ -125,18 +122,18 @@ export const SidebarHeader = () => {
               </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu.Root>
-          <Flex justify='between' align='center' gap='4' className='pr-1 sm:pr-0'>
+          <Flex justify='between' align='center' gap='3'>
             <IconButton
               aria-label='Settings'
               size='2'
               color='gray'
               variant='ghost'
-              onClick={() => navigate('/settings/profile')}
+              onClick={() => setSettingsOpen(true)}
             >
               <LuSettings size='14' />
             </IconButton>
 
-            <ColorModeToggleButton />
+            {/* <ColorModeToggleButton /> */}
 
             {title === 'Nhãn' ? (
               <button className='bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 rounded'>
@@ -176,44 +173,43 @@ const SearchButton = () => {
   return (
     <Tooltip content='Tìm kiếm'>
       <IconButton
-        size={{ initial: '2', md: '1' }}
         aria-label='Mở mục tìm kiếm'
         title={__('Mở mục tìm kiếm')}
         color='gray'
-        className='text-gray-11 sm:hover:text-gray-12 p-2 cursor-pointer'
+        className='text-gray-11 sm:hover:text-gray-12 cursor-pointer'
         variant='ghost'
         onClick={() => setOpen(true)}
       >
-        <TbSearch className='text-lg sm:text-base' />
+        <TbSearch />
       </IconButton>
     </Tooltip>
   )
 }
 
-const ColorModeToggleButton = () => {
-  const { appearance, setAppearance } = useTheme()
+// const ColorModeToggleButton = () => {
+//   const { appearance, setAppearance } = useTheme()
 
-  const toggleTheme = () => {
-    setAppearance(appearance === 'light' ? 'dark' : 'light')
-  }
+//   const toggleTheme = () => {
+//     setAppearance(appearance === 'light' ? 'dark' : 'light')
+//   }
 
-  return (
-    <Flex align='center' justify='center' pr='1'>
-      <IconButton
-        size={{ initial: '2', md: '1' }}
-        aria-label='Toggle theme'
-        title={__('Toggle theme')}
-        color='gray'
-        className='text-gray-11 sm:hover:text-gray-12 p-2'
-        variant='ghost'
-        onClick={toggleTheme}
-      >
-        {appearance === 'light' ? (
-          <BiMoon className='text-lg sm:text-base' />
-        ) : (
-          <BiSun className='text-lg sm:text-base' />
-        )}
-      </IconButton>
-    </Flex>
-  )
-}
+//   return (
+//     <Flex align='center' justify='center' pr='1'>
+//       <IconButton
+//         size={{ initial: '2', md: '1' }}
+//         aria-label='Toggle theme'
+//         title={__('Toggle theme')}
+//         color='gray'
+//         className='text-gray-11 sm:hover:text-gray-12 p-2'
+//         variant='ghost'
+//         onClick={toggleTheme}
+//       >
+//         {appearance === 'light' ? (
+//           <BiMoon className='text-lg sm:text-base' />
+//         ) : (
+//           <BiSun className='text-lg sm:text-base' />
+//         )}
+//       </IconButton>
+//     </Flex>
+//   )
+// }
