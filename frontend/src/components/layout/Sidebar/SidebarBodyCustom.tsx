@@ -33,10 +33,6 @@ export const SidebarBody: FC = () => {
     setSortedChannels(sorted)
   }, [channels, dm_channels, setSortedChannels, currentChannelIsDone])
 
-  useEffect(() => {
-    refreshLabelList()
-  }, [])
-
   const isTablet = useIsTablet()
 
   const { title } = useSidebarMode()

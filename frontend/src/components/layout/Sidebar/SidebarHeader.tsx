@@ -18,7 +18,7 @@ import { useSetAtom } from 'jotai'
 import { useContext, useState, Suspense, lazy } from 'react'
 import { BiMoon, BiSun } from 'react-icons/bi'
 import { FiPlus } from 'react-icons/fi'
-import { LuPlus, LuSettings } from 'react-icons/lu'
+import { LuSettings } from 'react-icons/lu'
 import { MdOutlineExitToApp } from 'react-icons/md'
 import { TbSearch } from 'react-icons/tb'
 import { useNavigate } from 'react-router-dom'
@@ -96,41 +96,36 @@ export const SidebarHeader = () => {
     <>
       <header>
         <Flex justify='between' px='3' align='center' pt='1' height='48px'>
-          <Text as='span' size='6' className='cal-sans pl-1'>
-            raven
-          </Text>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger>
+              <IconButton
+                aria-label='Options'
+                color='gray'
+                variant='ghost'
+                size='2'
+                className='p-0 bg-transparent hover:bg-transparent'
+              >
+                <UserAvatar
+                  src={myProfile?.user_image}
+                  alt={myProfile?.full_name}
+                  size='1'
+                  className='hover:shadow-sm transition-all duration-200'
+                  availabilityStatus={myProfile?.availability_status}
+                  isActive={isActive}
+                />
+                <h4 className='text-sm ml-2'>{myProfile?.full_name}</h4>
+              </IconButton>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content variant='soft'>
+              <SetUserAvailabilityMenu />
+              <PushNotificationToggle />
+              <DropdownMenu.Separator />
+              <DropdownMenu.Item color='red' className='flex justify-normal gap-2' onClick={logout}>
+                <MdOutlineExitToApp size='14' /> {__('Log Out')}
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
           <Flex justify='between' align='center' gap='4' className='pr-1 sm:pr-0'>
-            <DropdownMenu.Root>
-              <Tooltip content='Options' side='right'>
-                <DropdownMenu.Trigger>
-                  <IconButton
-                    aria-label='Options'
-                    color='gray'
-                    variant='ghost'
-                    size='2'
-                    className='p-0 bg-transparent hover:bg-transparent'
-                  >
-                    <UserAvatar
-                      src={myProfile?.user_image}
-                      alt={myProfile?.full_name}
-                      size='1'
-                      className='hover:shadow-sm transition-all duration-200'
-                      availabilityStatus={myProfile?.availability_status}
-                      isActive={isActive}
-                    />
-                  </IconButton>
-                </DropdownMenu.Trigger>
-              </Tooltip>
-              <DropdownMenu.Content variant='soft'>
-                <SetUserAvailabilityMenu />
-                <PushNotificationToggle />
-                <DropdownMenu.Separator />
-                <DropdownMenu.Item color='red' className='flex justify-normal gap-2' onClick={logout}>
-                  <MdOutlineExitToApp size='14' /> {__('Log Out')}
-                </DropdownMenu.Item>
-              </DropdownMenu.Content>
-            </DropdownMenu.Root>
-
             <IconButton
               aria-label='Settings'
               size='2'

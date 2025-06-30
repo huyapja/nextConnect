@@ -39,6 +39,7 @@ export const RenameChannelModalContent = ({
     formState: { errors }
   } = methods
   const { updateDoc, loading: updatingDoc, error } = useFrappeUpdateDoc()
+  const {mutate} = useSWRConfig();
 
   const { mutate } = useSWRConfig()
 
