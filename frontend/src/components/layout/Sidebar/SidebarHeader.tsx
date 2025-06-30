@@ -5,6 +5,8 @@ import { CreateChannelButton } from '@/components/feature/channels/CreateChannel
 import { CreateLabelButton } from '@/components/feature/labels/CreateLabelModal'
 import { SetUserAvailabilityMenu } from '@/components/feature/userSettings/AvailabilityStatus/SetUserAvailabilityMenu'
 import PushNotificationToggle from '@/components/feature/userSettings/PushNotifications/PushNotificationToggle'
+import { FirebaseNotificationToggle } from '@/components/feature/firebase-notifications/FirebaseNotificationToggle'
+// import { FirebaseNotificationIndicator } from '@/components/feature/firebase-notifications/FirebaseNotificationIndicator'
 import useCurrentRavenUser from '@/hooks/useCurrentRavenUser'
 import { useIsUserActive } from '@/hooks/useIsUserActive'
 import { useIsDesktop, useIsMobile, useIsTablet } from '@/hooks/useMediaQuery'
@@ -59,7 +61,10 @@ export const SidebarHeader = () => {
       <>
         <header style={{ padding: mode === 'hide-filter' ? '20px 60px' : '6px 10px' }}>
           <Flex justify='between' px='2' align='center' pt='2'>
-            <span className='font-medium text-base truncate'>{truncateText(displayTitle, maxLength)}</span>
+            <Flex align='center' gap='2'>
+              <span className='font-medium text-base truncate'>{truncateText(displayTitle, maxLength)}</span>
+              {/* <FirebaseNotificationIndicator /> */}
+            </Flex>
             <Box>
               {title === 'Nhãn' ? (
                 <CreateLabelButton />
@@ -124,6 +129,7 @@ export const SidebarHeader = () => {
               <DropdownMenu.Content variant='soft'>
                 <SetUserAvailabilityMenu />
                 <PushNotificationToggle />
+                <FirebaseNotificationToggle />
                 <DropdownMenu.Separator />
                 <DropdownMenu.Item color='red' className='flex justify-normal gap-2' onClick={logout}>
                   <MdOutlineExitToApp size='14' /> {__('Log Out')}

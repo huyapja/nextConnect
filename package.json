@@ -24,6 +24,7 @@
     "turbo": "^2.3.3"
   },
   "dependencies": {
+    "firebase": "^11.9.1",
     "idb-keyval": "^6.2.2"
   }
 }

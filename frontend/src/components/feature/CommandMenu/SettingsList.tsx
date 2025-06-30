@@ -97,10 +97,10 @@ const SettingsList = () => {
         Cài đặt OpenAI
       </Command.Item>
 
-      <Command.Item value='push-notifications' onSelect={onSelect}>
+      {/* <Command.Item value='push-notifications' onSelect={onSelect}>
         <PiOpenAiLogo size={ICON_SIZE} />
         Thông báo đẩy
-      </Command.Item>
+      </Command.Item> */}
     </Command.Group>
   )
 }
