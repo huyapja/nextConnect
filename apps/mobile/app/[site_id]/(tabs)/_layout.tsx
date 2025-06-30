@@ -58,10 +58,6 @@ export default function TabLayout() {
         }
     }, [unread_count])
 
-    const hasUnreadThreads = useMemo(() => {
-        return unreadThreads?.message.some(item => item.unread_count > 0)
-    }, [unreadThreads])
-
     const tabBarIconStyle = (focused: boolean) => ({
         opacity: focused ? 1 : dark ? 0.8 : 0.7,
     })

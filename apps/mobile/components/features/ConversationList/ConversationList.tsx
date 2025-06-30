@@ -36,21 +36,21 @@ const ConversationList = ({ filter='all' }: ConversationListProps) => {
     const allDMs = useMemo(() => {
         let allRecord: RecordType[] = [];
         if (filter !== 'group') {
-            for (const item of dm_channels) {
-                if (item.is_done === 0) {
+            for (const dm of dm_channels) {
+                if (dm.is_done === 0) {
                     allRecord.push({
-                        ...item,
-                        unread_count: 0,
+                        ...dm,
+                        unread_count: unread_count?.message.find(item => item.name === dm.name)?.unread_count ?? 0
                     });
                 }
             }
         }
         if (filter !== 'private') {
-            for (const item of channels) {
-                if (item.is_done === 0) {
+            for (const channel of channels) {
+                if (channel.is_done === 0) {
                     allRecord.push({
-                        ...item,
-                        unread_count: unread_count?.message.find(item => item.name === item.name)?.unread_count ?? 0
+                        ...channel,
+                        unread_count: unread_count?.message.find(item => item.name === channel.name)?.unread_count ?? 0
                     });
                 }
             }

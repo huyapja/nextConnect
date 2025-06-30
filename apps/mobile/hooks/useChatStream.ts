@@ -1,4 +1,3 @@
-import { LegendListRef } from '@legendapp/list'
 import { Message } from '@raven/types/common/Message'
 import { useFrappeDocumentEventListener, useFrappeEventListener, useFrappeGetCall, useFrappePostCall } from 'frappe-react-sdk'
 import { useEffect, useMemo, useRef } from 'react'
@@ -9,6 +8,7 @@ import { formatDate } from '@raven/lib/utils/dateConversions'
 import useSiteContext from './useSiteContext'
 import { GetMessagesResponse } from '@raven/types/common/ChatStream'
 import { useTrackChannelVisit } from './useUnreadMessageCount'
+import { FlashList } from '@shopify/flash-list'
 
 dayjs.extend(utc)
 dayjs.extend(advancedFormat)
@@ -39,7 +39,7 @@ export interface HeaderBlock {
 
 export type MessageDateBlock = Message | DateBlock | HeaderBlock
 
-const useChatStream = (channelID: string, listRef?: React.RefObject<LegendListRef>, isThread: boolean = false, pinnedMessagesString?: string) => {
+const useChatStream = (channelID: string, listRef?: React.RefObject<FlashList<MessageDateBlock[]>>, isThread: boolean = false, pinnedMessagesString?: string) => {
 
     const siteInformation = useSiteContext()
 
@@ -58,32 +58,32 @@ const useChatStream = (channelID: string, listRef?: React.RefObject<LegendListRe
 
     //     console.log('Scrolling to bottom')
 
-    //     // First immediate scroll attempt
-    //     requestAnimationFrame(() => {
-    //         if (listRef.current) {
-    //             listRef.current.scrollToEnd({
-    //                 animated
-    //             })
-    //         }
-    //     })
+        // First immediate scroll attempt
+        // requestAnimationFrame(() => {
+        //     if (listRef.current) {
+        //         listRef.current.scrollToEnd({
+        //             animated
+        //         })
+        //     }
+        // })
 
-    //     // Second attempt after a short delay
-    //     const shortDelayTimer = setTimeout(() => {
-    //         if (listRef.current) {
-    //             listRef.current.scrollToEnd({
-    //                 animated
-    //             })
-    //         }
-    //     }, 250)
+        // Second attempt after a short delay
+        // const shortDelayTimer = setTimeout(() => {
+        //     if (listRef.current) {
+        //         listRef.current.scrollToEnd({
+        //             animated
+        //         })
+        //     }
+        // }, 250)
 
-    //     // Final backup attempt after longer delay
-    //     const backupTimer = setTimeout(() => {
-    //         if (listRef.current) {
-    //             listRef.current.scrollToEnd({
-    //                 animated
-    //             })
-    //         }
-    //     }, 800)
+        // Final backup attempt after longer delay
+        // const backupTimer = setTimeout(() => {
+        //     if (listRef.current) {
+        //         listRef.current.scrollToEnd({
+        //             animated
+        //         })
+        //     }
+        // }, 800)
     // }
 
     const { data, isLoading, error, mutate } = useFrappeGetCall<GetMessagesResponse>('raven.api.chat_stream.get_messages', {
@@ -97,23 +97,23 @@ const useChatStream = (channelID: string, listRef?: React.RefObject<LegendListRe
                 isDataFetched.current = true
 
                 // // Single attempt with RAF to ensure we're in the next frame
-                // requestAnimationFrame(() => {
-                //     // Check if we have both the ref and data
-                //     if (data.message.messages?.length) {
-                //         listRef?.current?.scrollToEnd({
-                //             animated: false
-                //         })
+                requestAnimationFrame(() => {
+                    // Check if we have both the ref and data
+                    if (data.message.messages?.length) {
+                        listRef?.current?.scrollToEnd({
+                            animated: false
+                        })
 
-                //         // One backup attempt after a short delay
-                //         setTimeout(() => {
-                //             if (listRef?.current) {
-                //                 listRef.current.scrollToEnd({
-                //                     animated: false
-                //                 })
-                //             }
-                //         }, 250)
-                //     }
-                // })
+                        // One backup attempt after a short delay
+                        setTimeout(() => {
+                            if (listRef?.current) {
+                                listRef.current.scrollToEnd({
+                                    animated: false
+                                })
+                            }
+                        }, 250)
+                    }
+                })
             }
 
             if (!data.message.has_new_messages) {

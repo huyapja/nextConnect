@@ -1,19 +1,20 @@
-import ErrorBanner from '@components/common/ErrorBanner'
 import useChatStream, { MessageDateBlock } from '@hooks/useChatStream'
-import { doubleTapMessageEmojiAtom } from '@lib/preferences'
-import { useAtomValue } from 'jotai'
-import { LegacyRef } from 'react'
-import { FlatList, NativeScrollEvent, NativeSyntheticEvent, View } from 'react-native'
-import ChatStreamSkeletonLoader from './ChatStreamSkeletonLoader'
+import { RefObject } from 'react'
+import { LegendList, LegendListRef } from '@legendapp/list'
 import DateSeparator from './DateSeparator'
-import ChannelHistoryFirstMessage from './FirstMessageBlock'
-import MessageItem from './MessageItem'
 import SystemMessageBlock from './SystemMessageBlock'
+import MessageItem from './MessageItem'
+import ChannelHistoryFirstMessage from './FirstMessageBlock'
+import { useAtomValue } from 'jotai'
+import { doubleTapMessageEmojiAtom } from '@lib/preferences'
+import { NativeScrollEvent, NativeSyntheticEvent, View } from 'react-native'
+import ChatStreamSkeletonLoader from './ChatStreamSkeletonLoader'
+import ErrorBanner from '@components/common/ErrorBanner'
 
 type Props = {
     channelID: string,
     isThread?: boolean,
-    scrollRef?: LegacyRef<FlatList<MessageDateBlock>>,
+    scrollRef?: RefObject<LegendListRef>,
     onMomentumScrollEnd?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void,
     onScrollBeginDrag?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void,
     pinnedMessagesString?: string
@@ -28,7 +29,7 @@ const ChatStream = ({ channelID, isThread, scrollRef, onMomentumScrollEnd, onScr
      */
     const doubleTapMessageEmoji = useAtomValue(doubleTapMessageEmojiAtom)
 
-    const { data, isLoading, error, loadOlderMessages, loadNewerMessages } = useChatStream(channelID, scrollRef as any, isThread, pinnedMessagesString)
+    const { data, isLoading, error, loadOlderMessages, loadNewerMessages } = useChatStream(channelID, scrollRef, isThread, pinnedMessagesString)
 
     if (isLoading) {
         return <ChatStreamSkeletonLoader />
@@ -39,58 +40,32 @@ const ChatStream = ({ channelID, isThread, scrollRef, onMomentumScrollEnd, onScr
             <ErrorBanner error={error} />
         </View>
     }
-    const onScrollToTop = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-        if (isLoading) {
-            console.log("Loading...", isLoading);
-            return
-        } else {
-            const { contentOffset } = event.nativeEvent;
-            if (contentOffset.y <= 50) {
-                loadOlderMessages()
-            }
-        }
-    }
 
     return (
-        <FlatList
+        <LegendList
             ref={scrollRef}
             data={data}
-            renderItem={MessageContentRenderer}
-            onStartReached={loadOlderMessages}
-            onStartReachedThreshold={0.3}
-            maintainVisibleContentPosition={{
-                minIndexForVisible: 1,
-            }}
-            initialScrollIndex={data?.length ? 0 : undefined}
             keyExtractor={messageKeyExtractor}
+            renderItem={MessageContentRenderer}
+            initialScrollIndex={data.length > 0 ? data.length - 1 : undefined}
+            keyboardDismissMode='on-drag'
+            onScrollBeginDrag={onScrollBeginDrag}
+            onStartReached={loadOlderMessages}
+            onEndReached={loadNewerMessages}
+            drawDistance={500}
+            alignItemsAtEnd
+            // maintainVisibleContentPosition
+            // waitForInitialLayout
+            maintainScrollAtEnd
+            maintainScrollAtEndThreshold={0.1}
+            getEstimatedItemSize={getEstimatedItemSize}
+            recycleItems={false}
+            contentContainerStyle={{
+                paddingBottom: 32
+            }}
+            onMomentumScrollEnd={onMomentumScrollEnd}
         />
     )
-
-    // return (
-    //     <LegendList
-    //         ref={scrollRef}
-    //         data={data}
-    //         keyExtractor={messageKeyExtractor}
-    //         renderItem={MessageContentRenderer}
-    //         initialScrollIndex={data.length > 0 ? data.length - 1 : undefined}
-    //         keyboardDismissMode='on-drag'
-    //         onScrollBeginDrag={onScrollBeginDrag}
-    //         onStartReached={loadOlderMessages}
-    //         onEndReached={loadNewerMessages}
-    //         drawDistance={500}
-    //         alignItemsAtEnd
-    //         // maintainVisibleContentPosition
-    //         // waitForInitialLayout
-    //         maintainScrollAtEnd
-    //         maintainScrollAtEndThreshold={0.1}
-    //         getEstimatedItemSize={getEstimatedItemSize}
-    //         recycleItems={false}
-    //         contentContainerStyle={{
-    //             paddingBottom: 32
-    //         }}
-    //         onMomentumScrollEnd={onMomentumScrollEnd}
-    //     />
-    // )
 
 }
 

@@ -1,18 +1,18 @@
-import { ArchivedChannelBox } from '@components/features/chat/ChatFooter/ArchivedChannelBox';
-import { JoinChannelBox } from '@components/features/chat/ChatFooter/JoinChannelBox';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { useKeyboardHandler } from 'react-native-keyboard-controller';
+import { useCallback, useEffect, useRef } from 'react';
+import { LegendListRef } from '@legendapp/list';
 import MessageActionsBottomSheet from '@components/features/chat/ChatMessage/MessageActions/MessageActionsBottomSheet';
 import { useSheetRef } from '@components/nativewindui/Sheet';
-import { MessageDateBlock } from '@hooks/useChatStream';
-import useShouldJoinChannel from '@hooks/useShouldJoinChannel';
-import { messageActionsSelectedMessageAtom } from '@lib/ChatInputUtils';
 import { useAtom } from 'jotai';
-import { useCallback, useEffect, useRef } from 'react';
-import { FlatList, Keyboard, NativeScrollEvent, NativeSyntheticEvent, View } from 'react-native';
-import { useKeyboardHandler } from 'react-native-keyboard-controller';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { messageActionsSelectedMessageAtom } from '@lib/ChatInputUtils';
+import { Keyboard, NativeScrollEvent, NativeSyntheticEvent, Platform, View } from 'react-native';
 import ChatStream from '../chat-stream/ChatStream';
 import ChatInput from './ChatInput/ChatInput';
+import { JoinChannelBox } from '@components/features/chat/ChatFooter/JoinChannelBox';
+import { ArchivedChannelBox } from '@components/features/chat/ChatFooter/ArchivedChannelBox';
+import useShouldJoinChannel from '@hooks/useShouldJoinChannel';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export const useGradualAnimation = () => {
     const height = useSharedValue(0)
@@ -37,7 +37,7 @@ type Props = {
 
 const ChatLayout = ({ channelID, isThread, pinnedMessagesString }: Props) => {
     const { height } = useGradualAnimation()
-    const scrollRef = useRef<FlatList<MessageDateBlock>>(null)
+    const scrollRef = useRef<LegendListRef>(null)
     const isNearBottomRef = useRef(true)
 
     const checkIfNearBottom = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -72,7 +72,7 @@ const ChatLayout = ({ channelID, isThread, pinnedMessagesString }: Props) => {
         }
     }, [])
 
-    const { canUserSendMessage, shouldShowJoinBox, channelData, myProfile, channelMemberProfile } = useShouldJoinChannel(channelID, !!isThread)
+    const { canUserSendMessage, shouldShowJoinBox, channelData, myProfile, channelMemberProfile } = useShouldJoinChannel(channelID, isThread)
 
     const fakeView = useAnimatedStyle(() => {
         return {
