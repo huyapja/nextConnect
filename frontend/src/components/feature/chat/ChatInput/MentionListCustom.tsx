@@ -287,9 +287,7 @@ const ChannelContext: React.FC<{ mention: MentionObject }> = ({ mention }) => {
 }
 
 const MessageContent: React.FC<{ content: string }> = ({ content }) => (
-  <Text as='p' className='text-sm line-clamp-2 text-ellipsis'>
-    <span className='[&_.mention]:text-accent-11'>{parse(content)}</span>
-  </Text>
+  <div className='text-sm line-clamp-2 text-ellipsis [&_.mention]:text-accent-11'>{parse(content)}</div>
 )
 
 const TimeStamp: React.FC<{ creation: string }> = ({ creation }) => (

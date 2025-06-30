@@ -200,8 +200,6 @@ const SaveMessageAction = ({ message }: { message: Message }) => {
         thread_id: threadID || null
       })
       .then((response) => {
-        console.log(response);
-        
         if (isSaved) {
           toast('Message unsaved')
           savedMessageStore.removeMessage(message.name)
