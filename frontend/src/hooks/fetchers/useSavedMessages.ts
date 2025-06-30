@@ -5,7 +5,7 @@ import { Message } from '../../../../types/Messaging/Message'
 type SavedMessage = Message & { workspace?: string }
 
 export function useSavedMessages() {
-  const { data, error, isLoading } = useFrappeGetCall<{
+  const { data, error, isLoading, mutate } = useFrappeGetCall<{
     message: SavedMessage[]
   }>('raven.api.raven_message.get_saved_messages', undefined, undefined, {
     revalidateOnFocus: false
@@ -26,6 +26,7 @@ export function useSavedMessages() {
   return {
     messages,
     error,
-    isLoading
+    isLoading,
+    mutate
   }
 }

@@ -163,6 +163,7 @@ def get_messages(channel_id):
 @frappe.whitelist()
 def save_message(message_id, add=False, thread_id=None):
 	from frappe.desk.like import toggle_like
+	import json
 
 	# Gắn cờ hoặc bỏ cờ
 	toggle_like("Raven Message", message_id, add)
@@ -220,8 +221,20 @@ def save_message(message_id, add=False, thread_id=None):
 	if message and message.get("channel_id"):
 		message["workspace"] = frappe.db.get_value("Raven Channel", message["channel_id"], "workspace")
 
-	return message
+	# ✅ Bóc saved_from_thread từ json ra ngoài response
+	if message and message.get("json"):
+		try:
+			json_data = json.loads(message["json"]) if isinstance(message["json"], str) else message["json"]
+			saved_from_thread = json_data.get("saved_from_thread")
+			if saved_from_thread:
+				message["saved_from_thread"] = saved_from_thread
+		except Exception:
+			pass
 
+	# ✅ Xóa trường json khỏi response nếu không cần
+	message.pop("json", None)
+
+	return message
 
 @frappe.whitelist()
 def get_pinned_messages(channel_id):
