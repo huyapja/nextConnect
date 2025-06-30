@@ -13,6 +13,7 @@ import ViewChannelDetailsModal from '../channels/ViewChannelDetailsModal'
 import { ViewPinnedMessagesButton } from '../pinned-messages/ViewPinnedMessagesButton'
 import ChannelHeaderMenu from './ChannelHeaderMenu'
 import { ViewChannelMemberAvatars } from './ViewChannelMemberAvatars'
+import { GroupCallButton } from './GroupCallButton'
 
 interface ChannelHeaderProps {
   channelData: ChannelListItem
@@ -81,6 +82,7 @@ export const ChannelHeader = ({ channelData }: ChannelHeaderProps) => {
       </Flex>
 
       <Flex gap='2' align='center' className='animate-fadein'>
+        <GroupCallButton channelId={channelData.name} isDisabled={channelData.is_archived == 1} />
         <div onClick={() => setOpen(true)}>
           <ViewChannelMemberAvatars channelData={channelData} />
         </div>

@@ -37,7 +37,7 @@ export const VIDEO_FORMATS = [
  * @param extension extension of the file
  * @returns boolean
  */
-export const isVideoFile = (ext: string) => {
+export const isVideoFile = (ext: string, type: any) => {
   return VIDEO_FORMATS.includes(ext)
 }
 

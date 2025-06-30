@@ -15,6 +15,9 @@ export default defineConfig(({ command, mode }) => {
 			strategies: "injectManifest",
 			injectRegister: null,
 			outDir: "../raven/public/raven",
+			injectManifest: {
+				maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, 
+			},
 			manifest: {
 				name: "Raven",
 				start_url: `/${env.VITE_BASE_NAME}`,

@@ -41,6 +41,8 @@ export const RenameChannelModalContent = ({
   const { updateDoc, loading: updatingDoc, error } = useFrappeUpdateDoc()
   const {mutate} = useSWRConfig();
 
+  const { mutate } = useSWRConfig()
+
   const onSubmit = async (data: RenameChannelForm) => {
     return updateDoc('Raven Channel', channelID ?? null, {
       channel_name: data.channel_name

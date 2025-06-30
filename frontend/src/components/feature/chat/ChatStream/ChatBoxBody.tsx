@@ -170,10 +170,10 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
   // Gửi tin nhắn (có kèm file và reply message nếu có)
   const { sendMessage, loading, pendingMessages, sendOnePendingMessage, removePendingMessage } = useSendMessage(
     channelData.name,
-    uploadFiles, // <--- param 2
-    uploadOneFile, // <--- param 3 - CÁI BẠN BỊ THIẾU
-    onMessageSendCompleted, // <--- param 4
-    selectedMessage // <--- param 5
+    uploadFiles,
+    uploadOneFile, // 
+    onMessageSendCompleted, 
+    selectedMessage
   )
 
   // Component hiển thị preview của tin nhắn đang được trả lời

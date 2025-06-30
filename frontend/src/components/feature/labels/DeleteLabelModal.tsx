@@ -1,9 +1,8 @@
+import { useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
 import { Button, Dialog, Flex, Text } from '@radix-ui/themes'
 import { useFrappePostCall } from 'frappe-react-sdk'
 import { useSetAtom } from 'jotai'
-import { useSWRConfig } from 'swr'
 import { toast } from 'sonner'
-import { sortedChannelsAtom, useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
 import { labelListAtom } from './conversations/atoms/labelAtom'
 
 type Props = {

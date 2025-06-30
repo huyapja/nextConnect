@@ -5,17 +5,18 @@ import { useGetUser } from '@/hooks/useGetUser'
 import { useIsUserActive } from '@/hooks/useIsUserActive'
 import { useIsDesktop, useIsTablet } from '@/hooks/useMediaQuery'
 import { UserContext } from '@/utils/auth/UserProvider'
-import { sortedChannelsAtom, useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
+import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
 import { DMChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { replaceCurrentUserFromDMChannelName } from '@/utils/operations'
 import { Badge, Flex, Heading } from '@radix-ui/themes'
 import { Key, useContext, useMemo } from 'react'
 import { BiChevronLeft } from 'react-icons/bi'
 import { Link } from 'react-router-dom'
+import VideoCall from '../call-stringee/CallStringee'
 import ChannelLabelBadge from '../channels/ChannelLabelBadge'
 import { ViewPinnedMessagesButton } from '../pinned-messages/ViewPinnedMessagesButton'
 import ChannelHeaderMenu from './ChannelHeaderMenu'
-import { useAtomValue } from 'jotai'
+import { useGlobalStringee } from '../call-stringee/GlobalStringeeProvider'
 
 interface DMChannelHeaderProps {
   channelData: DMChannelListItem
@@ -24,6 +25,7 @@ interface DMChannelHeaderProps {
 export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
   const { currentUser } = useContext(UserContext)
   const isTablet = useIsTablet()
+  const { client: globalClient } = useGlobalStringee()
 
   const peerUserId = channelData.peer_user_id
   const peerUser = useGetUser(peerUserId || '')
@@ -38,12 +40,12 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
   const lastWorkspace = localStorage.getItem('ravenLastWorkspace')
 
   const enrichedChannels = useEnrichedSortedChannels()
-  const currentChannel = useMemo(
+  const enrichedChannel = useMemo(
     () => enrichedChannels.find((ch) => ch.name === channelData.name),
     [enrichedChannels, channelData.name]
   )
 
-  const userLabels = currentChannel?.user_labels || []
+  const userLabels = enrichedChannel?.user_labels || []
 
   return (
     <PageHeader>
@@ -118,6 +120,7 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
       </Flex>
 
       <Flex className='mr-3' gap='4' align='center'>
+        {peerUserId && <VideoCall toUserId={peerUserId} channelId={channelData.name} globalClient={globalClient}/>}
         <ChannelHeaderMenu channelData={channelData} />
       </Flex>
     </PageHeader>
