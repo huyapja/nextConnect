@@ -1,5 +1,5 @@
 import { Flex, Box } from '@radix-ui/themes'
-import { Outlet, useParams } from 'react-router-dom'
+import { Outlet, useParams, useNavigate } from 'react-router-dom'
 import { lazy, Suspense, useContext, useEffect } from 'react'
 import { Sidebar } from '../components/layout/Sidebar/Sidebar'
 import { ChannelListProvider } from '../utils/channel/ChannelListProvider'
@@ -37,6 +37,7 @@ export const MainPage = () => {
 
 const MainPageContent = () => {
   const { currentUser } = useContext(UserContext)
+  const navigate = useNavigate()
 
   useFetchActiveUsersRealtime()
 
@@ -60,7 +61,22 @@ const MainPageContent = () => {
 
   const onThreadReplyEvent = useUnreadThreadsCountEventListener()
 
-  const { threadID } = useParams()
+  const { threadID, workspaceID } = useParams()
+
+  // ✅ Listen cho thread_deleted event để redirect user
+  useFrappeEventListener('thread_deleted', (event) => {
+    console.log('🔥 Thread deleted event received:', event)
+    // Nếu user đang ở trong thread bị xóa, redirect ra ngoài
+    if (threadID && threadID === event.thread_id) {
+      console.log('🔥 Redirecting user out of deleted thread:', threadID)
+      navigate(`/${workspaceID}/threads`, { replace: true })
+    }
+    
+    // ✅ Cũng invalidate thread-related caches
+    mutate((key) => {
+      return typeof key === 'string' && key.includes('raven.api.threads')
+    }, undefined, { revalidate: true })
+  })
 
   // Listen to realtime event for new message count
   useFrappeEventListener('thread_reply', (event) => {

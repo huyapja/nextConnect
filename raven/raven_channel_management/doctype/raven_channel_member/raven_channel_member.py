@@ -76,18 +76,55 @@ class RavenChannelMember(Document):
 				user=self.user_id,
 				after_commit=True,
 			)
+		else:
+			# ✅ Nếu là thread, thông báo cập nhật thread list cho user rời (ngay lập tức)
+			frappe.publish_realtime(
+				"thread_list_updated",
+				{
+					"channel_id": self.channel_id,
+					"action": "removed"
+				},
+				user=self.user_id,
+			)
+			# ✅ Cũng gửi với after_commit để đảm bảo
+			frappe.publish_realtime(
+				"thread_list_updated",
+				{
+					"channel_id": self.channel_id,
+					"action": "removed"
+				},
+				user=self.user_id,
+				after_commit=True,
+			)
 
-		# If this was the last member of a private channel, archive the channel
-		if (
-			frappe.db.count("Raven Channel Member", {"channel_id": self.channel_id}) == 0
-			and frappe.db.get_value("Raven Channel", self.channel_id, "type") == "Private"
-		):
-			frappe.db.set_value("Raven Channel", self.channel_id, "is_archived", 1)
+		# Check remaining member count
+		remaining_members_count = frappe.db.count("Raven Channel Member", {"channel_id": self.channel_id})
+
+		# If this was the last member of a private channel, handle cleanup
+		if remaining_members_count == 0:
+			channel_type = frappe.db.get_value("Raven Channel", self.channel_id, "type")
+			if channel_type == "Private":
+				if is_thread:
+					# ✅ Nếu là thread và không còn member nào, xóa luôn thread channel và message gốc
+					try:
+						# Xóa thread channel sẽ tự động xóa các message trong thread (xem on_trash của RavenChannel)
+						thread_channel = frappe.get_doc("Raven Channel", self.channel_id)
+						thread_channel.delete(ignore_permissions=True)
+						
+						# Không cần thông báo thread list update nữa vì thread đã bị xóa
+						return
+					except Exception as e:
+						frappe.log_error(f"Error deleting empty thread channel {self.channel_id}: {str(e)}")
+						# Fallback: archive the channel
+						frappe.db.set_value("Raven Channel", self.channel_id, "is_archived", 1)
+				else:
+					# Archive regular private channel
+					frappe.db.set_value("Raven Channel", self.channel_id, "is_archived", 1)
 
 		# If this member was the only admin, then make the next oldest member an admin
 		if (
 			self.get_admin_count() == 0
-			and frappe.db.count("Raven Channel Member", {"channel_id": self.channel_id}) > 0
+			and remaining_members_count > 0
 		):
 			first_member = frappe.db.get_value(
 				"Raven Channel Member",
@@ -100,37 +137,151 @@ class RavenChannelMember(Document):
 
 			first_member_name = frappe.get_cached_value("Raven User", first_member.user_id, "full_name")
 
+			# ✅ Tạo system message với tiếng Việt
+			system_message_text = f"Admin \"{member_name}\" đã rời khỏi Chủ đề này. \"{first_member_name}\" sẽ trở thành admin mới."
+			
 			# Add a system message to the channel mentioning the new admin
-			frappe.get_doc(
+			message_doc = frappe.get_doc(
 				{
 					"doctype": "Raven Message",
 					"channel_id": self.channel_id,
 					"message_type": "System",
-					"text": f"{member_name} was removed by {current_user_name} and {first_member_name} is the new admin of this channel.",
+					"text": system_message_text,
 				}
-			).insert(ignore_permissions=True)
+			)
+			message_doc.insert(ignore_permissions=True)
+
+			# ✅ Gửi realtime notification cho system message như tin nhắn thường
+			frappe.publish_realtime(
+				"message_created",
+				{
+					"channel_id": self.channel_id,
+					"sender": "System",
+					"message_id": message_doc.name,
+					"message_details": {
+						"text": system_message_text,
+						"channel_id": self.channel_id,
+						"content": system_message_text,
+						"file": None,
+						"message_type": "System",
+						"is_edited": 0,
+						"is_thread": 0,
+						"is_forwarded": 0,
+						"is_reply": 0,
+						"poll_id": None,
+						"creation": message_doc.creation,
+						"owner": message_doc.owner,
+						"modified_by": message_doc.modified_by,
+						"modified": message_doc.modified,
+						"linked_message": None,
+						"replied_message_details": None,
+						"link_doctype": None,
+						"link_document": None,
+						"message_reactions": None,
+						"name": message_doc.name,
+						"is_bot_message": 0,
+						"bot": None,
+						"hide_link_preview": 0,
+					},
+				},
+				doctype="Raven Channel",
+				docname=self.channel_id,
+			)
+
+			# ✅ Gửi realtime notification về thay đổi admin
+			frappe.publish_realtime(
+				"channel_members_updated",
+				{
+					"channel_id": self.channel_id,
+					"new_admin": first_member.user_id,
+					"old_admin": self.user_id,
+					"message": "Admin changed"
+				},
+				doctype="Raven Channel",
+				docname=self.channel_id,
+			)
+			
+			# ✅ Cũng gửi event ngay lập tức không cần after_commit
+			frappe.publish_realtime(
+				"channel_members_updated",
+				{
+					"channel_id": self.channel_id,
+				},
+				doctype="Raven Channel",
+				docname=self.channel_id,
+			)
 		else:
-			# If the member who left is the current user, then add a system message to the channel mentioning that the user left
-			if member_name == current_user_name:
-				# Add a system message to the channel mentioning the member who left
-				frappe.get_doc(
-					{
-						"doctype": "Raven Message",
-						"channel_id": self.channel_id,
-						"message_type": "System",
-						"text": f"{member_name} left.",
-					}
-				).insert(ignore_permissions=True)
-			else:
-				# Add a system message to the channel mentioning the member who left
-				frappe.get_doc(
-					{
-						"doctype": "Raven Message",
-						"channel_id": self.channel_id,
-						"message_type": "System",
-						"text": f"{current_user_name} removed {member_name}.",
-					}
-				).insert(ignore_permissions=True)
+			# Add system message if there are still members (only for non-empty channels)
+			if remaining_members_count > 0:
+				# If the member who left is the current user, then add a system message to the channel mentioning that the user left
+				if member_name == current_user_name:
+					# Add a system message to the channel mentioning the member who left
+					message_doc = frappe.get_doc(
+						{
+							"doctype": "Raven Message",
+							"channel_id": self.channel_id,
+							"message_type": "System",
+							"text": f"{member_name} đã rời khỏi.",
+						}
+					)
+					message_doc.insert(ignore_permissions=True)
+					
+					# ✅ Gửi realtime notification cho system message
+					self.publish_system_message_realtime(message_doc, f"{member_name} đã rời khỏi.")
+				else:
+					# Add a system message to the channel mentioning the member who left
+					message_doc = frappe.get_doc(
+						{
+							"doctype": "Raven Message",
+							"channel_id": self.channel_id,
+							"message_type": "System",
+							"text": f"{current_user_name} đã xóa {member_name}.",
+						}
+					)
+					message_doc.insert(ignore_permissions=True)
+					
+					# ✅ Gửi realtime notification cho system message
+					self.publish_system_message_realtime(message_doc, f"{current_user_name} đã xóa {member_name}.")
+
+	def publish_system_message_realtime(self, message_doc, text):
+		"""
+		Helper method to publish realtime notification for system messages
+		"""
+		frappe.publish_realtime(
+			"message_created",
+			{
+				"channel_id": self.channel_id,
+				"sender": "System",
+				"message_id": message_doc.name,
+				"message_details": {
+					"text": text,
+					"channel_id": self.channel_id,
+					"content": text,
+					"file": None,
+					"message_type": "System",
+					"is_edited": 0,
+					"is_thread": 0,
+					"is_forwarded": 0,
+					"is_reply": 0,
+					"poll_id": None,
+					"creation": message_doc.creation,
+					"owner": message_doc.owner,
+					"modified_by": message_doc.modified_by,
+					"modified": message_doc.modified,
+					"linked_message": None,
+					"replied_message_details": None,
+					"link_doctype": None,
+					"link_document": None,
+					"message_reactions": None,
+					"name": message_doc.name,
+					"is_bot_message": 0,
+					"bot": None,
+					"hide_link_preview": 0,
+				},
+			},
+			doctype="Raven Channel",
+			docname=self.channel_id,
+		)
 
 	def on_trash(self):
 		# Comment: Frappe push notification service - được thay thế bởi Firebase
@@ -192,24 +343,32 @@ class RavenChannelMember(Document):
 			if not is_thread:
 				member_name = frappe.get_cached_value("Raven User", self.user_id, "full_name")
 				if self.user_id == frappe.session.user:
-					frappe.get_doc(
+					message_doc = frappe.get_doc(
 						{
 							"doctype": "Raven Message",
 							"channel_id": self.channel_id,
 							"message_type": "System",
-							"text": f"{member_name} joined.",
+							"text": f"{member_name} đã tham gia.",
 						}
-					).insert(ignore_permissions=True)
+					)
+					message_doc.insert(ignore_permissions=True)
+					
+					# ✅ Gửi realtime notification cho system message
+					self.publish_system_message_realtime(message_doc, f"{member_name} đã tham gia.")
 				else:
 					current_user_name = frappe.get_cached_value("Raven User", frappe.session.user, "full_name")
-					frappe.get_doc(
+					message_doc = frappe.get_doc(
 						{
 							"doctype": "Raven Message",
 							"channel_id": self.channel_id,
 							"message_type": "System",
-							"text": f"{current_user_name} added {member_name}.",
+							"text": f"{current_user_name} đã thêm {member_name}.",
 						}
-					).insert(ignore_permissions=True)
+					)
+					message_doc.insert(ignore_permissions=True)
+					
+					# ✅ Gửi realtime notification cho system message
+					self.publish_system_message_realtime(message_doc, f"{current_user_name} đã thêm {member_name}.")
 
 		self.invalidate_channel_members_cache()
 
@@ -233,16 +392,20 @@ class RavenChannelMember(Document):
 			# Send a system message to the channel mentioning the member who became admin
 			member_name = frappe.get_cached_value("Raven User", self.user_id, "full_name")
 			text = (
-				f"{member_name} is now an admin." if self.is_admin else f"{member_name} is no longer an admin."
+				f"{member_name} đã trở thành admin." if self.is_admin else f"{member_name} không còn là admin."
 			)
-			frappe.get_doc(
+			message_doc = frappe.get_doc(
 				{
 					"doctype": "Raven Message",
 					"channel_id": self.channel_id,
 					"message_type": "System",
 					"text": text,
 				}
-			).insert(ignore_permissions=True)
+			)
+			message_doc.insert(ignore_permissions=True)
+			
+			# ✅ Gửi realtime notification cho system message
+			self.publish_system_message_realtime(message_doc, text)
 
 		self.invalidate_channel_members_cache()
 
