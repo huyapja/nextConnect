@@ -205,6 +205,17 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
       }
     }
 
+    const isDM = channelData?.is_direct_message === 1 || channelData?.is_self_message === 1
+    const isDraftChannel = channelData.name.startsWith('_')
+
+    // Với DM channels (bao gồm draft channels), user luôn có thể gửi tin nhắn
+    if (isDM || isDraftChannel) {
+      return {
+        canUserSendMessage: true,
+        shouldShowJoinBox: false
+      }
+    }
+
     if (channelData.type === 'Open') {
       return {
         canUserSendMessage: true,
@@ -218,8 +229,6 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
         shouldShowJoinBox: false
       }
     }
-
-    const isDM = channelData?.is_direct_message === 1 || channelData?.is_self_message === 1
 
     // Nếu thông tin thành viên không tồn tại và không phải là DM, thì hiển thị hộp tham gia
     if (!channelMemberProfile && !isDM && channelData && !isLoading) {
