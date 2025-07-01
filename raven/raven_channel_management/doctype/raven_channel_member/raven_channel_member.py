@@ -5,7 +5,8 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-from raven.notification import subscribe_user_to_topic, unsubscribe_user_to_topic
+# Comment: Frappe push notification service - được thay thế bởi Firebase
+# from raven.notification import subscribe_user_to_topic, unsubscribe_user_to_topic
 from raven.utils import delete_channel_members_cache
 
 
@@ -132,7 +133,8 @@ class RavenChannelMember(Document):
 				).insert(ignore_permissions=True)
 
 	def on_trash(self):
-		unsubscribe_user_to_topic(self.channel_id, self.user_id)
+		# Comment: Frappe push notification service - được thay thế bởi Firebase
+		# unsubscribe_user_to_topic(self.channel_id, self.user_id)
 		self.invalidate_channel_members_cache()
 
 	def check_if_user_is_member(self):
@@ -180,8 +182,9 @@ class RavenChannelMember(Document):
 				after_commit=True,
 			)
 
-		if not is_direct_message and self.allow_notifications:
-			subscribe_user_to_topic(self.channel_id, self.user_id)
+		# Comment: Frappe push notification service - được thay thế bởi Firebase
+		# if not is_direct_message and self.allow_notifications:
+		# 	subscribe_user_to_topic(self.channel_id, self.user_id)
 
 		if not is_direct_message:
 
@@ -219,11 +222,12 @@ class RavenChannelMember(Document):
 				"Raven Channel", self.channel_id, "is_direct_message"
 			)
 
-			if not is_direct_message:
-				if self.allow_notifications:
-					subscribe_user_to_topic(self.channel_id, self.user_id)
-				else:
-					unsubscribe_user_to_topic(self.channel_id, self.user_id)
+			# Comment: Frappe push notification service - được thay thế bởi Firebase
+			# if not is_direct_message:
+			# 	if self.allow_notifications:
+			# 		subscribe_user_to_topic(self.channel_id, self.user_id)
+			# 	else:
+			# 		unsubscribe_user_to_topic(self.channel_id, self.user_id)
 
 		if self.has_value_changed("is_admin") and not self.flags.in_insert and not self.is_thread():
 			# Send a system message to the channel mentioning the member who became admin

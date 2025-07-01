@@ -18,17 +18,24 @@ def send_notification_for_message(message):
 
 	raven_settings = frappe.get_cached_doc("Raven Settings")
 
-	if raven_settings.push_notification_service == "Raven":
-		send_push_notification_via_raven_cloud(message, raven_settings)
-
+	# Nếu không có push notification service được set, không làm gì
+	if not raven_settings.push_notification_service:
 		return
 
-	channel_doc = frappe.get_cached_doc("Raven Channel", message.channel_id)
-	if channel_doc.is_direct_message and not channel_doc.is_self_message:
-		message.send_notification_for_direct_message()
+	# Comment: Raven/Frappe Cloud notification - sử dụng Firebase thay thế
+	# if raven_settings.push_notification_service == "Raven":
+	# 	send_push_notification_via_raven_cloud(message, raven_settings)
+	# 	return
 
-	else:
-		message.send_notification_for_channel_message()
+	# Comment: Frappe push notification service - sử dụng Firebase thay thế
+	# channel_doc = frappe.get_cached_doc("Raven Channel", message.channel_id)
+	# if channel_doc.is_direct_message and not channel_doc.is_self_message:
+	# 	message.send_notification_for_direct_message()
+	# else:
+	# 	message.send_notification_for_channel_message()
+	
+	# Firebase notification được xử lý tự động qua firebase_hooks.py
+	pass
 
 
 def send_push_notification_via_raven_cloud(message, raven_settings):
@@ -196,114 +203,115 @@ def make_post_call_for_notification(messages, raven_settings):
 
 
 # The below functions are used to send push notifications via the Frappe Push Notification Service
+# Comment: Frappe push notification service - được thay thế bởi Firebase
 
 
-def send_notification_to_user(user_id, title, message, data=None, user_image_path=None):
-	"""
-	Send a push notification to a user
-	"""
+# def send_notification_to_user(user_id, title, message, data=None, user_image_path=None):
+# 	"""
+# 	Send a push notification to a user
+# 	"""
 
-	try:
-		from frappe.push_notification import PushNotification
+# 	try:
+# 		from frappe.push_notification import PushNotification
 
-		push_notification = PushNotification("raven")
+# 		push_notification = PushNotification("raven")
 
-		if data is None:
-			data = {"base_url": frappe.utils.get_url(), "sitename": frappe.local.site}
-		else:
-			data["base_url"] = frappe.utils.get_url()
-			data["sitename"] = frappe.local.site
+# 		if data is None:
+# 			data = {"base_url": frappe.utils.get_url(), "sitename": frappe.local.site}
+# 		else:
+# 			data["base_url"] = frappe.utils.get_url()
+# 			data["sitename"] = frappe.local.site
 
-		if push_notification.is_enabled():
-			icon_url = get_image_absolute_url(user_image_path)
-			link = None
-			if data.get("channel_id"):
-				link = frappe.utils.get_url() + "/raven/channel/" + data.get("channel_id", "")
-			push_notification.send_notification_to_user(
-				user_id=user_id, title=title, body=message, icon=icon_url, data=data, link=link
-			)
-	except ImportError:
-		# push notifications are not supported in the current framework version
-		pass
-	except Exception:
-		frappe.log_error("Failed to send push notification")
-
-
-def send_notification_to_topic(channel_id, title, message, data=None, user_image_path=None):
-	"""
-	Send a push notification to a channel
-	"""
-
-	try:
-		from frappe.push_notification import PushNotification
-
-		push_notification = PushNotification("raven")
-
-		if data is None:
-			data = {"base_url": frappe.utils.get_url(), "sitename": frappe.local.site}
-		else:
-			data["base_url"] = frappe.utils.get_url()
-			data["sitename"] = frappe.local.site
-
-		if push_notification.is_enabled():
-			icon_url = get_image_absolute_url(user_image_path)
-			link = None
-			if data.get("channel_id"):
-				link = frappe.utils.get_url() + "/raven/channel/" + data.get("channel_id", "")
-			push_notification.send_notification_to_topic(
-				topic_name=channel_id, title=title, body=message, icon=icon_url, data=data, link=link
-			)
-	except ImportError:
-		# push notifications are not supported in the current framework version
-		pass
-	except Exception:
-		frappe.log_error("Failed to send push notification")
+# 		if push_notification.is_enabled():
+# 			icon_url = get_image_absolute_url(user_image_path)
+# 			link = None
+# 			if data.get("channel_id"):
+# 				link = frappe.utils.get_url() + "/raven/channel/" + data.get("channel_id", "")
+# 			push_notification.send_notification_to_user(
+# 				user_id=user_id, title=title, body=message, icon=icon_url, data=data, link=link
+# 			)
+# 	except ImportError:
+# 		# push notifications are not supported in the current framework version
+# 		pass
+# 	except Exception:
+# 		frappe.log_error("Failed to send push notification")
 
 
-def subscribe_user_to_topic(channel_id, user_id):
-	"""
-	Subscribe a user to a topic (channel name)
-	"""
-	notification_service = frappe.db.get_single_value("Raven Settings", "push_notification_service")
+# def send_notification_to_topic(channel_id, title, message, data=None, user_image_path=None):
+# 	"""
+# 	Send a push notification to a channel
+# 	"""
 
-	if notification_service == "Raven":
-		return
+# 	try:
+# 		from frappe.push_notification import PushNotification
 
-	try:
-		from frappe.push_notification import PushNotification
+# 		push_notification = PushNotification("raven")
 
-		push_notification = PushNotification("raven")
+# 		if data is None:
+# 			data = {"base_url": frappe.utils.get_url(), "sitename": frappe.local.site}
+# 		else:
+# 			data["base_url"] = frappe.utils.get_url()
+# 			data["sitename"] = frappe.local.site
 
-		if push_notification.is_enabled():
-			push_notification.subscribe_topic(user_id=user_id, topic_name=channel_id)
-	except ImportError:
-		# push notifications are not supported in the current framework version
-		pass
-	except Exception:
-		frappe.log_error("Failed to subscribe user to channel")
+# 		if push_notification.is_enabled():
+# 			icon_url = get_image_absolute_url(user_image_path)
+# 			link = None
+# 			if data.get("channel_id"):
+# 				link = frappe.utils.get_url() + "/raven/channel/" + data.get("channel_id", "")
+# 			push_notification.send_notification_to_topic(
+# 				topic_name=channel_id, title=title, body=message, icon=icon_url, data=data, link=link
+# 			)
+# 	except ImportError:
+# 		# push notifications are not supported in the current framework version
+# 		pass
+# 	except Exception:
+# 		frappe.log_error("Failed to send push notification")
 
 
-def unsubscribe_user_to_topic(channel_id, user_id):
-	"""
-	Unsubscribe a user to a topic (channel name)
-	"""
-	notification_service = frappe.db.get_single_value("Raven Settings", "push_notification_service")
+# def subscribe_user_to_topic(channel_id, user_id):
+# 	"""
+# 	Subscribe a user to a topic (channel name)
+# 	"""
+# 	notification_service = frappe.db.get_single_value("Raven Settings", "push_notification_service")
 
-	if notification_service == "Raven":
-		return
+# 	if notification_service == "Raven":
+# 		return
 
-	try:
-		from frappe.push_notification import PushNotification
+# 	try:
+# 		from frappe.push_notification import PushNotification
 
-		push_notification = PushNotification("raven")
+# 		push_notification = PushNotification("raven")
 
-		if push_notification.is_enabled():
-			push_notification.unsubscribe_topic(user_id=user_id, topic_name=channel_id)
-	except ImportError:
-		# push notifications are not supported in the current framework version
-		pass
-	except Exception:
-		frappe.log_error("Failed to unsubscribe user to channel")
+# 		if push_notification.is_enabled():
+# 			push_notification.subscribe_topic(user_id=user_id, topic_name=channel_id)
+# 	except ImportError:
+# 		# push notifications are not supported in the current framework version
+# 		pass
+# 	except Exception:
+# 		frappe.log_error("Failed to subscribe user to channel")
+
+
+# def unsubscribe_user_to_topic(channel_id, user_id):
+# 	"""
+# 	Unsubscribe a user to a topic (channel name)
+# 	"""
+# 	notification_service = frappe.db.get_single_value("Raven Settings", "push_notification_service")
+
+# 	if notification_service == "Raven":
+# 		return
+
+# 	try:
+# 		from frappe.push_notification import PushNotification
+
+# 		push_notification = PushNotification("raven")
+
+# 		if push_notification.is_enabled():
+# 			push_notification.unsubscribe_topic(user_id=user_id, topic_name=channel_id)
+# 	except ImportError:
+# 		# push notifications are not supported in the current framework version
+# 		pass
+# 	except Exception:
+# 		frappe.log_error("Failed to unsubscribe user to channel")
 
 
 def get_image_absolute_url(image_path):
