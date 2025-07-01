@@ -104,7 +104,7 @@ const PollResults = ({ data }: { data: Poll }) => {
         return <PollOption key={option.name} data={data} option={option} />
       })}
       <Text as='span' size='1' color='gray' className='px-2'>
-        {data.poll.total_votes} vote{data.poll.total_votes > 1 ? 's' : ''}
+        {data.poll.total_votes} phiếu bầu
       </Text>
     </Flex>
   )

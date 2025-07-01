@@ -150,7 +150,7 @@ type FileMessageBlockProps = BoxProps & {
 //     </Box>
 //   )
 // }
-export const isImageFile = (ext: string) => ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].includes(ext.toLowerCase())
+export const isImageFile = (ext: string) => ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext.toLowerCase())
 
 export const FileMessageBlock = memo(
   ({
