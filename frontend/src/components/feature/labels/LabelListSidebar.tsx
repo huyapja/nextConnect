@@ -1,9 +1,9 @@
+import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
+import { useSidebarMode } from '@/utils/layout/sidebar'
+import { truncateText } from '@/utils/textUtils/truncateText'
 import clsx from 'clsx'
 import { useMemo } from 'react'
 import { MdLabelOutline } from 'react-icons/md'
-import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
-import { truncateText } from '@/utils/textUtils/truncateText'
-import { useSidebarMode } from '@/utils/layout/sidebar'
 import { useLabelListValue } from './conversations/atoms/labelAtom'
 
 type Props = {

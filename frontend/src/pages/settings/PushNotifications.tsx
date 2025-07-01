@@ -6,6 +6,8 @@ import PageContainer from '@/components/layout/Settings/PageContainer'
 import SettingsContentContainer from '@/components/layout/Settings/SettingsContentContainer'
 import SettingsPageHeader from '@/components/layout/Settings/SettingsPageHeader'
 import { Stack } from '@/components/layout/Stack'
+import { FirebaseNotificationSettings } from '@/components/feature/firebase-notifications/FirebaseNotificationSettings'
+import { FirebaseDebugPanel } from '@/components/feature/firebase-notifications/FirebaseDebugPanel'
 import useRavenSettings from '@/hooks/fetchers/useRavenSettings'
 import { RavenSettings } from '@/types/Raven/RavenSettings'
 import { isSystemManager } from '@/utils/roles'
@@ -267,6 +269,23 @@ const PushNotifications = () => {
                 </Button>
               )}
             </div>
+
+            {/* Firebase Notifications Section */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <div className="mb-4">
+                <Text size="4" weight="bold">🔥 Firebase Push Notifications</Text>
+                <Text size="2" color="gray" className="mt-1">
+                  Alternative Firebase-based push notification system (Beta)
+                </Text>
+              </div>
+              <FirebaseNotificationSettings />
+              
+              {/* Debug Panel */}
+              <div className="mt-6">
+                <FirebaseDebugPanel />
+              </div>
+            </div>
+            
           </SettingsContentContainer>
         </form>
       </FormProvider>

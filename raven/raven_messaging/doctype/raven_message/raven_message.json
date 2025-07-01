@@ -36,7 +36,10 @@
   "bot",
   "hide_link_preview",
   "notification",
-  "is_retracted"
+  "is_retracted",
+  "group_call_room_id",
+  "group_call_status",
+  "group_call_participants"
  ],
  "fields": [
   {
@@ -68,7 +71,7 @@
    "fieldname": "message_type",
    "fieldtype": "Select",
    "label": "Message Type",
-   "options": "Text\nImage\nFile\nPoll\nSystem"
+   "options": "Text\nImage\nFile\nPoll\nSystem\nGroupCall"
   },
   {
    "fieldname": "message_reactions",
@@ -209,6 +212,22 @@
    "fieldname": "is_retracted",
    "fieldtype": "Check",
    "label": "Is Retracted"
+  },
+  {
+   "fieldname": "group_call_room_id",
+   "fieldtype": "Data",
+   "label": "Group Call Room ID"
+  },
+  {
+   "fieldname": "group_call_status",
+   "fieldtype": "Select",
+   "label": "Group Call Status",
+   "options": "active\nended"
+  },
+  {
+   "fieldname": "group_call_participants",
+   "fieldtype": "JSON",
+   "label": "Group Call Participants"
   }
  ],
  "index_web_pages_for_search": 1,

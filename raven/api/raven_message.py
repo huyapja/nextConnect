@@ -995,7 +995,7 @@ def add_forwarded_message_to_channel(channel_id, forwarded_message):
             },
             user=member
         )
-
+        
     return "message forwarded"
 
 
@@ -1059,4 +1059,136 @@ def retract_message(message_id: str):
     )
 
     return {"message": "Đã thu hồi tin nhắn"}
+
+
+@frappe.whitelist(methods=["POST"])
+def send_call_history_message(channel_id, call_type, call_status, duration=None):
+    """
+    Gửi tin nhắn lịch sử cuộc gọi vào channel
+    
+    Args:
+        channel_id: ID của channel
+        call_type: "audio" hoặc "video" 
+        call_status: "completed", "missed", "rejected", "ended"
+        duration: Thời lượng cuộc gọi (giây) nếu cuộc gọi thành công
+    """
+    
+    # Tạo nội dung tin nhắn với icon và format đẹp
+    if call_type == "audio":
+        icon = "📞"
+        call_type_text = "Audio"
+    else:
+        icon = "📹" 
+        call_type_text = "Video"
+    
+    if call_status == "missed":
+        # Cuộc gọi nhỡ - màu đỏ
+        content = f'<div style="color: #e74c3c; font-weight: 500;">{icon} Cuộc gọi {call_type_text.lower()} nhỡ</div>'
+        text_content = f"{icon} Cuộc gọi {call_type_text.lower()} nhỡ"
+    elif call_status in ["completed", "ended"] and duration:
+        # Cuộc gọi thành công - màu xanh lá  
+        duration_formatted = format_call_duration(duration)
+        content = f'<div style="color: #27ae60; font-weight: 500;">{icon} Gọi {call_type_text.lower()} - {duration_formatted}</div>'
+        text_content = f"{icon} Gọi {call_type_text.lower()} - {duration_formatted}"
+    else:
+        # Cuộc gọi bị từ chối hoặc kết thúc - màu xám
+        content = f'<div style="color: #7f8c8d; font-weight: 500;">{icon} Cuộc gọi {call_type_text.lower()} đã kết thúc</div>'
+        text_content = f"{icon} Cuộc gọi {call_type_text.lower()} đã kết thúc"
+
+    # Tạo tin nhắn với type System để không tính vào unread count
+    doc_fields = {
+        "doctype": "Raven Message",
+        "channel_id": channel_id,
+        "text": text_content,
+        "content": content,
+        "message_type": "System",  # Sử dụng System type để hiển thị khác biệt
+    }
+
+    doc = frappe.get_doc(doc_fields)
+    doc.flags.send_silently = True  # Gửi thầm lặng, không notification
+    doc.insert()
+
+    # Cập nhật last message của channel
+    last_message = {
+        "message_id": doc.name,
+        "content": text_content,
+        "owner": doc.owner,
+        "message_type": "System",
+        "is_bot_message": 0,
+        "bot": None,
+    }
+
+    frappe.db.set_value("Raven Channel", channel_id, {
+        "last_message_details": frappe.as_json(last_message),
+        "last_message_timestamp": doc.creation
+    })
+
+    # Gửi realtime event để update UI
+    frappe.publish_realtime(
+        "new_message",
+        {
+            "channel_id": channel_id,
+            "message_id": doc.name,
+            "user": frappe.session.user,
+            "type": "call_history"
+        },
+        doctype="Raven Channel",
+        docname=channel_id,
+        after_commit=True
+    )
+
+    return {"message_id": doc.name, "success": True}
+
+def format_call_duration(duration_seconds):
+    """Format thời lượng cuộc gọi từ giây sang MM:SS"""
+    if not duration_seconds:
+        return "00:00"
+    
+    minutes = int(duration_seconds // 60)
+    seconds = int(duration_seconds % 60)
+    return f"{minutes:02d}:{seconds:02d}"
+
+@frappe.whitelist(methods=["POST"])
+def find_dm_channel_between_users(user1, user2):
+    """
+    Tìm DM channel giữa 2 user, tự động convert Raven User ID sang Frappe User ID nếu cần
+    
+    Args:
+        user1: User ID (có thể là Raven User ID hoặc Frappe User ID)
+        user2: User ID (có thể là Raven User ID hoặc Frappe User ID)
+    
+    Returns:
+        channel_id hoặc None nếu không tìm thấy
+    """
+    def get_frappe_user_id(user_id):
+        """Convert Raven User ID to Frappe User ID if needed"""
+        # Nếu đã là Frappe User ID (có @ hoặc là Administrator), trả về nguyên
+        if '@' in user_id or user_id == 'Administrator' or user_id == 'Guest':
+            return user_id
+            
+        # Nếu là Raven User ID, tìm Frappe User ID tương ứng
+        frappe_user = frappe.db.get_value("Raven User", user_id, "user")
+        return frappe_user if frappe_user else user_id
+    
+    # Convert cả 2 user ID sang Frappe User ID
+    frappe_user1 = get_frappe_user_id(user1)
+    frappe_user2 = get_frappe_user_id(user2)
+    
+    if not frappe_user1 or not frappe_user2:
+        return None
+    
+    # Tìm channel với 2 format có thể có
+    channel_id = frappe.db.get_value(
+        "Raven Channel",
+        filters={
+            "is_direct_message": 1,
+            "channel_name": [
+                "in",
+                [frappe_user1 + " _ " + frappe_user2, frappe_user2 + " _ " + frappe_user1],
+            ],
+        },
+        fieldname="name",
+    )
+    
+    return channel_id
 

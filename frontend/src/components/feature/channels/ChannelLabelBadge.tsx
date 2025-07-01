@@ -1,11 +1,11 @@
-import { useState } from 'react'
-import { Badge, Dialog, Flex, Text, Button } from '@radix-ui/themes'
-import { useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
-import { toast } from 'sonner'
-import { useSetAtom } from 'jotai'
 import { useRemoveChannelFromLabel } from '@/hooks/useRemoveChannelFromLabel'
-import { labelListAtom, useRefreshLabelList } from '../labels/conversations/atoms/labelAtom'
+import { useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
+import { Badge, Button, Dialog, Flex, Text } from '@radix-ui/themes'
 import { useSWRConfig } from 'frappe-react-sdk'
+import { useSetAtom } from 'jotai'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { labelListAtom, useRefreshLabelList } from '../labels/conversations/atoms/labelAtom'
 
 const ChannelLabelBadge = ({
   channelID,

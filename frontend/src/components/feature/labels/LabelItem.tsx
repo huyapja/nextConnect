@@ -1,11 +1,11 @@
-import { truncateText } from '@/utils/textUtils/truncateText'
 import { useIsMobile, useIsTablet } from '@/hooks/useMediaQuery'
+import { useEnrichedLabelChannels } from '@/utils/channel/ChannelAtom'
+import { truncateText } from '@/utils/textUtils/truncateText'
 import { useMemo, useState } from 'react'
 import { HiChevronDown, HiChevronRight } from 'react-icons/hi'
 import { MdLabelOutline } from 'react-icons/md'
 import LabelItemList from './LabelItemList'
 import LabelItemMenu from './LabelItemMenu'
-import { useEnrichedLabelChannels } from '@/utils/channel/ChannelAtom'
 
 const LabelItem: React.FC<{ label: string; name: string }> = ({ label, name }) => {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -57,7 +57,7 @@ const LabelItem: React.FC<{ label: string; name: string }> = ({ label, name }) =
             <LabelItemList
               key={channel.name}
               channelID={channel.name}
-              channelName={channel.channel_name}
+              channelName={channel.channel_name as string}
               labelID={name}
               isDirectMessage={channel.is_direct_message === 1}
               unreadCount={channel.unread_count}

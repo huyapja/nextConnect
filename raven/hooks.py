@@ -17,7 +17,10 @@ app_logo_url = "/assets/raven/raven-logo.png"
 app_include_css = "raven.bundle.css"
 # app_include_css = "/assets/raven/css/raven.css"
 # app_include_js = "/assets/raven/js/raven.js"                 ]
-app_include_js = "raven.bundle.js"
+app_include_js = [
+    "raven.bundle.js",
+    "/assets/raven/stringee/latest.sdk.bundle.min.js"
+]
 
 add_to_apps_screen = [
 	{
@@ -39,6 +42,16 @@ sounds = [
 ]
 
 extend_bootinfo = "raven.boot.boot_session"
+
+# Firebase Integration
+after_app_install = [
+	"raven.firebase_message_integration.patch_raven_message"
+]
+
+# Startup hooks để khởi tạo Firebase integration
+startup = [
+	"raven.firebase_message_integration.patch_raven_message"
+]
 # include js, css files in header of web template
 # web_include_css = "/assets/raven/css/raven.css"
 # web_include_js = "/assets/raven/js/raven.js"

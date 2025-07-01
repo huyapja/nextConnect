@@ -12,6 +12,20 @@ const registerServiceWorker = () => {
   window.frappePushNotification = new FrappePushNotification('raven')
 
   if ('serviceWorker' in navigator) {
+    // Register Firebase service worker first
+    navigator.serviceWorker
+      .register('/firebase-messaging-sw.js', {
+        scope: '/',
+        type: 'classic'
+      })
+      .then((registration) => {
+        console.info('Firebase Service Worker registered successfully')
+      })
+      .catch((err: any) => {
+        console.warn('Firebase Service Worker registration failed:', err)
+      })
+
+    // Register Frappe service worker
     // @ts-ignore
     window.frappePushNotification
       .appendConfigToServiceWorkerURL('/assets/raven/raven/sw.js')
@@ -28,7 +42,7 @@ const registerServiceWorker = () => {
           })
       })
       .catch((err: any) => {
-        console.error('Failed to register service worker', err)
+        console.error('Failed to register Frappe service worker', err)
       })
   } else {
     console.error('Service worker not enabled/supported by browser')
