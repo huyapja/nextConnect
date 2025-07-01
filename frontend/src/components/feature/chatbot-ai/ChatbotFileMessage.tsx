@@ -818,7 +818,7 @@ const OfficePreviewButton = ({ fileUrl, fileName, fileType }: { fileUrl: string;
                       <p><strong>❌ "We can't process this request"</strong> - Chrome block third-party cookies</p>
                       <p><strong>❌ "An error occurred"</strong> - Network hoặc CORS issues</p>
                       <p><strong>❌ "Access denied"</strong> - File không public accessible</p>
-                      <p><strong>❌ Loading mãi</strong> - File quá lớn (&gt;10MB)</p>
+                      <p><strong>❌ Loading mãi</strong> - File quá lớn (&gt;5MB)</p>
                     </div>
                   </div>
                 </div>
@@ -832,7 +832,7 @@ const OfficePreviewButton = ({ fileUrl, fileName, fileType }: { fileUrl: string;
                       Tips để preview hoạt động tốt
                     </div>
                     <div className='text-sm text-green-700 dark:text-green-300 space-y-1'>
-                      <p>✅ File size dưới 10MB cho performance tốt</p>
+                      <p>✅ File size dưới 5MB cho performance tốt</p>
                       <p>✅ File phải accessible publicly</p>
                       <p>✅ Tên file không chứa ký tự đặc biệt</p>
                       <p>✅ Internet connection ổn định</p>

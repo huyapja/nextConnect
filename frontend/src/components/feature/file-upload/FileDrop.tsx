@@ -1,4 +1,5 @@
 /* eslint-disable no-unsafe-optional-chaining */
+import { __ } from '@/utils/translations'
 import { Flex, FlexProps, Text } from '@radix-ui/themes'
 import clsx from 'clsx'
 import { forwardRef, useImperativeHandle, useState } from 'react'
@@ -42,10 +43,10 @@ export const FileDrop = forwardRef((props: FileDropProps, ref) => {
 
   const fileSizeValidator = (file: any) => {
     if (maxFileSize && file.size > maxFileSize * 1000000) {
-      toast.error(`Uh Oh! ${file.name} exceeded the maximum file size required.`)
+      toast.error(__('File "{0}" có kích thước quá lớn! Giới hạn tối đa là {1}MB.', [file.name, maxFileSize]))
       return {
         code: 'size-too-large',
-        message: `File size is larger than the required size.`
+        message: __('Kích thước file vượt quá giới hạn cho phép.')
       }
     } else return null
   }
@@ -63,7 +64,7 @@ export const FileDrop = forwardRef((props: FileDropProps, ref) => {
       ])
 
       if (maxFiles && maxFiles < fileRejections?.length) {
-        toast.error(`Uh Oh! Maximum ${maxFiles} files can be uploaded. Please try again.`)
+        toast.error(__('Chỉ được tải lên tối đa {0} file. Vui lòng thử lại.', [maxFiles]))
       }
     },
     maxFiles: maxFiles ? maxFiles : 0,
@@ -110,7 +111,7 @@ export const FileDrop = forwardRef((props: FileDropProps, ref) => {
           display={onDragEnter ? 'flex' : 'none'}
         >
           <Text as='span' size='2' color='gray'>
-            Drop your files here. A Raven will pick it up.
+            {__('Thả file của bạn vào đây để tải lên.')}
           </Text>
           <input type='file' style={{ display: 'none' }} {...getInputProps()} />
         </Flex>

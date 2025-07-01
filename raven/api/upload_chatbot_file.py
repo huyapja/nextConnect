@@ -2,6 +2,25 @@ import frappe
 from frappe import _
 from frappe.handler import upload_file
 
+# Giới hạn kích thước file cho Raven messaging (5MB)
+RAVEN_MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB in bytes
+
+def check_file_size(file):
+    """Kiểm tra kích thước file không được vượt quá 5MB"""
+    file_content = file.stream.read()
+    file_size = len(file_content)
+    
+    # Reset lại stream position về đầu
+    file.stream.seek(0)
+    
+    if file_size > RAVEN_MAX_FILE_SIZE:
+        frappe.throw(
+            _("Kích thước file không được vượt quá 5MB. File '{0}' có kích thước {1} MB").format(
+                file.filename, round(file_size / 1024 / 1024, 2)
+            ),
+            exc=frappe.ValidationError
+        )
+
 @frappe.whitelist()
 def upload_file_with_message():
     """
@@ -18,6 +37,9 @@ def upload_file_with_message():
         frappe.throw(_("Thiếu conversation_id"))
     if not file:
         frappe.throw(_("Không có file đính kèm"))
+
+    # Kiểm tra kích thước file
+    check_file_size(file)
 
     try:
         # Đặt savepoint để rollback nếu lỗi
@@ -98,6 +120,10 @@ def upload_multiple_files_with_message():
     
     if len(files) > 5:
         frappe.throw(_("Tối đa chỉ được tải lên 5 file cùng lúc"))
+    
+    # Kiểm tra kích thước từng file
+    for file in files:
+        check_file_size(file)
     
     try:
         frappe.db.savepoint("before_batch_upload")
