@@ -260,19 +260,19 @@ const ChannelContext: React.FC<{ mention: MentionObject }> = ({ mention }) => {
     <HStack gap='2' align='start' className='w-full'>
       <UserAvatar src={user?.user_image} alt={senderName} size='2' className='mt-0.5' />
       <Box className='w-full'>
-        <HStack className='w-full justify-between'>
-          <Text size='2' weight='medium'>
+        <HStack className='w-full items-center flex-nowrap gap-2'>
+          <Text size='2' weight='medium' className='truncate'>
             {senderName}
           </Text>
           {mention.is_thread ? (
-            <HStack className='ml-auto' gap='1' align='center'>
+            <HStack gap='1' align='center' className='shrink-0'>
               <BiMessageAltDetail size={14} />
             </HStack>
           ) : mention.is_direct_message ? null : (
-            <HStack className='ml-auto' gap='0.5' align='center'>
+            <HStack gap='0.5' align='center' className='shrink-0'>
               <ChannelIcon type={mention.channel_type} size={14} />
-              <Text size='1' weight='medium'>
-                {mention.channel_name.length > 10 ? `${mention.channel_name.slice(0, 10)}...` : mention.channel_name}
+              <Text size='1' weight='medium' className='truncate max-w-[80px]'>
+                {mention.channel_name}
               </Text>
             </HStack>
           )}
