@@ -167,7 +167,7 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
         onFileChange={setFiles}
         areaHeight='h-[calc(100vh-72px)]'
         height='100%'
-        width={'w-[calc((100vw-var(--sidebar-width)-var(--space-8)-var(--space-5))/2)]'}
+        width={'w-[calc((100vw-var(--sidebar-width)-var(--space-8))/2)]'}
         maxFiles={10}
         maxFileSize={5}
       >
