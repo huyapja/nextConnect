@@ -4,6 +4,7 @@ from frappe import _
 from raven.utils import delete_channel_members_cache, get_channel_member, track_channel_visit ,track_channel_seen
 
 
+
 @frappe.whitelist()
 def remove_channel_member(user_id, channel_id):
 	# Get raven channel member name where user_id and channel_id match
@@ -84,17 +85,30 @@ def get_seen_info(channel_id: str):
 @frappe.whitelist(methods=["POST"])
 def add_channel_members(channel_id: str, members: list[str]):
 	"""
-	Add members to a channel
+	Add members to a channel (chỉ thêm nếu chưa có, và chỉ gửi realtime cho user vừa được thêm)
 	"""
-
-	# Since this is a bulk operation, we need to disable cache invalidation (will be handled manually) and ignore permissions (since we already have permission to add members)
+	from frappe import publish_realtime
 
 	for member in members:
-		member_doc = frappe.get_doc(
-			{"doctype": "Raven Channel Member", "channel_id": channel_id, "user_id": member}
-		)
+		# Nếu user đã trong channel thì bỏ qua
+		if frappe.db.exists("Raven Channel Member", {"channel_id": channel_id, "user_id": member}):
+			continue
+
+		# Nếu chưa có thì insert và gửi sự kiện
+		member_doc = frappe.get_doc({
+			"doctype": "Raven Channel Member",
+			"channel_id": channel_id,
+			"user_id": member
+		})
 		member_doc.flags.ignore_cache_invalidation = True
 		member_doc.insert()
+
+		# Gửi realtime chỉ cho user mới được thêm
+		publish_realtime(
+			event="raven:new_channel_added",
+			message={"channel_id": channel_id},
+			user=member
+		)
 
 	delete_channel_members_cache(channel_id)
 	return True

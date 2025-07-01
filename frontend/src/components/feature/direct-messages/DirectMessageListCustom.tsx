@@ -124,7 +124,6 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
   const selectedChannelRef = useRef<UnifiedChannel | null>(dm_channel)
   const channelID = dm_channel.name
 
-  // 👇 Pin state
   const pinnedIDs = useAtomValue(pinnedChannelsAtom)
   const togglePin = useSetAtom(togglePinnedChannelAtom)
   const isPinned = pinnedIDs.includes(channelID)
@@ -339,7 +338,6 @@ export const DirectMessageItemElement = ({
   const showDoneButton =
     (isTablet && !channel.last_message_details) || (channel.last_message_details && !(title === 'Nhãn' || labelID))
 
-  // 💥 Fix hooks-related crash: tránh render null conditionally trước khi hooks chạy
   const shouldRender = isGroupChannel || (isDM && peerUserId && peerUser?.enabled)
 
   if (!shouldRender) return null

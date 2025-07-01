@@ -3,7 +3,6 @@ import { Tooltip } from '@radix-ui/themes'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FiPhoneMissed } from 'react-icons/fi'
 import {
-  HiMenuAlt2,
   HiOutlineAtSymbol,
   HiOutlineChatAlt2,
   HiOutlineCheckCircle,
@@ -28,6 +27,7 @@ import { useFrappeEventListener, useFrappeGetCall } from 'frappe-react-sdk'
 import { FiChevronDown, FiChevronRight } from 'react-icons/fi'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useIsLaptop } from '@/hooks/useMediaQuery'
+import { BsBoxArrowLeft, BsBoxArrowRight } from 'react-icons/bs'
 
 export const useMentionUnreadCount = () => {
   const { data: mentionsCount, mutate } = useFrappeGetCall<{ message: number }>(
@@ -103,10 +103,17 @@ export default function SidebarContainer({ sidebarRef }: { sidebarRef: React.Ref
       <div className={`flex items-center ${isIconOnly ? 'justify-center' : 'justify-between'}`}>
         <div className='flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300'>
           <span className='relative inline-block cursor-pointer py-3 group' style={{ zIndex: 999 }}>
-            <HiMenuAlt2
-              onClick={handleToggleIconMode}
-              className={`w-5 h-5 ${!isIconOnly && 'ml-3 mr-2'} p-1 rounded group-hover:bg-gray-200 dark:group-hover:bg-gray-700`}
-            />
+            {isIconOnly ? (
+              <BsBoxArrowRight
+                onClick={handleToggleIconMode}
+                className='w-5 h-5 p-1 rounded transition-transform duration-200 group-hover:bg-gray-200 dark:group-hover:bg-gray-700'
+              />
+            ) : (
+              <BsBoxArrowLeft
+                onClick={handleToggleIconMode}
+                className='w-5 h-5 p-1 ml-3 mr-2 rounded transition-transform duration-200 group-hover:bg-gray-200 dark:group-hover:bg-gray-700'
+              />
+            )}
           </span>
           {!isCollapsed && !isIconOnly && <span className='text-base'>Bộ lọc</span>}
         </div>

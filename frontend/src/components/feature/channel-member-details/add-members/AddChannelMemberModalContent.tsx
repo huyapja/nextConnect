@@ -6,12 +6,10 @@ import { ChannelIcon } from '@/utils/layout/channelIcon'
 import { UserFields } from '@/utils/users/UserListProvider'
 import { Box, Button, Dialog, Flex, Text } from '@radix-ui/themes'
 import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
-import { Suspense, lazy } from 'react'
 import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import AddMembersDropdown from '../../selectDropdowns/AddMembersDropdown'
-// const AddMembersDropdown = lazy(() => import('../../selectDropdowns/AddMembersDropdown'))
 
 interface AddChannelMemberForm {
   add_members: UserFields[] | null
