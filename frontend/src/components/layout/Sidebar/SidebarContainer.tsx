@@ -1,6 +1,7 @@
 import { useSidebarMode } from '@/utils/layout/sidebar'
 import { Tooltip } from '@radix-ui/themes'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { FiPhoneMissed } from 'react-icons/fi'
 import {
   HiOutlineAtSymbol,
   HiOutlineChatAlt2,
@@ -17,6 +18,7 @@ import {
 
 import { CreateLabelButton } from '@/components/feature/labels/CreateLabelModal'
 import LabelList from '@/components/feature/labels/LabelListSidebar'
+import { useMissedCallCount } from '@/hooks/useMissedCallCount'
 import { useSavedMessageCount } from '@/hooks/useSavedMessageCount'
 import useUnreadThreadsCount from '@/hooks/useUnreadThreadsCount'
 import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
@@ -52,6 +54,7 @@ export const useMentionUnreadCount = () => {
 export const filterItems = [
   { label: 'Trò chuyện', icon: HiOutlineChatAlt2 },
   { label: 'Chưa đọc', icon: HiOutlineInbox },
+  { label: 'Cuộc gọi nhỡ', icon: FiPhoneMissed },
   { label: 'Đã gắn cờ', icon: HiOutlineFlag },
   { label: 'Nhắc đến', icon: HiOutlineAtSymbol },
   { label: 'Nhãn', icon: HiOutlineTag },
@@ -130,6 +133,7 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
   const { title, setTitle, tempMode, setLabelID } = useSidebarMode()
   const isIconOnly = tempMode === 'show-only-icons'
   const { mentionUnreadCount, resetMentions } = useMentionUnreadCount()
+  const { unreadMissedCallCount } = useMissedCallCount()
   const { data: unreadThreads } = useUnreadThreadsCount()
   const totalSaved = useSavedMessageCount()
 

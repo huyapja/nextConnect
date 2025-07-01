@@ -1,0 +1,48 @@
+# =============================================================================
+# FIREBASE CONFIGURATION - ENVIRONMENT VARIABLES TEMPLATE
+# =============================================================================
+# 
+# Hướng dẫn setup:
+# 1. Copy file này thành ".env" trong cùng thư mục: cp firebase.env.template .env
+# 2. Cập nhật các giá trị bên dưới theo Firebase project của bạn
+# 3. File .env sẽ được load tự động (đã config trong gitignore)
+#
+# =============================================================================
+
+# Firebase Web App Configuration
+FIREBASE_API_KEY=AIzaSyBjvUyp3VClva2ZEJYlumonaYnwE9_WYC8
+FIREBASE_AUTH_DOMAIN=erpnextvn-d0ec7.firebaseapp.com
+FIREBASE_PROJECT_ID=erpnextvn-d0ec7
+FIREBASE_STORAGE_BUCKET=erpnextvn-d0ec7.firebasestorage.app
+FIREBASE_MESSAGING_SENDER_ID=771489672323
+FIREBASE_APP_ID=1:771489672323:web:04698dae5fd6db76af7fb6
+FIREBASE_MEASUREMENT_ID=G-13L796L4FB
+
+# Firebase VAPID Key for Web Push Notifications
+FIREBASE_VAPID_KEY=BDSp283ejn319EfnQTWDrD-4Vq587ulgFEMrl9hgA6tfyuci3PfNIsGu3wmwbHAJPgh0zLW59LG4PGyidiJoCUQ
+
+# Firebase Service Account Credentials (Backend)
+FIREBASE_SERVICE_ACCOUNT_TYPE=service_account
+FIREBASE_SERVICE_ACCOUNT_PROJECT_ID=erpnextvn-d0ec7
+FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY_ID=b1353c4a67850aff3a4c12d302f2c7a7e93f8eaf
+FIREBASE_SERVICE_ACCOUNT_CLIENT_EMAIL=firebase-adminsdk-fbsvc@erpnextvn-d0ec7.iam.gserviceaccount.com
+FIREBASE_SERVICE_ACCOUNT_CLIENT_ID=115752751485055064438
+FIREBASE_SERVICE_ACCOUNT_AUTH_URI=https://accounts.google.com/o/oauth2/auth
+FIREBASE_SERVICE_ACCOUNT_TOKEN_URI=https://oauth2.googleapis.com/token
+FIREBASE_SERVICE_ACCOUNT_AUTH_PROVIDER_X509_CERT_URL=https://www.googleapis.com/oauth2/v1/certs
+FIREBASE_SERVICE_ACCOUNT_CLIENT_X509_CERT_URL=https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40erpnextvn-d0ec7.iam.gserviceaccount.com
+FIREBASE_SERVICE_ACCOUNT_UNIVERSE_DOMAIN=googleapis.com
+
+# Firebase Private Key (Multiline - keep the \n for line breaks)
+FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDir3AnpsH1g/2Z\nu0idKVP8YNwCSTjqdn/Q//SZM06AS1HaD/v0M/x8vkvOBOY1SkBoMjGefrmDUwBX\nu8Gkw/RakaFfH3Y+GIKe/4FcFgenHoSvKggyKlWVuJ2wzQp9lVWdwQrI4B12BYem\ni+CmjhWuSYvtg54Vtw1j9SbK2SVBNnOcLS7vQG+vvYz/ccNCq2no/DpEOsxk4PqD\nFBaFjJdrXy94zxwhqQMsXfYho7r/E9GR40cOyQRwf4gpfQ6KvMfWdibJbZQWuZTJ\nh6Dm6hS3gc0m+zSceabfnBfWbYJF63aQomiab3yyEx3bNHO6W1zBkWl2IFT6SZjc\nhnpz8NXvAgMBAAECggEABg0j49MWS20OGIwA2L0xMkQNq3vz6oJmUBh9GZfeiRs5\noKYblj3LCDN2R5Ym5RZJ2N46J95/KkvNbwoilbjrbX2EvsrSt76kwgTVGbW215W/\negOXu2sY5MnMX9thY8/YPMFZ/dnJv4xPPjluslOJraDl/N2uGytLTrdNJU4dqfty\nwbuO37mrUCjBJBJ+wCjvYT73V2gyZT7VElLKhcVI6a8eCUzU/i7B7RGlWXTCI3Cq\nOfz6w1XRwCLlgo506igJf24GypPcd8YyfveWZI8FSItyLDSrRIYHngSxL84wQnp0\ns0gR3/67Yhve4Fg2L142ScfJ7xo3I3NxbandAlb55QKBgQD+/QXbVEMFHyNSb8jk\nKMAKWQRmtj+exOWR3Edk7/o9ztwhbMFKkFPLk0EfMJknN7A6wKYIvw/lf0/5U+CO\nukET5adTqfqtklx7fPmQXlN2ttGUaqhR1XJqYhZ1Fxjm7Q/iIVAHEAFuRXTo4MUH\nOkxxMsT/CS+7DA5Ih9IJrHVRHQKBgQDjlatfH7PhjeKwrD8s/3rqLmPgYHe7WgER\ntdF4zNaofIjy6lhBpwafltWEUyNdrorH0Iz0hCtj3m8wYwqwKLnL3rufma7jWeeO\n7Bzmlt4xyK89Gm9/LGPEkWCVuX7izb3sH5tgJCGeNuDvOMIFeVefP8U23GtocpKw\nYRmZy1zBewKBgFaDyuTr5gFq2zUxMFwZZ28bXN7snxFjhPDEaITa13D5Kr88gyil\nZ4j+4W2Ps6cWwfhtPOhiyyX22E+kIeDLWSFDHk7IsYEK084iTRqqpm71AI720T1S\nyotF1JDN0WkorebvnpOG3rVnY49QFAmrwhv2Odi+aS9xm7cIPj+CABwRAoGBANrr\npFfypRR5afDNIFBmyZPvX//8i/Ba2eBxZ7iuQmb8tLgHGTK+Oq7VZzrMxp5dQf6H\n7K9hXGPLGmYPP77IzkEAVrdmHEdyuj5PflWKFt8IzxkWDt7kkmwJ9EDSmO4PP3yd\nwtauqvAIlkNH88tUOCdmLo1hZqioXdbw8LFyYB11AoGBAIdM03qtC+AEWS92f+SP\nHKr5iGHOLQKpGDq/qrUhe5GHYNef8Xri5JIbt7xpL1YjkaN9LH5jFcY0FF7pPTwV\nbeUVTM9++71ufEGUJK/PeYqK15rjG9QKRhb8Le4iP7iQwbnXWjyZC04eGxjWwp3z\nyRC3qqNQ3kRAomdwNTKH5k0I\n-----END PRIVATE KEY-----\n"
+
+# =============================================================================
+# OPTIONAL: Other API Keys used in Raven
+# =============================================================================
+
+# Tenor GIF API Key (for GIF picker)
+TENOR_API_KEY=AIzaSyAWkuhLwbMxOlvn_o5fxBke1grUZ7F3ma4
+
+# Stringee Video Call API Keys
+STRINGEE_API_KEY_SID=SK.0.OLlIVxjAnZKQh8W1DhRt7UcY3SmvpQpt
+STRINGEE_API_KEY_SECRET=aXlYQ1VncFlGWkkwRTk4Vk9SVTB6NjJCVVBYN09IdU4= 

@@ -9,3 +9,4 @@ openpyxl
 xlrd
 python-pptx
 tiktoken
+firebase-admin

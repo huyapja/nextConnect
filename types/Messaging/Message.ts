@@ -1,4 +1,4 @@
-export type Message = FileMessage | TextMessage | ImageMessage | PollMessage | SystemMessage
+export type Message = FileMessage | TextMessage | ImageMessage | PollMessage | SystemMessage | GroupCallMessage
 
 export interface BaseMessage {
     name: string,
@@ -7,7 +7,7 @@ export interface BaseMessage {
     channel_id: string,
     creation: string,
     modified: string,
-    message_type: 'Text' | 'File' | 'Image' | 'Poll' | 'System',
+    message_type: 'Text' | 'File' | 'Image' | 'Poll' | 'System' | 'GroupCall',
     message_reactions?: string | null,
     is_continuation: 1 | 0
     is_reply: 1 | 0
@@ -26,6 +26,9 @@ export interface BaseMessage {
     is_pinned: 1 | 0,
     content?: string
     is_retracted?: 1 | 0
+    group_call_room_id?: string
+    group_call_status?: string
+    group_call_participants?: string
 }
 
 export interface FileMessage extends BaseMessage {
@@ -71,6 +74,14 @@ export interface PollMessage extends BaseMessage {
 export interface SystemMessage extends BaseMessage {
     message_type: 'System',
     text: string,
+}
+
+export interface GroupCallMessage extends BaseMessage {
+    message_type: 'GroupCall',
+    text: string,
+    group_call_room_id: string,
+    group_call_status: string,
+    group_call_participants: string
 }
 
 export type DateBlock = {

@@ -30,6 +30,7 @@ import { MessageSeenStatus } from './MessageSeenStatus'
 import { DateTooltip, DateTooltipShort } from './Renderers/DateTooltip'
 import { DoctypeLinkRenderer } from './Renderers/DoctypeLinkRenderer'
 import { FileMessageBlock } from './Renderers/FileMessage'
+import { GroupCallMessage } from './Renderers/GroupCallMessage'
 import { ImageMessageBlock } from './Renderers/ImageMessage'
 import { PollMessageBlock } from './Renderers/PollMessage'
 import { TextMessageBlock } from './Renderers/TextMessage'
@@ -862,6 +863,10 @@ export const MessageContent = ({
       )}
 
       {message.message_type === 'Poll' && <PollMessageBlock message={message} user={user} />}
+
+      {message.message_type === 'GroupCall' && (
+        <GroupCallMessage message={message} user={user} currentUser={currentUser} />
+      )}
     </Box>
   )
 }

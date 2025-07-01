@@ -186,30 +186,3 @@ const SearchButton = () => {
   )
 }
 
-// const ColorModeToggleButton = () => {
-//   const { appearance, setAppearance } = useTheme()
-
-//   const toggleTheme = () => {
-//     setAppearance(appearance === 'light' ? 'dark' : 'light')
-//   }
-
-//   return (
-//     <Flex align='center' justify='center' pr='1'>
-//       <IconButton
-//         size={{ initial: '2', md: '1' }}
-//         aria-label='Toggle theme'
-//         title={__('Toggle theme')}
-//         color='gray'
-//         className='text-gray-11 sm:hover:text-gray-12 p-2'
-//         variant='ghost'
-//         onClick={toggleTheme}
-//       >
-//         {appearance === 'light' ? (
-//           <BiMoon className='text-lg sm:text-base' />
-//         ) : (
-//           <BiSun className='text-lg sm:text-base' />
-//         )}
-//       </IconButton>
-//     </Flex>
-//   )
-// }
