@@ -185,11 +185,25 @@ export const TiptapRenderer = ({
   })
 
   const isCurrentUser = currentUser === message?.owner
+  function hasWhiteSpace(s: string) {
+    return s.indexOf(' ') >= 0
+  }
 
+  const text = message.content || ''
+  const isNoSpaceText = text.trim().length > 0 && !hasWhiteSpace(text)
   return (
     <Box
+      style={
+        isNoSpaceText
+          ? {
+              width: '100%',
+              wordBreak: 'break-all',
+              whiteSpace: 'pre-wrap'
+            }
+          : undefined
+      }
       className={clsx(
-        'overflow-x-hidden text-ellipsis p-4 rounded-lg',
+        'overflow-x-hidden p-4 rounded-lg',
         isCurrentUser ? 'bg-atom-1 dark:bg-atom-2' : 'bg-gray-3 dark:bg-gray-4',
         props.className
       )}
