@@ -4,6 +4,7 @@ import { RavenPollOption } from '@/types/RavenMessaging/RavenPollOption'
 import { Badge, Box, BoxProps, Button, Checkbox, Flex, RadioGroup, Text } from '@radix-ui/themes'
 import { useFrappeDocumentEventListener, useFrappeGetCall, useFrappePostCall } from 'frappe-react-sdk'
 import { useEffect, useMemo, useState } from 'react'
+import { TiArrowBackOutline } from 'react-icons/ti'
 import { PollMessage } from '../../../../../../../types/Messaging/Message'
 import { UserFields } from '../../../../../utils/users/UserListProvider'
 
@@ -91,7 +92,14 @@ const PollMessageBox = ({ data, messageID }: { data: Poll; messageID: string }) 
             Poll đã kết thúc
           </Badge>
         ) : null}
-        {data.poll.is_anonymous ? null : <ViewPollVotes poll={data} />}
+        {data.poll.is_anonymous ? null : (
+          <Flex gap='2' align='center' className='w-full'>
+            <ViewPollVotes poll={data} />
+            {data.current_user_votes?.length > 0 && !data.poll.is_disabled && (
+              <RetractVoteButton pollId={data.poll.name} />
+            )}
+          </Flex>
+        )}
       </Flex>
     </Flex>
   )
@@ -276,5 +284,36 @@ const MultiChoicePoll = ({ data, messageID }: { data: Poll; messageID: string })
         </Button>
       </Flex>
     </div>
+  )
+}
+
+const RetractVoteButton = ({ pollId }: { pollId: string }) => {
+  const { call, loading } = useFrappePostCall('raven.api.raven_poll.retract_vote')
+  
+  const onRetractVote = () => {
+    return call({
+      poll_id: pollId
+    })
+      .then(() => {
+        toast.success('Đã thu hồi vote. Bạn có thể vote lại!')
+      })
+      .catch((error) => {
+        toast.error('Không thể thu hồi vote', {
+          description: getErrorMessage(error)
+        })
+      })
+  }
+
+  return (
+    <Button 
+      variant='outline' 
+      size='1' 
+      onClick={onRetractVote}
+      disabled={loading}
+      className='shrink-0'
+    >
+      <TiArrowBackOutline size={14} />
+      Vote lại
+    </Button>
   )
 }
