@@ -367,7 +367,7 @@ export const DirectMessageItemElement = ({
               availabilityStatus={peerUser.availability_status}
             />
           ) : (
-            <ChannelIcon type={channel.type} className={isTablet ? 'w-[32px] h-[32px]' : 'w-[24px] h-[24px]'} />
+            <ChannelIcon groupImage={channel.group_image} type={channel.type} />
           )}
           {shouldShowBadge && (
             <SidebarBadge className='absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 w-[14px] h-[14px] text-[8px] rounded-full bg-red-500 text-white flex items-center justify-center'>

@@ -15,6 +15,7 @@
   "linked_doctype",
   "linked_document",
   "workspace",
+  "group_image",
   "section_break_evg4",
   "is_direct_message",
   "is_thread",
@@ -214,6 +215,11 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Is Done"
+  },
+  {
+   "fieldname": "group_image",
+   "fieldtype": "Attach Image",
+   "label": "Group Image"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -227,7 +233,7 @@
    "link_fieldname": "channel_id"
   }
  ],
- "modified": "2025-05-30 17:53:31.096893",
+ "modified": "2025-07-01 13:54:12.067389",
  "modified_by": "Administrator",
  "module": "Raven Channel Management",
  "name": "Raven Channel",

@@ -50,4 +50,5 @@ export interface RavenChannel {
   /**	Thread Bot : Link - Raven Bot	*/
   thread_bot?: string
   group_type: 'channel' | 'dm'
+  group_image?: string
 }

@@ -13,6 +13,7 @@ import { ChannelMemberDetails } from '../channel-member-details/ChannelMemberDet
 import { ChannelSettings } from '../channel-settings/ChannelSettings'
 import { useFetchWorkspaceMembers } from '../workspaces/WorkspaceMemberManagement'
 import { UserFields, UserListContext } from '@/utils/users/UserListProvider'
+import { GroupImageUploadManager } from '../channel-details/change-image-channel/ImageChannelUpload'
 
 interface ViewChannelDetailsModalContentProps {
   open: boolean
@@ -25,35 +26,36 @@ const ViewChannelDetailsModal = ({ open, setOpen, channelData, defaultTab }: Vie
   const isDesktop = useIsDesktop()
   const isMobile = useIsMobile()
 
-  if (isDesktop) {
-    return (
-      <Dialog.Root open={open} onOpenChange={setOpen}>
-        <Dialog.Content className={DIALOG_CONTENT_CLASS}>
-          <ViewChannelDetailsModalContent
-            open={open}
-            setOpen={setOpen}
-            channelData={channelData}
-            defaultTab={defaultTab}
-          />
-        </Dialog.Content>
-      </Dialog.Root>
-    )
-  } else if (isMobile) {
-    return (
-      <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerContent>
-          <ViewChannelDetailsModalContent
-            open={open}
-            setOpen={setOpen}
-            channelData={channelData}
-            defaultTab={defaultTab}
-          />
-        </DrawerContent>
-      </Drawer>
-    )
-  }
-}
+  return (
+    <>
+      {isDesktop ? (
+        <Dialog.Root open={open} onOpenChange={setOpen}>
+          <Dialog.Content className={DIALOG_CONTENT_CLASS}>
+            <ViewChannelDetailsModalContent
+              open={open}
+              setOpen={setOpen}
+              channelData={channelData}
+              defaultTab={defaultTab}
+            />
+          </Dialog.Content>
+        </Dialog.Root>
+      ) : isMobile ? (
+        <Drawer open={open} onOpenChange={setOpen}>
+          <DrawerContent>
+            <ViewChannelDetailsModalContent
+              open={open}
+              setOpen={setOpen}
+              channelData={channelData}
+              defaultTab={defaultTab}
+            />
+          </DrawerContent>
+        </Drawer>
+      ) : null}
 
+      <GroupImageUploadManager />
+    </>
+  )
+}
 export default ViewChannelDetailsModal
 
 const ViewChannelDetailsModalContent = ({
@@ -112,12 +114,11 @@ const ViewChannelDetailsModalContent = ({
     },
     [nonChannelMembers]
   )
-
   return (
     <>
       <Dialog.Title>
         <Flex align='center' gap='2'>
-          <ChannelIcon className={'mt-1'} type={type} />
+          <ChannelIcon groupImage={channelData.group_image} className={'mt-1'} type={type} />
           <Text>{channelData.channel_name}</Text>
         </Flex>
       </Dialog.Title>
@@ -140,7 +141,12 @@ const ViewChannelDetailsModalContent = ({
           </Tabs.List>
           <Box>
             <Tabs.Content value='About'>
-              <ChannelDetails channelData={channelData} channelMembers={channelMembers} onClose={onClose} />
+              <ChannelDetails
+                channelData={channelData}
+                channelMembers={channelMembers}
+                onClose={onClose}
+                allowSettingChange={allowSettingChange}
+              />
             </Tabs.Content>
             <Tabs.Content value='Members'>
               <ChannelMemberDetails
@@ -148,7 +154,6 @@ const ViewChannelDetailsModalContent = ({
                 channelMembers={channelMembers}
                 activeUsers={activeUsers}
                 updateMembers={updateMembers}
-                getFilteredUsers={getFilteredUsers}
               />
             </Tabs.Content>
             <Tabs.Content value='Settings'>

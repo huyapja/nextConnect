@@ -3,7 +3,7 @@ import { PageHeader } from '@/components/layout/Heading/PageHeader'
 import useIsUserOnLeave from '@/hooks/fetchers/useIsUserOnLeave'
 import { useGetUser } from '@/hooks/useGetUser'
 import { useIsUserActive } from '@/hooks/useIsUserActive'
-import { useIsDesktop, useIsTablet } from '@/hooks/useMediaQuery'
+import { useIsDesktop, useIsMobile, useIsTablet } from '@/hooks/useMediaQuery'
 import { UserContext } from '@/utils/auth/UserProvider'
 import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
 import { DMChannelListItem } from '@/utils/channel/ChannelListProvider'
@@ -17,6 +17,7 @@ import ChannelLabelBadge from '../channels/ChannelLabelBadge'
 import { ViewPinnedMessagesButton } from '../pinned-messages/ViewPinnedMessagesButton'
 import ChannelHeaderMenu from './ChannelHeaderMenu'
 import { useGlobalStringee } from '../call-stringee/GlobalStringeeProvider'
+import clsx from 'clsx'
 
 interface DMChannelHeaderProps {
   channelData: DMChannelListItem
@@ -24,7 +25,6 @@ interface DMChannelHeaderProps {
 
 export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
   const { currentUser } = useContext(UserContext)
-  const isTablet = useIsTablet()
   const { client: globalClient } = useGlobalStringee()
 
   const peerUserId = channelData.peer_user_id
@@ -33,6 +33,8 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
   const isUserOnLeave = useIsUserOnLeave(peerUserId)
   const isBot = peerUser?.type === 'Bot'
   const isDesktop = useIsDesktop()
+  const isTablet = useIsTablet()
+  const isMobile = useIsMobile()
 
   const userImage = peerUser?.user_image ?? ''
   const userName = peerUser?.full_name ?? replaceCurrentUserFromDMChannelName(channelData.channel_name, currentUser)
@@ -58,6 +60,7 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
         </Link>
 
         <UserAvatar
+          canUserView={true}
           key={peerUserId}
           alt={userName}
           src={userImage}
@@ -75,7 +78,15 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
           }}
         >
           <div className='flex flex-wrap items-center gap-2'>
-            <span>{userName}</span>
+            <span
+              className={clsx(
+                (isTablet || isMobile) && 'truncate text-sm',
+                isTablet && 'max-w-[350px]',
+                isMobile && 'max-w-[180px]'
+              )}
+            >
+              {userName}
+            </span>
 
             {!isTablet &&
               Array.isArray(channelData.user_labels) &&
@@ -120,7 +131,7 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
       </Flex>
 
       <Flex className='mr-3' gap='4' align='center'>
-        {peerUserId && <VideoCall toUserId={peerUserId} channelId={channelData.name} globalClient={globalClient}/>}
+        {peerUserId && <VideoCall toUserId={peerUserId} channelId={channelData.name} globalClient={globalClient} />}
         <ChannelHeaderMenu channelData={channelData} />
       </Flex>
     </PageHeader>

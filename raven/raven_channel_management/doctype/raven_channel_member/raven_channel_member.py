@@ -127,13 +127,24 @@ class RavenChannelMember(Document):
 						"doctype": "Raven Message",
 						"channel_id": self.channel_id,
 						"message_type": "System",
-						"text": f"{current_user_name} removed {member_name}.",
+						"text": f"{member_name} đã bị {current_user_name} xóa khỏi kênh.",
 					}
 				).insert(ignore_permissions=True)
 
 	def on_trash(self):
 		unsubscribe_user_to_topic(self.channel_id, self.user_id)
 		self.invalidate_channel_members_cache()
+
+		# Gửi event realtime cho người bị xóa
+		if self.user_id:
+			frappe.publish_realtime(
+				event='raven:member_removed',
+				message={
+					'channel_id': self.channel_id,
+					'removed_user': self.user_id
+				},
+				user=self.user_id
+			)
 
 	def check_if_user_is_member(self):
 		is_member = True
@@ -204,7 +215,7 @@ class RavenChannelMember(Document):
 							"doctype": "Raven Message",
 							"channel_id": self.channel_id,
 							"message_type": "System",
-							"text": f"{current_user_name} added {member_name}.",
+							"text": f"{current_user_name} đã thêm {member_name}.",
 						}
 					).insert(ignore_permissions=True)
 
@@ -229,7 +240,7 @@ class RavenChannelMember(Document):
 			# Send a system message to the channel mentioning the member who became admin
 			member_name = frappe.get_cached_value("Raven User", self.user_id, "full_name")
 			text = (
-				f"{member_name} is now an admin." if self.is_admin else f"{member_name} is no longer an admin."
+				f"{member_name} được chỉ định làm quản trị viên." if self.is_admin else f"{member_name} không còn là quản trị viên."
 			)
 			frappe.get_doc(
 				{

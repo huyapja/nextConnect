@@ -45,16 +45,16 @@ export const UpdateAdminStatusButton = ({ user, channelID, updateMembers }: Upda
 
   if (user.is_admin) {
     return (
-      <div className={'flex items-center gap-2'} onClick={() => updateAdminStatus(0)}>
+      <div className='flex items-center gap-2' onClick={() => updateAdminStatus(0)}>
         <BiCrown />
-        {updatingMember ? 'Updating member status...' : 'Dismiss admin'}
+        {updatingMember ? 'Đang cập nhật vai trò...' : 'Gỡ quyền quản trị viên'}
       </div>
     )
   } else {
     return (
-      <div className={'flex items-center gap-2'} onClick={() => updateAdminStatus(1)}>
+      <div className='flex items-center gap-2' onClick={() => updateAdminStatus(1)}>
         <BiSolidCrown />
-        {updatingMember ? 'Updating member status...' : 'Make channel admin'}
+        {updatingMember ? 'Đang cập nhật vai trò...' : 'Chỉ định làm quản trị viên'}
       </div>
     )
   }
