@@ -13,9 +13,9 @@ import ImageViewer from './ImageViewer'
 interface UserAvatarProps extends Partial<AvatarProps> {
   alt?: string
   isActive?: boolean
-  canUserView?: boolean
   availabilityStatus?: AvailabilityStatus
   isBot?: boolean
+  canUserView?: boolean
   skeletonSize?: BoxProps['width'] | BoxProps['height']
 }
 
@@ -53,19 +53,21 @@ const getIconSize = (size: AvatarProps['size']) => {
 export const UserAvatar = ({
   src,
   alt,
-  fallback,
-  size,
-  radius,
-  className,
-  canUserView = false,
-  availabilityStatus,
+  size = '1',
+  radius = 'medium',
   isActive,
+  availabilityStatus,
+  skeletonSize = '5',
+  fallback,
   isBot,
+  canUserView = false,
+  className,
   ...props
 }: UserAvatarProps) => {
+  const color = useMemo(() => generateAvatarColor(alt), [alt])
   const [open, setOpen] = useState(false)
 
-  const renderAvatar = (clickable = false) => (
+  const avatar = (
     <Avatar
       src={src}
       alt={alt}
@@ -73,37 +75,50 @@ export const UserAvatar = ({
       fallback={fallback ?? getInitials(alt)}
       size={size}
       radius={radius}
-      className={clsx(className, clickable && 'cursor-pointer')}
-      onClick={clickable ? () => setOpen(true) : undefined}
+      className={clsx(className, canUserView && src && 'cursor-pointer')}
+      onClick={canUserView && src ? () => setOpen(true) : undefined}
       {...props}
     />
   )
 
   return (
-    <>
+    <Theme accentColor={color}>
       <span className='relative inline-block'>
-        {canUserView && src ? renderAvatar(true) : renderAvatar()}
+        {avatar}
 
-        {/* Trạng thái người dùng */}
-        {(availabilityStatus === 'Away' || availabilityStatus === 'Do not disturb' || isActive) && !isBot && (
+        {availabilityStatus === 'Away' && (
           <span
             className={clsx(
               'absolute block translate-x-1/2 translate-y-1/2 transform rounded-full',
               radius === 'full' ? 'bottom-1 right-1' : 'bottom-0.5 right-0.5'
             )}
           >
-            <span
-              className={clsx(
-                'block h-2 w-2 rounded-full border border-slate-2 shadow-md',
-                availabilityStatus === 'Away' && 'bg-[#FFAA33]',
-                availabilityStatus === 'Do not disturb' && 'bg-[#D22B2B]',
-                !availabilityStatus && isActive && 'bg-green-600'
-              )}
-            />
+            <span className='block h-2 w-2 rounded-full border border-slate-2 bg-[#FFAA33] shadow-md' />
           </span>
         )}
 
-        {/* Bot Icon */}
+        {availabilityStatus === 'Do not disturb' && (
+          <span
+            className={clsx(
+              'absolute block translate-x-1/2 translate-y-1/2 transform rounded-full',
+              radius === 'full' ? 'bottom-1 right-1' : 'bottom-0.5 right-0.5'
+            )}
+          >
+            <span className='block h-2 w-2 rounded-full border border-slate-2 bg-[#D22B2B] shadow-md' />
+          </span>
+        )}
+
+        {availabilityStatus !== 'Away' && availabilityStatus !== 'Do not disturb' && isActive && (
+          <span
+            className={clsx(
+              'absolute block translate-x-1/2 translate-y-1/2 transform rounded-full',
+              radius === 'full' ? 'bottom-1 right-1' : 'bottom-0.5 right-0.5'
+            )}
+          >
+            <span className='block h-2 w-2 rounded-full border border-slate-2 bg-green-600 shadow-md' />
+          </span>
+        )}
+
         {isBot && (
           <span
             className={clsx(
@@ -116,12 +131,13 @@ export const UserAvatar = ({
         )}
       </span>
 
-      {/* Dialog xem ảnh lớn */}
+      {/* Image viewer chỉ bật khi có ảnh và canUserView */}
       {canUserView && src && (
         <Dialog.Root open={open} onOpenChange={setOpen}>
           <Dialog.Content
             className={clsx(
-              'p-0 rounded-md overflow-auto bg-white dark:backdrop-blur-[20px] dark:bg-[#151518CC] dark:border dark:border-[#ffffff1a] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.1),0_3px_16px_rgba(0,0,0,0.6)]',
+              'p-0 rounded-md overflow-auto bg-white dark:backdrop-blur-[20px] dark:bg-[#151518CC]',
+              'dark:border dark:border-[#ffffff1a] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.1),0_3px_16px_rgba(0,0,0,0.6)]',
               'w-full max-w-[100vw] sm:max-w-[85vw] sm:max-h-[85vh]'
             )}
           >
@@ -149,6 +165,6 @@ export const UserAvatar = ({
           </Dialog.Content>
         </Dialog.Root>
       )}
-    </>
+    </Theme>
   )
 }

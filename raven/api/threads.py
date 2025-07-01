@@ -65,18 +65,17 @@ def get_all_threads(
 			message.creation,
 			Count(thread_messages.name).as_("reply_count"),
 		)
-		.left_join(message)
-		.on((message.is_thread == 1) & (message.name == channel.name))
-		.left_join(channel_member)
+		.inner_join(channel_member)
 		.on(
 			(channel.name == channel_member.channel_id) & (channel_member.user_id == frappe.session.user)
 		)
+		.inner_join(message)
+		.on((message.is_thread == 1) & (message.name == channel.name))
 		.left_join(thread_messages)
 		.on(channel.name == thread_messages.channel_id)
-		.where(channel_member.user_id == frappe.session.user)
 		.where(channel.is_thread == 1)
 		.where(channel.is_ai_thread == is_ai_thread)
-		.where(message.name.isnotnull())  # ✅ Chặn các thread không còn message gốc
+		.where(channel.is_archived == 0)
 		.limit(limit)
 		.offset(start_after)
 		.groupby(channel.name)
@@ -211,15 +210,15 @@ def get_unread_threads(workspace: str = None, thread_id: str = None):
 	query = (
 		frappe.qb.from_(channel)
 		.select(channel.name, Count(message.name).as_("unread_count"))
-		.left_join(channel_member)
+		.inner_join(channel_member)
 		.on((channel.name == channel_member.channel_id) & (channel_member.user_id == frappe.session.user))
 		.left_join(message)
 		.on(channel.name == message.channel_id)
 		.where(channel.is_thread == 1)
 		.where(channel.is_ai_thread == 0)
+		.where(channel.is_archived == 0)
 		.where(message.message_type != "System")
 		.where(message.creation > Coalesce(channel_member.last_visit, "2000-11-11"))
-		.where(channel_member.user_id == frappe.session.user)
 		.groupby(channel.name)
 	)
 

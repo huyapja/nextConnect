@@ -11,7 +11,7 @@ import { CustomFile } from '../file-upload/FileDrop'
 import useUploadChatbotFile from './useUploadChatbotFile'
 
 const MESSAGES_PER_PAGE = 15
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_FILE_TYPES = ['image/*', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
 
 const ChatbotAIBody = ({ botID }: { botID?: string }) => {
@@ -48,7 +48,7 @@ const ChatbotAIBody = ({ botID }: { botID?: string }) => {
   // File validation logic
   const validateFile = useCallback((file: File): string | null => {
     if (file.size > MAX_FILE_SIZE) {
-      return 'File size must be less than 10MB'
+      return 'Kích thước file phải nhỏ hơn 5MB'
     }
     return null
   }, [])

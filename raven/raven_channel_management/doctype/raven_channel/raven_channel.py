@@ -42,6 +42,15 @@ class RavenChannel(Document):
 	# end: auto-generated types
 
 	def on_trash(self):
+		# Store thread members before deleting them (for sending targeted events)
+		thread_members = []
+		if self.is_thread:
+			thread_members = frappe.get_all(
+				"Raven Channel Member", 
+				filters={"channel_id": self.name}, 
+				fields=["user_id"]
+			)
+
 		# delete all members when channel is deleted
 		frappe.db.delete("Raven Channel Member", {"channel_id": self.name})
 
@@ -66,6 +75,26 @@ class RavenChannel(Document):
 				room=get_raven_room(),
 				after_commit=True,
 			)
+		else:
+			# ✅ Gửi thông báo thread bị xóa đến tất cả users trong workspace
+			frappe.publish_realtime(
+				"thread_deleted",
+				{
+					"thread_id": self.name,
+				},
+				room=get_raven_room(),
+				after_commit=True,
+			)
+			
+			# ✅ Gửi thông báo targeted đến từng user cụ thể (không cần after_commit)
+			for member in thread_members:
+				frappe.publish_realtime(
+					"thread_deleted",
+					{
+						"thread_id": self.name,
+					},
+					user=member.user_id,
+				)
 
 		# If the channel was a thread, (i.e. a message exists with the same name), remove the 'is_thread' flag from the message
 		if self.is_thread and frappe.db.exists("Raven Message", {"name": self.name}):

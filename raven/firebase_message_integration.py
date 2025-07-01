@@ -95,4 +95,10 @@ def patch_raven_message():
 
 
 # Auto-patch khi module được import
-patch_raven_message() 
+# Chỉ patch khi Frappe đã sẵn sàng
+if not (frappe.flags.in_install or frappe.flags.in_patch or frappe.flags.in_import):
+	try:
+		patch_raven_message()
+	except Exception as e:
+		# Ignore lỗi khi startup, hook sẽ gọi lại sau
+		pass 

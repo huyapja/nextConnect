@@ -30,10 +30,10 @@ export const RetractVote = ({ message }: RetractVoteProps) => {
       poll_id: message?.poll_id
     })
       .then(() => {
-        toast('Vote retracted')
+        toast('Đã thu hồi vote')
       })
       .catch((e) => {
-        toast.error('Could not retract vote', {
+        toast.error('Không thể thu hồi vote', {
           description: getErrorMessage(e)
         })
       })
@@ -45,7 +45,7 @@ export const RetractVote = ({ message }: RetractVoteProps) => {
         <ContextMenu.Item onClick={onRetractVote} disabled={data.message?.poll.is_disabled ? true : false}>
           <Flex gap='2'>
             <TiArrowBackOutline size='18' />
-            Retract vote
+            Sửa lại vote
           </Flex>
         </ContextMenu.Item>
         <ContextMenu.Separator />

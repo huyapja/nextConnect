@@ -15,8 +15,10 @@ export interface EventBusEvents {
     threadId: string
   }
   'user:interacted': {
-    source: 'input' | 'textarea' | 'editor' | 'click'
+    source: 'input' | 'textarea' | 'editor' | 'click' | 'reaction'
     timestamp: number
+    message_id?: string
+    channel_id?: string
   }
   'saved:count_changed': {
     newCount: number

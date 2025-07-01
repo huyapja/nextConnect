@@ -15,7 +15,7 @@ def create_poll(
 	"""
 	# Check if the current user has access to the channel to create a poll.
 	if not frappe.has_permission(doctype="Raven Channel", doc=channel_id, ptype="read"):
-		frappe.throw(_("You do not have permission to access this channel"), frappe.PermissionError)
+		frappe.throw(_("Bạn không có quyền truy cập kênh này"), frappe.PermissionError)
 
 	poll = frappe.get_doc(
 		{
@@ -63,7 +63,7 @@ def get_poll(message_id):
 
 	# Check if the current user has access to the message.
 	if not frappe.has_permission(doctype="Raven Message", doc=message_id, ptype="read"):
-		frappe.throw(_("You do not have permission to access this message"), frappe.PermissionError)
+		frappe.throw(_("Bạn không có quyền truy cập tin nhắn này"), frappe.PermissionError)
 
 	poll_id = frappe.get_cached_value("Raven Message", message_id, "poll_id")
 
@@ -87,32 +87,71 @@ def add_vote(message_id, option_id):
 
 	# Check if the current user has access to the message.
 	if not frappe.has_permission(doctype="Raven Message", doc=message_id, ptype="read"):
-		frappe.throw(_("You do not have permission to access this message"), frappe.PermissionError)
+		frappe.throw(_("Bạn không có quyền truy cập tin nhắn này"), frappe.PermissionError)
 
 	poll_id = frappe.get_cached_value("Raven Message", message_id, "poll_id")
 	is_poll_multi_choice = frappe.get_cached_value("Raven Poll", poll_id, "is_multi_choice")
+	user = frappe.session.user
 
 	if is_poll_multi_choice:
+		# Multi-choice: toggle vote for each option
 		for option in option_id:
+			existing_vote = frappe.db.exists(
+				"Raven Poll Vote",
+				{
+					"poll_id": poll_id,
+					"user_id": user,
+					"option": option,
+				},
+			)
+			
+			if existing_vote:
+				# Vote exists → remove it (toggle off)
+				frappe.delete_doc("Raven Poll Vote", existing_vote)
+			else:
+				# Vote doesn't exist → add it (toggle on)
+				frappe.get_doc(
+					{
+						"doctype": "Raven Poll Vote",
+						"poll_id": poll_id,
+						"option": option,
+						"user_id": user,
+					}
+				).insert()
+	else:
+		# Single-choice: change vote logic
+		# First, remove any existing vote by this user
+		existing_votes = frappe.get_all(
+			"Raven Poll Vote", 
+			filters={"poll_id": poll_id, "user_id": user}, 
+			fields=["name", "option"]
+		)
+		
+		# Check if user is voting for the same option they already voted for
+		already_voted_this_option = any(vote.option == option_id for vote in existing_votes)
+		
+		if already_voted_this_option:
+			# User clicked same option → toggle off (remove vote)
+			for vote in existing_votes:
+				if vote.option == option_id:
+					frappe.delete_doc("Raven Poll Vote", vote.name)
+		else:
+			# User is changing vote or voting for first time
+			# Remove all existing votes first
+			for vote in existing_votes:
+				frappe.delete_doc("Raven Poll Vote", vote.name)
+			
+			# Add new vote
 			frappe.get_doc(
 				{
 					"doctype": "Raven Poll Vote",
 					"poll_id": poll_id,
-					"option": option,
-					"user_id": frappe.session.user,
+					"option": option_id,
+					"user_id": user,
 				}
 			).insert()
-	else:
-		frappe.get_doc(
-			{
-				"doctype": "Raven Poll Vote",
-				"poll_id": poll_id,
-				"option": option_id,
-				"user_id": frappe.session.user,
-			}
-		).insert()
 
-	return "Vote added successfully."
+	return "Cập nhật vote thành công."
 
 
 @frappe.whitelist(methods=["POST"])
@@ -123,7 +162,7 @@ def retract_vote(poll_id):
 		"Raven Poll Vote", filters={"poll_id": poll_id, "user_id": user}, fields=["name"]
 	)
 	if not votes:
-		frappe.throw(_("You have not voted for any option in this poll."))
+		frappe.throw(_("Bạn chưa vote cho bất kỳ lựa chọn nào trong poll này."))
 	else:
 		for vote in votes:
 			frappe.delete_doc("Raven Poll Vote", vote.name)
@@ -134,13 +173,13 @@ def get_all_votes(poll_id):
 
 	# Check if the current user has access to the poll
 	if not frappe.has_permission(doctype="Raven Poll", doc=poll_id, ptype="read"):
-		frappe.throw(_("You do not have permission to access this poll"), frappe.PermissionError)
+		frappe.throw(_("Bạn không có quyền truy cập poll này"), frappe.PermissionError)
 
 	poll_doc = frappe.get_cached_doc("Raven Poll", poll_id)
 
 	if poll_doc.is_anonymous:
 		frappe.throw(
-			_("This poll is anonymous. You do not have permission to access the votes."),
+			_("Poll này ẩn danh. Bạn không có quyền truy cập các votes."),
 			frappe.PermissionError,
 		)
 	else:

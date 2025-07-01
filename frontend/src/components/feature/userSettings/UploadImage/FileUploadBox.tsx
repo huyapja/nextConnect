@@ -30,10 +30,10 @@ export const FileUploadBox = forwardRef((props: FileUploadBoxProps, ref) => {
 
   const fileSizeValidator = (file: any) => {
     if (maxFileSize && file.size > maxFileSize * 1000000) {
-      toast.error(__('Uh Oh! {0} exceeded the maximum file size required.', [file.name]))
+      toast.error(__('File "{0}" có kích thước quá lớn! Giới hạn tối đa là {1}MB.', [file.name, maxFileSize]))
       return {
         code: 'size-too-large',
-        message: __('File size is larger than the required size.')
+        message: __('Kích thước file vượt quá giới hạn cho phép.')
       }
     } else return null
   }
@@ -113,7 +113,7 @@ export const FileUploadBox = forwardRef((props: FileUploadBoxProps, ref) => {
           {supportedFormats}
         </Text>
         <Text as='span' size='1' color='gray'>
-          {__('Maximum file size: {0}MB', [maxFileSize])}
+          {__('Kích thước tối đa: {0}MB', [maxFileSize])}
         </Text>
       </Flex>
       {file && <FileItem file={file} uploadProgress={fileUploadProgress} removeFile={() => removeFile(file.fileID)} />}

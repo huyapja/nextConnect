@@ -18,7 +18,8 @@ dependencies = [
  "openpyxl",
  "xlrd",
  "python-pptx",
- "tiktoken"
+ "tiktoken",
+ "firebase-admin"
 ]
 
 [build-system]

@@ -39,6 +39,46 @@ lowlight.register('js', js)
 lowlight.register('ts', ts)
 lowlight.register('json', json)
 lowlight.register('python', python)
+
+// Utility function để kiểm tra xem tin nhắn có chỉ chứa emoji không
+const isOnlyEmoji = (text: string): boolean => {
+  if (!text || !text.trim()) return false
+  
+  // Regex để match emoji Unicode chuẩn
+  const unicodeEmojiRegex = /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F018}-\u{1F270}]|[\u{238C}]|[\u{2194}-\u{2199}]|[\u{21A9}-\u{21AA}]|[\u{2B05}-\u{2B07}]|[\u{2B1B}-\u{2B1C}]|[\u{3030}]|[\u{303D}]|[\u{3297}]|[\u{3299}]|[\u{FE0F}]/gu
+  
+  // Regex để match custom emoji HTML tags (em-emoji)
+  const customEmojiRegex = /<em-emoji[^>]*>.*?<\/em-emoji>/g
+  
+  // Regex để match custom emoji image tags
+  const emojiImageRegex = /<img[^>]*class="[^"]*emoji[^"]*"[^>]*>/g
+  
+  // Tạo một copy của text để xử lý
+  let cleanText = text.trim()
+  
+  // Đếm số emoji matches
+  const unicodeMatches = cleanText.match(unicodeEmojiRegex) || []
+  const customMatches = cleanText.match(customEmojiRegex) || []
+  const imageMatches = cleanText.match(emojiImageRegex) || []
+  
+  const totalEmojiCount = unicodeMatches.length + customMatches.length + imageMatches.length
+  
+  // Nếu không có emoji nào thì return false
+  if (totalEmojiCount === 0) return false
+  
+  // Loại bỏ tất cả emoji khỏi text
+  cleanText = cleanText
+    .replace(unicodeEmojiRegex, '')
+    .replace(customEmojiRegex, '')
+    .replace(emojiImageRegex, '')
+    .replace(/<[^>]*>/g, '') // Loại bỏ bất kỳ HTML tags nào còn lại
+    .replace(/\s+/g, '') // Loại bỏ tất cả whitespace
+    .trim()
+  
+  // Nếu sau khi loại bỏ emoji không còn text nào thì chỉ có emoji
+  return cleanText === '' && totalEmojiCount > 0
+}
+
 type TiptapRendererProps = BoxProps & {
   message: TextMessage
   user?: UserFields
@@ -57,12 +97,16 @@ export const TiptapRenderer = ({
   showLinkPreview = true,
   ...props
 }: TiptapRendererProps) => {
+  // Kiểm tra xem tin nhắn có chỉ chứa emoji không
+  const messageText = message.text || message.content || ''
+  const isEmojiOnly = isOnlyEmoji(messageText)
+
   const editor = useEditor({
     content: message.text,
     editable: false,
     editorProps: {
       attributes: {
-        class: clsx('tiptap-renderer')
+        class: clsx('tiptap-renderer', isEmojiOnly && 'emoji-only-message')
       }
     },
     enableCoreExtensions: true,
@@ -89,7 +133,7 @@ export const TiptapRenderer = ({
         },
         paragraph: {
           HTMLAttributes: {
-            class: 'rt-Text text-base sm:text-sm'
+            class: clsx('rt-Text', isEmojiOnly ? 'text-2xl sm:text-xl' : 'text-base sm:text-sm')
           }
         },
         code: {
@@ -150,7 +194,10 @@ export const TiptapRenderer = ({
       }),
       Image.configure({
         HTMLAttributes: {
-          class: showMiniImage ? 'w-auto h-16 max-h-16' : 'w-full max-w-48 sm:max-w-96 mt-1 h-auto'
+          class: clsx(
+            showMiniImage ? 'w-auto h-16 max-h-16' : 'w-full max-w-48 sm:max-w-96 mt-1 h-auto',
+            isEmojiOnly && 'emoji-large'
+          )
         },
         inline: true
       }),
@@ -205,6 +252,7 @@ export const TiptapRenderer = ({
       className={clsx(
         'overflow-x-hidden p-4 rounded-lg',
         isCurrentUser ? 'bg-atom-1 dark:bg-atom-2' : 'bg-gray-3 dark:bg-gray-4',
+        isEmojiOnly && 'emoji-only-container',
         props.className
       )}
       {...props}
