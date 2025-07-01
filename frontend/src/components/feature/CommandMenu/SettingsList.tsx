@@ -106,7 +106,6 @@ const SettingsList = () => {
       <Command.Group heading='Commands'>
         <ToggleThemeCommand />
       </Command.Group>
-      </Command.Item> 
     </Command.Group>
   )
 }
