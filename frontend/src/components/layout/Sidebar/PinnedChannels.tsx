@@ -13,7 +13,6 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
 import { UserAvatar } from '@/components/common/UserAvatar'
 import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
 import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
-import { FaRegTimesCircle } from 'react-icons/fa'
 
 export const useClickWithoutDrag = (onClick: () => void, threshold = 5) => {
   const [start, setStart] = useState<{ x: number; y: number } | null>(null)
@@ -186,7 +185,7 @@ export const PinnedChannels = () => {
 
           {/* Hàng thứ 2 nếu showAll */}
           {showAll && extraChannels.length > 0 && (
-            <div className='grid grid-cols-6 gap-3 px-2 mt-2'>
+            <div className='grid grid-cols-6 gap-3 px-2 mt-2 justify-items-center'>
               {extraChannels?.map((channel) => <SortablePinnedItem key={channel.name} channel={channel} />)}
             </div>
           )}

@@ -7,7 +7,7 @@ import { ChannelIcon } from '@/utils/layout/channelIcon'
 import { UserFields, UserListContext } from '@/utils/users/UserListProvider'
 import { Text } from '@radix-ui/themes'
 import clsx from 'clsx'
-import { useCombobox, useMultipleSelection } from 'downshift'
+import { useCombobox } from 'downshift'
 import { useContext, useMemo, useState } from 'react'
 import { BiBuildings } from 'react-icons/bi'
 
@@ -54,22 +54,6 @@ const UsersOrChannelsDropdown = ({
   }
 
   const items = useMemo(() => getFilteredOptions(inputValue), [inputValue])
-
-  const { getSelectedItemProps, removeSelectedItem } = useMultipleSelection({
-    selectedItems: selectedOptions,
-    onStateChange({ selectedItems: newSelectedItems, type }) {
-      switch (type) {
-        case useMultipleSelection.stateChangeTypes.SelectedItemKeyDownBackspace:
-        case useMultipleSelection.stateChangeTypes.SelectedItemKeyDownDelete:
-        case useMultipleSelection.stateChangeTypes.DropdownKeyDownBackspace:
-        case useMultipleSelection.stateChangeTypes.FunctionRemoveSelectedItem:
-          setSelectedOptions(newSelectedItems ?? [])
-          break
-        default:
-          break
-      }
-    }
-  })
 
   const { isOpen, getLabelProps, getMenuProps, highlightedIndex, getItemProps, getInputProps } = useCombobox({
     items,
@@ -159,7 +143,6 @@ const UsersOrChannelsDropdown = ({
       >
         {isOpen &&
           items?.map((item, index) => {
-            const isChecked = selectedOptions.some((o) => o.name === item.name)
             return (
               <li
                 className={clsx(
@@ -189,7 +172,7 @@ const UsersOrChannelsDropdown = ({
                       setSelectedOptions(selectedOptions.filter((o) => o.name !== item.name))
                     }
                   }}
-                  onClick={(e) => e.stopPropagation()} // để không bị duplicate toggle khi click input
+                  onClick={(e) => e.stopPropagation()}
                 />
 
                 {'channel_name' in item ? (

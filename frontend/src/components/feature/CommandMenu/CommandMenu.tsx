@@ -9,20 +9,21 @@ import { useEffect } from 'react'
 import ChannelList from './ChannelList'
 import './commandMenu.styles.css'
 import SettingsList from './SettingsList'
-import ToggleThemeCommand from './ToggleThemeCommand'
 import UserList from './UserList'
 
 export const commandMenuOpenAtom = atom(false)
+export const settingsDrawerOpenAtom = atom(false)
 
 const CommandMenu = () => {
   const [open, setOpen] = useAtom(commandMenuOpenAtom)
+  const [settingsOpen, setSettingsOpen] = useAtom(settingsDrawerOpenAtom)
 
-  // Toggle the menu when ⌘K is pressed
+  // ⌘K toggle
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
         e.preventDefault()
-        setOpen((open) => !open)
+        setOpen((prev) => !prev)
       }
     }
 
@@ -32,85 +33,63 @@ const CommandMenu = () => {
 
   const isDesktop = useIsDesktop()
 
+  const onClose = () => {
+    setOpen(false)
+    setSettingsOpen(false)
+  }
+
+  const content = (
+    <div className='min-h-[80vh]'>
+      <CommandList showSettings={settingsOpen} />
+    </div>
+  )
+
   if (isDesktop) {
     return (
-      <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Root open={open || settingsOpen} onOpenChange={onClose}>
         <Dialog.Content className={clsx(DIALOG_CONTENT_CLASS, 'p-4 rounded-md')}>
           <VisuallyHidden>
             <Dialog.Title>Command Menu</Dialog.Title>
             <Dialog.Description>Tìm kiếm hoặc gõ lệnh...</Dialog.Description>
           </VisuallyHidden>
-          <CommandList />
+          {content}
         </Dialog.Content>
       </Dialog.Root>
     )
-  } else {
-    return (
-      <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerContent>
-          <div className='min-h-[80vh]'>
-            <CommandList />
-          </div>
-        </DrawerContent>
-      </Drawer>
-    )
   }
+
+  return (
+    <Drawer open={open || settingsOpen} onOpenChange={onClose}>
+      <DrawerContent>{content}</DrawerContent>
+    </Drawer>
+  )
 }
 
-export const CommandList = () => {
+export const CommandList = ({ showSettings = false }: { showSettings?: boolean }) => {
   const isDesktop = useIsDesktop()
 
-  /** Use a custom filter instead of the default one - ignore very low scores in results */
   const customFilter = (value: string, search: string, keywords?: string[]) => {
     const score = defaultFilter ? defaultFilter(value, search, keywords) : 1
-
-    if (score <= 0.1) {
-      return 0
-    }
-    return score
+    return score <= 0.1 ? 0 : score
   }
 
   return (
     <Command label='Global Command Menu' className='command-menu' filter={customFilter}>
-      <Command.Input autoFocus={isDesktop} placeholder='Tìm kiếm hoặc gõ lệnh...' />
       <Command.List>
-        <Command.Empty>No results found.</Command.Empty>
-        <ChannelList />
-        <UserList />
-        <SettingsList />
-        <Command.Group heading='Commands'>
-          <ToggleThemeCommand />
-        </Command.Group>
-
-        {/* TODO: Make these commands work */}
-        {/* <Command.Group heading="Commands">
-            <Command.Item>
-                <BiSearch size={ICON_SIZE} />
-                Search
-            </Command.Item>
-            <Command.Item>
-                <BiSearch size={ICON_SIZE} />
-                Search in #general
-            </Command.Item>
-            <Command.Item>
-                <BiFile size={ICON_SIZE} />
-                View files in #general
-            </Command.Item>
-            <Command.Item>
-                <BiSmile size={ICON_SIZE} />
-                Set status
-            </Command.Item>
-            <Command.Item>
-                <BiMoon size={ICON_SIZE} />
-                Toggle Theme
-            </Command.Item>
-            <Command.Item>
-                <BiCog size={ICON_SIZE} />
-                Settings
-            </Command.Item>
-        </Command.Group> */}
-
-        {/* <ArchivedChannelList /> */}
+        {showSettings ? (
+          <SettingsList />
+        ) : (
+          <>
+            <Command.Input
+              autoFocus={isDesktop}
+              placeholder='Tìm kiếm...'
+              className='border bg-gray-12 text-white px-3 py-2 rounded w-full'
+            />
+            <ChannelList />
+            <UserList />
+          </>
+        )}
+        <Command.Empty>Không tìm thấy kết quả tìm kiếm</Command.Empty>
       </Command.List>
     </Command>
   )

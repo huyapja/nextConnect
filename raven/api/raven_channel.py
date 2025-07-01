@@ -8,6 +8,28 @@ from raven.utils import get_channel_members, is_channel_member, track_channel_vi
 from frappe.query_builder import DocType
 
 
+@frappe.whitelist(methods=["GET"])
+def get_channel_info(channel_id: str):
+	"""
+	Lấy thông tin chi tiết của một kênh (channel), bao gồm tên, kiểu, timestamp,...
+	Dùng cho realtime cập nhật danh sách channel.
+	"""
+	channel = frappe.get_doc("Raven Channel", channel_id)
+
+	return {
+		"name": channel.name,
+		"channel_name": channel.channel_name,
+		"is_direct_message": channel.is_direct_message,
+		"is_group": channel.is_group,
+		"is_private": channel.is_private,
+		"creation": channel.creation,
+		"last_message_timestamp": channel.last_message_timestamp,
+		"group_type": "dm" if channel.is_direct_message else "channel",
+		"last_message_content": channel.last_message_content,
+		"last_message_sender_name": channel.last_message_sender_name,
+		"user_labels": [],  # Nếu cần, có thể fetch thêm từ User Channel Label
+	}
+
 
 @frappe.whitelist()
 def get_all_channels(hide_archived=True):
@@ -331,7 +353,7 @@ def leave_channel(channel_id):
 	)
 
 	for member in members:
-		frappe.delete_doc("Raven Channel Member", member.name)
+		frappe.delete_doc("Raven Channel Member", member.name, ignore_permissions=True)
 
 	return "Ok"
 

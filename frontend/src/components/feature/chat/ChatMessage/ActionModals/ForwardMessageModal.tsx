@@ -111,7 +111,7 @@ const ForwardMessageModal = ({ onClose, message }: ForwardMessageModalProps) => 
                       if (value && value?.length > 0) {
                         return true
                       }
-                      return 'Please select at least one member'
+                      return 'Hãy chọn ít nhất 1 thành viên'
                     }
                   }}
                   render={({ field: { onChange, value } }) => (

@@ -58,6 +58,7 @@ def get_list():
 def get_users():
 	users = frappe.db.get_all(
 		"Raven User",
+		filters={"enabled": 1},  # ✅ Chỉ lấy user đang hoạt động
 		fields=[
 			"full_name",
 			"user_image",

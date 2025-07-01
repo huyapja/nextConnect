@@ -1,7 +1,6 @@
 import { Box, Tabs } from '@radix-ui/themes'
 import clsx from 'clsx'
 import { useParams } from 'react-router-dom'
-import OtherThreads from './ThreadManager/OtherThreads'
 import ParticipatingThreads from './ThreadManager/ParticipatingThreads'
 
 export type ThreadMessage = {

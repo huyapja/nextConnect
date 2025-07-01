@@ -5,13 +5,14 @@ import { BiBoltCircle, BiBot, BiFile, BiGroup, BiMessageSquareDots, BiTime, BiUs
 import { LuSquareFunction } from 'react-icons/lu'
 import { PiOpenAiLogo } from 'react-icons/pi'
 import { useNavigate } from 'react-router-dom'
-import { commandMenuOpenAtom } from './CommandMenu'
+import ToggleThemeCommand from './ToggleThemeCommand'
+import { settingsDrawerOpenAtom } from './CommandMenu'
 
 const ICON_SIZE = 16
 
 const SettingsList = () => {
   const navigate = useNavigate()
-  const setOpen = useSetAtom(commandMenuOpenAtom)
+  const setOpen = useSetAtom(settingsDrawerOpenAtom)
 
   const onSelect = (value: string) => {
     navigate(`/settings/${value}`)
@@ -97,10 +98,15 @@ const SettingsList = () => {
         Cài đặt OpenAI
       </Command.Item>
 
-      <Command.Item value='push-notifications' onSelect={onSelect}>
+      {/* <Command.Item value='push-notifications' onSelect={onSelect}>
         <PiOpenAiLogo size={ICON_SIZE} />
         Thông báo đẩy
-      </Command.Item>
+      </Command.Item> */}
+
+      <Command.Group heading='Commands'>
+        <ToggleThemeCommand />
+      </Command.Group>
+      </Command.Item> 
     </Command.Group>
   )
 }

@@ -124,7 +124,6 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
   const selectedChannelRef = useRef<UnifiedChannel | null>(dm_channel)
   const channelID = dm_channel.name
 
-  // 👇 Pin state
   const pinnedIDs = useAtomValue(pinnedChannelsAtom)
   const togglePin = useSetAtom(togglePinnedChannelAtom)
   const isPinned = pinnedIDs.includes(channelID)
@@ -287,19 +286,18 @@ export const DirectMessageItemElement = ({
   const { clearManualMark } = useChannelActions()
   const { markAsDone, markAsNotDone } = useChannelDone()
 
+  const { title, labelID } = useSidebarMode()
   const isDM = isDMChannel(channel)
   const isGroupChannel = !channel.is_direct_message && !channel.is_self_message
   const peerUserId = isDM ? channel.peer_user_id : ''
+
   const peerUser = useGetUser(peerUserId || '')
-  const isActive = peerUserId ? useIsUserActive(peerUserId) : false
+  const isActiveRaw = useIsUserActive(peerUserId || '')
+  const isActive = !!peerUserId && isActiveRaw
+
   const isSelectedChannel = channelID === channel.name
   const isManuallyMarked = manuallyMarked.has(channel.name)
   const isChannelDone = channel.is_done === 1
-
-  const { title, labelID } = useSidebarMode()
-
-  // Loại bỏ nếu không render được
-  if (!(isGroupChannel || (isDM && peerUserId && peerUser?.enabled))) return null
 
   const lastOwner = useMemo(() => {
     try {
@@ -326,15 +324,6 @@ export const DirectMessageItemElement = ({
   const shouldShowBadge = channel.unread_count > 0 || isManuallyMarked
 
   const handleNavigate = () => {
-    // const lastRead = lastReadStorage.get(channel.name)
-
-    // const params = new URLSearchParams()
-
-    // if (lastRead) {
-    //   params.set('message_id', lastRead)
-    //   params.set('message_source', 'read') // 👈 phân biệt nguồn
-    // }
-
     navigate(`/${workspaceID}/${channel.name}`)
     clearManualMark(channel.name)
   }
@@ -349,6 +338,9 @@ export const DirectMessageItemElement = ({
   const showDoneButton =
     (isTablet && !channel.last_message_details) || (channel.last_message_details && !(title === 'Nhãn' || labelID))
 
+  const shouldRender = isGroupChannel || (isDM && peerUserId && peerUser?.enabled)
+
+  if (!shouldRender) return null
   return (
     <div
       onClick={handleNavigate}

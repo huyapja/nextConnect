@@ -21,6 +21,7 @@ export const SidebarBody: FC = () => {
 
   const currentChannelIsDone = useAtomValue(channelIsDoneAtom)
 
+  // ko xóa dòng này
   const { refreshLabelList } = useLabelList()
   const prev = useAtomValue(sortedChannelsAtom)
 
@@ -32,10 +33,6 @@ export const SidebarBody: FC = () => {
 
     setSortedChannels(sorted)
   }, [channels, dm_channels, setSortedChannels, currentChannelIsDone])
-
-  useEffect(() => {
-    refreshLabelList()
-  }, [])
 
   const isTablet = useIsTablet()
 

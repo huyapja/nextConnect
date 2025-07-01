@@ -78,32 +78,47 @@ const UserChannelList = () => {
 }
 
 const UserWithoutDMItem = ({ userID }: { userID: string }) => {
+  // const { workspaceID } = useParams()
+  // const user = useGetUser(userID)
+  // const isActive = useIsUserActive(userID)
+  // const navigate = useNavigate()
+
+  // const { call, loading } = useFrappePostCall<{ message: string }>(
+  //   'raven.api.raven_channel.create_direct_message_channel'
+  // )
+
+  // const { mutate } = useSWRConfig()
+
+  // const onClick = () => {
+  //   call({ user_id: userID })
+  //     .then((res) => {
+  //       mutate('channel_list')
+  //       if (workspaceID) {
+  //         navigate(`/${workspaceID}/${res?.message}`)
+  //       } else {
+  //         navigate(`/channel/${res?.message}`)
+  //       }
+  //     })
+  //     .catch((err) => {
+  //       toast.error('Không thể tạo được đoạn chat', {
+  //         description: getErrorMessage(err)
+  //       })
+  //     })
+  // }
+
   const { workspaceID } = useParams()
   const user = useGetUser(userID)
   const isActive = useIsUserActive(userID)
   const navigate = useNavigate()
 
-  const { call, loading } = useFrappePostCall<{ message: string }>(
-    'raven.api.raven_channel.create_direct_message_channel'
-  )
-
-  const { mutate } = useSWRConfig()
-
   const onClick = () => {
-    call({ user_id: userID })
-      .then((res) => {
-        mutate('channel_list')
-        if (workspaceID) {
-          navigate(`/${workspaceID}/${res?.message}`)
-        } else {
-          navigate(`/channel/${res?.message}`)
-        }
-      })
-      .catch((err) => {
-        toast.error('Không thể tạo được đoạn chat', {
-          description: getErrorMessage(err)
-        })
-      })
+    const draftChannelID = `_${userID}`
+
+    if (workspaceID) {
+      navigate(`/${workspaceID}/${draftChannelID}`)
+    } else {
+      navigate(`/channel/${draftChannelID}`)
+    }
   }
 
   return (
@@ -128,7 +143,7 @@ const UserWithoutDMItem = ({ userID }: { userID: string }) => {
           </Text>
         </Flex>
 
-        {loading ? <Loader /> : null}
+        {/* {loading ? <Loader /> : null} */}
 
         {!user?.enabled && (
           <Badge color='gray' variant='soft'>
