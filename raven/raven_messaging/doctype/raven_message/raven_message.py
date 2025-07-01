@@ -220,7 +220,7 @@ class RavenMessage(Document):
 		If the message is of type Poll, the poll_id should be set
 		"""
 		if self.message_type == "Poll" and not self.poll_id:
-			frappe.throw(_("Poll ID is mandatory for a poll message"))
+			frappe.throw(_("ID poll là bắt buộc cho tin nhắn poll"))
 
 	def before_insert(self):
 		"""

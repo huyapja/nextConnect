@@ -71,7 +71,7 @@ const PollMessageBox = ({ data, messageID }: { data: Poll; messageID: string }) 
           </Text>
           {data.poll.is_anonymous ? (
             <Badge color='blue' className={'w-fit'}>
-              Anonymous
+              Ẩn danh
             </Badge>
           ) : null}
         </Flex>
@@ -88,7 +88,7 @@ const PollMessageBox = ({ data, messageID }: { data: Poll; messageID: string }) 
         )}
         {data.poll.is_disabled ? (
           <Badge color='gray' className={'w-fit'}>
-            Poll is now closed
+            Poll đã kết thúc
           </Badge>
         ) : null}
         {data.poll.is_anonymous ? null : <ViewPollVotes poll={data} />}
@@ -179,10 +179,10 @@ const SingleChoicePoll = ({ data, messageID }: { data: Poll; messageID: string }
       option_id: option.name
     })
       .then(() => {
-        toast.success('Your vote has been submitted!')
+        toast.success('Vote của bạn đã được gửi!')
       })
       .catch((error) => {
-        toast.error('There was an error submitting your vote.', {
+        toast.error('Đã có lỗi khi gửi vote của bạn.', {
           description: getErrorMessage(error)
         })
       })
@@ -225,7 +225,7 @@ const MultiChoicePoll = ({ data, messageID }: { data: Poll; messageID: string })
   const { call } = useFrappePostCall('raven.api.raven_poll.add_vote')
   const onVoteSubmit = async () => {
     if (!selectedOptions?.length) {
-      toast.error('Please select at least one option')
+      toast.error('Vui lòng chọn ít nhất một tùy chọn')
       return
     }
     return call({
@@ -233,10 +233,10 @@ const MultiChoicePoll = ({ data, messageID }: { data: Poll; messageID: string })
       option_id: selectedOptions
     })
       .then(() => {
-        toast.success('Your vote has been submitted!')
+        toast.success('Vote của bạn đã được gửi!')
       })
       .catch((error) => {
-        toast.error('There was an error submitting your vote.', {
+        toast.error('Đã có lỗi khi gửi vote của bạn.', {
           description: getErrorMessage(error)
         })
       })
@@ -263,7 +263,7 @@ const MultiChoicePoll = ({ data, messageID }: { data: Poll; messageID: string })
       ))}
       <Flex justify={'between'} align={'center'} gap={'2'}>
         <Text size='1' className='text-gray-500'>
-          To view the poll results, please submit your choice(s)
+          Để xem kết quả poll, vui lòng gửi lựa chọn của bạn
         </Text>
         <Button
           disabled={data.poll.is_disabled ? true : false}
@@ -272,7 +272,7 @@ const MultiChoicePoll = ({ data, messageID }: { data: Poll; messageID: string })
           style={{ alignSelf: 'flex-end' }}
           onClick={onVoteSubmit}
         >
-          Submit
+          Gửi
         </Button>
       </Flex>
     </div>
