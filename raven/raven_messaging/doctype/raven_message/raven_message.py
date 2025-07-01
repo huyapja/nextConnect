@@ -12,11 +12,7 @@ from pytz import timezone, utc
 
 from raven.ai.ai import handle_ai_thread_message, handle_bot_dm
 from raven.api.raven_channel import get_peer_user
-from raven.notification import (
-	send_notification_for_message,
-	send_notification_to_topic,
-	send_notification_to_user,
-)
+from raven.notification import send_notification_for_message
 from raven.utils import get_raven_room, refresh_thread_reply_count, track_channel_visit
 
 
@@ -250,7 +246,9 @@ class RavenMessage(Document):
 		if self.message_type == "Text":
 			self.handle_ai_message()
 
-		self.send_push_notification()
+		# Comment: send_push_notification() đã được disable vì Firebase notification 
+		# được xử lý tự động qua doc_events hook (firebase_hooks.py)
+		# self.send_push_notification()
 
 	def handle_ai_message(self):
 
@@ -414,26 +412,17 @@ class RavenMessage(Document):
 			)
 
 	def send_push_notification(self):
+		# Comment: Firebase notification được xử lý tự động qua doc_events hook
+		# Không gọi bất kỳ notification system cũ nào để tránh duplicate
 		# Send Push Notification for the following:
 		# 1. If the message is a direct message, send a push notification to the other user
 		# 2. If the message has mentions, send a push notification to the mentioned users if they belong to the channel
 		# 3. If the message is a reply, send a push notification to the user who is being replied to
 		# 4. If the message is in a channel, send a push notification to all the users in the channel (topic)
 
-		if (
-			self.message_type == "System"
-			or self.flags.send_silently
-			or frappe.flags.in_test
-			or frappe.flags.in_install
-			or frappe.flags.in_patch
-			or frappe.flags.in_import
-		):
-			return
-
-		if frappe.request and hasattr(frappe.request, "after_response"):
-			frappe.request.after_response.add(lambda: send_notification_for_message(self))
-		else:
-			send_notification_for_message(self)
+		# Comment: Tất cả notification logic đã được chuyển sang firebase_hooks.py
+		# Không thực hiện gì ở đây để tránh duplicate notifications
+		pass
 
 	def get_notification_message_content(self):
 		"""
@@ -459,80 +448,81 @@ class RavenMessage(Document):
 			doc = frappe.get_cached_doc("Raven User", self.owner)
 			return doc.full_name, doc.user_image
 
-	def send_notification_for_direct_message(self):
-		"""
-		The message is sent on a DM channel. Get the other user in the channel and send a push notification
-		"""
-		peer_raven_user = frappe.db.get_value(
-			"Raven Channel Member",
-			{"channel_id": self.channel_id, "user_id": ("!=", self.owner)},
-			"user_id",
-		)
+	# Comment: Frappe push notification service - được thay thế bởi Firebase
+	# def send_notification_for_direct_message(self):
+	# 	"""
+	# 	The message is sent on a DM channel. Get the other user in the channel and send a push notification
+	# 	"""
+	# 	peer_raven_user = frappe.db.get_value(
+	# 		"Raven Channel Member",
+	# 		{"channel_id": self.channel_id, "user_id": ("!=", self.owner)},
+	# 		"user_id",
+	# 	)
 
-		if not peer_raven_user:
-			return
+	# 	if not peer_raven_user:
+	# 		return
 
-		peer_raven_user_doc = frappe.get_cached_doc("Raven User", peer_raven_user)
+	# 	peer_raven_user_doc = frappe.get_cached_doc("Raven User", peer_raven_user)
 
-		# Do not send notification to a bot
-		if peer_raven_user_doc.type == "Bot":
-			return
+	# 	# Do not send notification to a bot
+	# 	if peer_raven_user_doc.type == "Bot":
+	# 		return
 
-		message = self.get_notification_message_content()
+	# 	message = self.get_notification_message_content()
 
-		owner_name, owner_image = self.get_message_owner_details()
+	# 	owner_name, owner_image = self.get_message_owner_details()
 
-		send_notification_to_user(
-			user_id=peer_raven_user_doc.user,
-			user_image_path=owner_image,
-			title=owner_name,
-			message=message,
-			data={
-				"message_id": self.name,
-				"channel_id": self.channel_id,
-				"raven_message_type": self.message_type,
-				"channel_type": "DM",
-				"content": self.content if self.message_type == "Text" else self.file,
-				"from_user": self.owner,
-				"type": "New message",
-				"image": owner_image,
-				"creation": get_milliseconds_since_epoch(self.creation),
-			},
-		)
+	# 	send_notification_to_user(
+	# 		user_id=peer_raven_user_doc.user,
+	# 		user_image_path=owner_image,
+	# 		title=owner_name,
+	# 		message=message,
+	# 		data={
+	# 			"message_id": self.name,
+	# 			"channel_id": self.channel_id,
+	# 			"raven_message_type": self.message_type,
+	# 			"channel_type": "DM",
+	# 			"content": self.content if self.message_type == "Text" else self.file,
+	# 			"from_user": self.owner,
+	# 			"type": "New message",
+	# 			"image": owner_image,
+	# 			"creation": get_milliseconds_since_epoch(self.creation),
+	# 		},
+	# 	)
 
-	def send_notification_for_channel_message(self):
-		"""
-		The message was sent on a channel. Send a push notification to all the users in the channel (topic)
-		"""
-		message = self.get_notification_message_content()
+	# def send_notification_for_channel_message(self):
+	# 	"""
+	# 	The message was sent on a channel. Send a push notification to all the users in the channel (topic)
+	# 	"""
+	# 	message = self.get_notification_message_content()
 
-		is_thread = frappe.get_cached_value("Raven Channel", self.channel_id, "is_thread")
+	# 	is_thread = frappe.get_cached_value("Raven Channel", self.channel_id, "is_thread")
 
-		owner_name, owner_image = self.get_message_owner_details()
+	# 	owner_name, owner_image = self.get_message_owner_details()
 
-		if is_thread:
-			title = f"{owner_name} in thread"
-		else:
-			channel_name = frappe.get_cached_value("Raven Channel", self.channel_id, "channel_name")
-			title = f"{owner_name} in #{channel_name}"
+	# 	if is_thread:
+	# 		title = f"{owner_name} in thread"
+	# 	else:
+	# 		channel_name = frappe.get_cached_value("Raven Channel", self.channel_id, "channel_name")
+	# 		title = f"{owner_name} in #{channel_name}"
 
-		send_notification_to_topic(
-			channel_id=self.channel_id,
-			user_image_path=owner_image,
-			title=title,
-			message=message,
-			data={
-				"message_id": self.name,
-				"channel_id": self.channel_id,
-				"raven_message_type": self.message_type,
-				"channel_type": "Channel",
-				"content": self.content if self.message_type == "Text" else self.file,
-				"from_user": self.owner,
-				"type": "New message",
-				"is_thread": "1" if is_thread else "0",
-				"creation": get_milliseconds_since_epoch(self.creation),
-			},
-		)
+	# 	send_notification_to_topic(
+	# 		channel_id=self.channel_id,
+	# 		user_image_path=owner_image,
+	# 		title=title,
+	# 		message=message,
+	# 		data={
+	# 			"message_id": self.name,
+	# 			"channel_id": self.channel_id,
+	# 			"raven_message_type": self.message_type,
+	# 			"channel_type": "Channel",
+	# 			"content": self.content if self.message_type == "Text" else self.file,
+	# 			"from_user": self.owner,
+	# 			"type": "New message",
+	# 			"is_thread": "1" if is_thread else "0",
+	# 			"creation": get_milliseconds_since_epoch(self.creation),
+	# 		},
+	# 	)
 
 	def after_delete(self):
 		frappe.publish_realtime(
