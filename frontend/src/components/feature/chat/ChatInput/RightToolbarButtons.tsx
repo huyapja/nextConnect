@@ -99,6 +99,7 @@ const MentionButtons = () => {
 
 const EmojiPickerButton = () => {
   const { editor } = useCurrentEditor()
+  const [isOpen, { on: openPicker, off: closePicker }] = useBoolean(false)
 
   if (!editor) {
     return null
@@ -110,10 +111,11 @@ const EmojiPickerButton = () => {
     } else {
       editor.chain().focus().insertContent(emoji).run()
     }
+    // Không đóng popup để cho phép chọn nhiều emoji liên tiếp
   }
 
   return (
-    <Popover.Root>
+    <Popover.Root open={isOpen}>
       <Popover.Trigger>
         <IconButton
           size='1'
@@ -122,11 +124,12 @@ const EmojiPickerButton = () => {
           title='Add emoji'
           disabled={!editor.can().chain().focus().insertContent('😅').run() || !editor.isEditable}
           aria-label={'add emoji'}
+          onClick={() => isOpen ? closePicker() : openPicker()}
         >
           <BiSmile {...ICON_PROPS} />
         </IconButton>
       </Popover.Trigger>
-      <Popover.Content>
+      <Popover.Content onPointerDownOutside={closePicker} onEscapeKeyDown={closePicker}>
         <Inset>
           <Suspense fallback={<Loader />}>
             <EmojiPicker onSelect={onSelect} allowCustomEmojis={false} />
