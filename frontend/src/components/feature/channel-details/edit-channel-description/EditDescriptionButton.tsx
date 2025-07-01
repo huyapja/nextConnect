@@ -18,7 +18,7 @@ export const EditDescriptionButton = ({ channelData, is_in_box }: EditDescriptio
     setOpen(false)
   }
   const button_text =
-    channelData && channelData.channel_description && channelData.channel_description?.length > 0 ? 'Edit' : 'Add'
+    channelData && channelData.channel_description && channelData.channel_description?.length > 0 ? 'Sửa' : 'Thêm'
 
   const isDesktop = useIsDesktop()
 
@@ -26,8 +26,8 @@ export const EditDescriptionButton = ({ channelData, is_in_box }: EditDescriptio
     return (
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Trigger>
-          <Button variant='ghost' size='1'>
-            {button_text} {is_in_box ? '' : 'description'}
+          <Button className='cursor-pointer' variant='ghost' size='1'>
+            {button_text} {is_in_box ? '' : 'mô tả'}
           </Button>
         </Dialog.Trigger>
         <Dialog.Content className={DIALOG_CONTENT_CLASS}>
@@ -39,8 +39,8 @@ export const EditDescriptionButton = ({ channelData, is_in_box }: EditDescriptio
     return (
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerTrigger asChild>
-          <Button variant='ghost' size='1'>
-            {button_text} {is_in_box ? '' : 'description'}
+          <Button className='cursor-pointer' variant='ghost' size='1'>
+            {button_text} {is_in_box ? '' : 'mô tả'}
           </Button>
         </DrawerTrigger>
         <DrawerContent>
