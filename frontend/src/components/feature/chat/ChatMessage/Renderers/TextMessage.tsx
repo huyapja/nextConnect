@@ -5,8 +5,6 @@ import { Box, Flex, Text } from '@radix-ui/themes'
 import { memo } from 'react'
 import { TextMessage } from '../../../../../../../types/Messaging/Message'
 import { TiptapRenderer } from './TiptapRenderer/TiptapRenderer'
-import { RetryStatusIcon } from '@/components/common/RetryStatusIcon'
-import { RetryActionButtons } from '@/components/common/RetryActionButton'
 
 export const TextMessageBlock = memo(
   ({
