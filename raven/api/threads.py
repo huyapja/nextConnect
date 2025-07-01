@@ -22,7 +22,7 @@ def get_all_threads(
 	channel_id=None,
 	is_ai_thread=0,
 	start_after=0,
-	limit=10,
+	limit=5,
 	only_show_unread=False,
 ):
 	"""
