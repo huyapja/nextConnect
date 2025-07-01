@@ -24,7 +24,7 @@ export const AddMembersButton = ({ channelData, ...props }: AddMembersButtonProp
     return (
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Trigger>
-          <Button variant='ghost' size='1' {...props} className={clsx('text-nowrap', props.className)}>
+          <Button variant='ghost' size='1' {...props} className={clsx('text-nowrap cursor-pointer', props.className)}>
             Thêm thành viên
           </Button>
         </Dialog.Trigger>

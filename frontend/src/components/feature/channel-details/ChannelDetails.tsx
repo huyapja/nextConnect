@@ -59,12 +59,12 @@ export const ChannelDetails = ({ channelData, channelMembers, onClose }: Channel
           <Flex justify={'between'}>
             <Flex direction={'column'} gap='1'>
               <Text weight='medium' size='2'>
-                Channel description
+                Mô tả kênh
               </Text>
               <Text size='1' color='gray'>
                 {channelData && channelData.channel_description && channelData.channel_description?.length > 0
                   ? channelData.channel_description
-                  : 'No description'}
+                  : 'Không có mô tả'}
               </Text>
             </Flex>
             <EditDescriptionButton
@@ -78,13 +78,13 @@ export const ChannelDetails = ({ channelData, channelMembers, onClose }: Channel
 
           <Flex direction={'column'} gap='1'>
             <Text weight='medium' size='2'>
-              Created by
+              Được tạo bởi
             </Text>
             <Flex gap='1'>
               {channelData?.owner && <Text size='1'>{channelOwner?.full_name ?? channelData?.owner}</Text>}
               {channelData.creation && (
                 <Text size='1' color='gray' as='span'>
-                  on <DateMonthYear date={channelData?.creation} />
+                  vào <DateMonthYear date={channelData?.creation} />
                 </Text>
               )}
             </Flex>

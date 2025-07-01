@@ -36,6 +36,7 @@ import LabelByUserList from '../labels/LabelByUserList'
 import { MissedCallsList } from '../missed-calls/MissedCallsList'
 import ThreadsCustom from '../threads/ThreadsCustom'
 import { MessageSaved } from './DirectMessageSaved'
+import { ScrollArea } from '@radix-ui/themes'
 
 import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
 
@@ -189,23 +190,25 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
         </ContextMenu.SubTrigger>
 
         <ContextMenu.SubContent className='dark:bg-gray-800 rounded px-1 py-1 w-48 z-50'>
-          {labelList?.map((label) => {
-            const isAssigned = dm_channel.user_labels?.some((l) => l.label_id === label.label_id)
-            return (
-              <ContextMenu.Item
-                key={label.label_id}
-                onSelect={(e) => e.preventDefault()}
-                onClick={() => handleToggleLabel(label, isAssigned)}
-                className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center justify-between'
-              >
-                <div className='flex items-center gap-2'>
-                  <MdLabelOutline size={14} />
-                  <span className='truncate max-w-[70px]'>{label.label}</span>
-                </div>
-                {isAssigned && <HiCheck size={14} className='text-green-500' />}
-              </ContextMenu.Item>
-            )
-          })}
+          <ScrollArea type='hover' className={clsx(labelList?.length > 5 && 'max-h-40 sidebar-scroll')}>
+            {labelList?.map((label) => {
+              const isAssigned = dm_channel.user_labels?.some((l) => l.label_id === label.label_id)
+              return (
+                <ContextMenu.Item
+                  key={label.label_id}
+                  onSelect={(e) => e.preventDefault()}
+                  onClick={() => handleToggleLabel(label, isAssigned)}
+                  className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center justify-between'
+                >
+                  <div className='flex items-center gap-2'>
+                    <MdLabelOutline size={14} />
+                    <span className='truncate max-w-[70px]'>{label.label}</span>
+                  </div>
+                  {isAssigned && <HiCheck size={14} className='text-green-500' />}
+                </ContextMenu.Item>
+              )
+            })}
+          </ScrollArea>
 
           <ContextMenu.Separator className='h-px bg-gray-600 my-2' />
 
