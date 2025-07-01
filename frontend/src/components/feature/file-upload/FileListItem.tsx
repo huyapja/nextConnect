@@ -20,6 +20,9 @@ export const FileListItem = ({ file, removeFile, uploadProgress }: FileListItemP
   const isUploadComplete = uploadProgress?.[file.fileID]?.isComplete ?? false
   const progress = uploadProgress?.[file.fileID]?.progress ?? 0
 
+  // Kiểm tra xem file có phải là ảnh không
+  const isImageFile = file.type.startsWith('image/')
+
   return (
     <Flex
       width='100%'
@@ -30,7 +33,7 @@ export const FileListItem = ({ file, removeFile, uploadProgress }: FileListItemP
       py='1'
     >
       <Flex align='center' justify='center' className='w-12 h-12'>
-        {previewURL ? (
+        {previewURL && isImageFile ? (
           <img src={previewURL} alt='File preview' className='w-10 h-10 aspect-square object-cover rounded-md' />
         ) : (
           <FileExtensionIcon ext={getFileExtension(file.name)} className='h-10' />
