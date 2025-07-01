@@ -21,6 +21,7 @@ const RetractedMessage = ({
   timestamp: string
   is_continuation: any
 }) => {
+  // vẫn giữ owner check riêng
   const isOwnMessage = message.owner === currentUser
 
   return (
@@ -29,11 +30,12 @@ const RetractedMessage = ({
       className={clsx(
         'relative w-fit sm:max-w-[32rem] max-w-[80vw] p-3 gap-1 rounded-md',
         'bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700',
-        'opacity-75'
+        'opacity-75',
+        alignToRight ? 'self-end mr-3' : 'ml-3'
       )}
     >
       {!is_continuation && !alignToRight && (
-        <Flex align='center' gap='2'>
+        <Flex>
           <UserHoverCard user={user} userID={message.owner} isActive={false} />
           <DateTooltip timestamp={timestamp} />
         </Flex>

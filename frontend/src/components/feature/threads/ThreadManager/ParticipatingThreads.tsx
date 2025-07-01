@@ -25,7 +25,7 @@ const ParticipatingThreads = () => {
         </div>
         <SearchFilter search={search} setSearch={setSearch} />
       </div>
-      <div className='h-[calc(100vh-10rem)] overflow-y-auto'>
+      <div className='overflow-y-auto'>
         <ThreadsList content={debouncedSearch} channel={channel} onlyShowUnread={onlyShowUnread} />
       </div>
     </div>

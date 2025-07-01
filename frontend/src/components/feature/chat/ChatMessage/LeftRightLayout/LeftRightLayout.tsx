@@ -142,7 +142,9 @@ export const LeftRightLayout = ({
       <div className={clsx('flex py-0.5', alignToRight ? 'justify-end mr-4' : 'justify-start')}>
         <Flex align={'start'} gap={'2'} className='relative'>
           {!alignToRight && (
-            <MessageLeftElement message={message} user={user} isActive={isActive} className='mt-[5px]' />
+            <div className='w-8 flex justify-center mt-[5px]'>
+              {!is_continuation && <MessageLeftElement message={message} user={user} isActive={isActive} />}
+            </div>
           )}
           <Stack gap={'0'} align={'end'}>
             {alignToRight && !is_continuation && (
@@ -168,7 +170,11 @@ export const LeftRightLayout = ({
   return (
     <div className={clsx('flex py-0.5', alignToRight ? 'justify-end mr-4' : 'justify-start')}>
       <Flex align={'start'} gap={'2'} className='relative'>
-        {!alignToRight && <MessageLeftElement message={message} user={user} isActive={isActive} className='mt-[5px]' />}
+        {!alignToRight && (
+          <div className='w-8 flex justify-center mt-[5px]'>
+            {!is_continuation && <MessageLeftElement message={message} user={user} isActive={isActive} />}
+          </div>
+        )}
         <Stack gap={'0'} align={'end'}>
           {alignToRight && !is_continuation && (
             <Box className='text-right pr-1 pb-0.5'>
@@ -195,12 +201,12 @@ export const LeftRightLayout = ({
                   isThinking && 'animate-pulse'
                 )}
               >
-                {!is_continuation && !alignToRight ? (
+                {!is_continuation && !alignToRight && (
                   <Flex align='center' gap='2'>
                     <UserHoverCard user={user} userID={userID} isActive={isActive} />
                     <DateTooltip timestamp={timestamp} />
                   </Flex>
-                ) : null}
+                )}
 
                 {message.is_forwarded === 1 && (
                   <Flex className='text-gray-10 text-xs' gap={'1'} align={'center'}>
