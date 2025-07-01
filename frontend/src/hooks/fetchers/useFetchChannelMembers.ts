@@ -1,4 +1,8 @@
 import { useFrappeGetCall } from 'frappe-react-sdk'
+import { atom, useSetAtom } from 'jotai'
+import { useEffect } from 'react'
+
+export const channelMembersAtom = atom<{ [channelID: string]: ChannelMembers }>({})
 
 export type Member = {
   name: string
@@ -17,17 +21,26 @@ export type ChannelMembers = {
 }
 
 const useFetchChannelMembers = (channelID: string) => {
+  const setChannelMembers = useSetAtom(channelMembersAtom)
+
   const { data, error, isLoading, mutate } = useFrappeGetCall<{ message: ChannelMembers }>(
     'raven.api.chat.get_channel_members',
-    {
-      channel_id: channelID
-    },
+    { channel_id: channelID },
     ['channel_members', channelID],
     {
       keepPreviousData: true,
-      dedupingInterval: 1000 * 60 * 5 // Revalidate every 5 minutes
+      dedupingInterval: 1000 * 60 * 5
     }
   )
+
+  useEffect(() => {
+    if (data?.message) {
+      setChannelMembers((prev) => ({
+        ...prev,
+        [channelID]: data.message
+      }))
+    }
+  }, [data, channelID])
 
   return {
     channelMembers: data?.message ?? {},
@@ -36,7 +49,6 @@ const useFetchChannelMembers = (channelID: string) => {
     mutate
   }
 }
-
 export default useFetchChannelMembers
 
 // TODO: Add a hook for realtime updates of channel members

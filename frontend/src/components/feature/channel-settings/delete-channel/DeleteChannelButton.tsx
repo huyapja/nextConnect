@@ -36,7 +36,7 @@ export const DeleteChannelButton = ({
             disabled={!allowSettingChange}
           >
             <BiTrash />
-            Delete channel
+            Xóa kênh
           </Button>
         </AlertDialog.Trigger>
         <AlertDialog.Content className={DIALOG_CONTENT_CLASS}>
@@ -55,7 +55,7 @@ export const DeleteChannelButton = ({
             disabled={!allowSettingChange}
           >
             <BiTrash />
-            Delete channel
+            Xóa kênh
           </Button>
         </DrawerTrigger>
         <DrawerContent>

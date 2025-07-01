@@ -10,6 +10,7 @@ import { DrawerContent, DrawerTrigger, Drawer } from '@/components/layout/Drawer
 import clsx from 'clsx'
 
 interface EditChannelNameButtonProps extends IconButtonProps {
+  groupImage?: string
   channelID: string
   channel_name: string
   channelType: ChannelListItem['type']
@@ -20,6 +21,7 @@ export const EditChannelNameButton = ({
   channelID,
   channel_name,
   channelType,
+  groupImage,
   buttonVisible = false,
   ...props
 }: EditChannelNameButtonProps) => {
@@ -48,6 +50,7 @@ export const EditChannelNameButton = ({
         </Dialog.Trigger>
         <Dialog.Content className={DIALOG_CONTENT_CLASS}>
           <RenameChannelModalContent
+            groupImage={groupImage}
             channelID={channelID}
             channelName={channel_name}
             onClose={onClose}
@@ -74,6 +77,7 @@ export const EditChannelNameButton = ({
         <DrawerContent>
           <div className='pb-16 min-h-48 px-1 overflow-auto'>
             <RenameChannelModalContent
+              groupImage={groupImage}
               channelID={channelID}
               channelName={channel_name}
               onClose={onClose}

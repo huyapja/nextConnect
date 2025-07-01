@@ -282,11 +282,21 @@ class RavenChannelMember(Document):
 			doctype="Raven Channel",
 			docname=self.channel_id,
 		)
-
 	def on_trash(self):
 		# Comment: Frappe push notification service - được thay thế bởi Firebase
 		# unsubscribe_user_to_topic(self.channel_id, self.user_id)
 		self.invalidate_channel_members_cache()
+
+		# Gửi event realtime cho người bị xóa
+		if self.user_id:
+			frappe.publish_realtime(
+				event='raven:member_removed',
+				message={
+					'channel_id': self.channel_id,
+					'removed_user': self.user_id
+				},
+				user=self.user_id
+			)
 
 	def check_if_user_is_member(self):
 		is_member = True
@@ -392,7 +402,7 @@ class RavenChannelMember(Document):
 			# Send a system message to the channel mentioning the member who became admin
 			member_name = frappe.get_cached_value("Raven User", self.user_id, "full_name")
 			text = (
-				f"{member_name} đã trở thành admin." if self.is_admin else f"{member_name} không còn là admin."
+				f"{member_name} được chỉ định làm quản trị viên." if self.is_admin else f"{member_name} không còn là quản trị viên."
 			)
 			message_doc = frappe.get_doc(
 				{

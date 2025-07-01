@@ -15,6 +15,7 @@ interface RenameChannelForm {
 }
 
 interface RenameChannelModalContentProps {
+  groupImage?: string
   channelID: string
   channelName: string
   type: ChannelListItem['type']
@@ -22,6 +23,7 @@ interface RenameChannelModalContentProps {
 }
 
 export const RenameChannelModalContent = ({
+  groupImage,
   channelID,
   channelName,
   type,
@@ -39,14 +41,12 @@ export const RenameChannelModalContent = ({
     formState: { errors }
   } = methods
   const { updateDoc, loading: updatingDoc, error } = useFrappeUpdateDoc()
-  const { mutate } = useSWRConfig()
 
   const onSubmit = async (data: RenameChannelForm) => {
     return updateDoc('Raven Channel', channelID ?? null, {
       channel_name: data.channel_name
     }).then(() => {
       toast.success('Channel name updated')
-      mutate('channel_list')
       onClose()
     })
   }
@@ -96,7 +96,7 @@ export const RenameChannelModalContent = ({
                   aria-invalid={error ? 'true' : 'false'}
                   onChange={handleChange}
                 >
-                  <TextField.Slot side='left'>{<ChannelIcon type={type} />}</TextField.Slot>
+                  <TextField.Slot side='left'>{<ChannelIcon groupImage={groupImage} type={type} />}</TextField.Slot>
                   <TextField.Slot side='right'>
                     <Text size='2' weight='light' color='gray'>
                       {50 - field.value?.length}

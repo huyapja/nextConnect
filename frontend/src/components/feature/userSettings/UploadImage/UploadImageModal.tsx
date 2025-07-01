@@ -63,7 +63,7 @@ export const UploadImageModal = ({
         file={file}
         onFileChange={onFileChange}
         accept={{ 'image/*': ['.jpeg', '.jpg', '.png'] }}
-        maxFileSize={10}
+        maxFileSize={5}
       />
 
       <Flex gap='3' mt='6' justify='end' align='center'>

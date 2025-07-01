@@ -38,6 +38,7 @@ export type ChannelListItem = Pick<
   | 'workspace'
   | 'pinned_messages_string'
   | 'group_type'
+  | 'group_image'
 > & {
   member_id: string
   is_done: number // <== thêm dòng này

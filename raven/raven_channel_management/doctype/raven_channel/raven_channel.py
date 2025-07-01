@@ -20,6 +20,7 @@ class RavenChannel(Document):
 
 		channel_description: DF.SmallText | None
 		channel_name: DF.Data
+		group_image: DF.AttachImage | None
 		is_ai_thread: DF.Check
 		is_archived: DF.Check
 		is_direct_message: DF.Check
@@ -118,9 +119,10 @@ class RavenChannel(Document):
 		if not self.is_thread:
 			# Update the channel list for all users
 			frappe.publish_realtime(
-				"channel_list_updated",
+				"channel_updated",
 				{
 					"channel_id": self.name,
+					"channel_name": self.channel_name,
 				},
 				room=get_raven_room(),
 				after_commit=True,

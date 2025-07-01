@@ -13,6 +13,7 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
 import { UserAvatar } from '@/components/common/UserAvatar'
 import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
 import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
+import { ChannelIcon } from '@/utils/layout/channelIcon'
 
 export const useClickWithoutDrag = (onClick: () => void, threshold = 5) => {
   const [start, setStart] = useState<{ x: number; y: number } | null>(null)
@@ -109,9 +110,7 @@ const PinnedChannelItem = ({ channel }: Props) => {
             {isDM ? (
               <UserAvatar src={userInfo?.user_image} alt={userInfo?.full_name ?? channel.peer_user_id} />
             ) : (
-              <div className='border-2 border-teal-400 text-teal-600 w-7 h-7 rounded-full flex items-center justify-center'>
-                <FaUsers className='w-4 h-4 text-teal-500' />
-              </div>
+              <ChannelIcon groupImage={channel.group_image} type={channel.type} />
             )}
           </div>
           {/* Noti */}

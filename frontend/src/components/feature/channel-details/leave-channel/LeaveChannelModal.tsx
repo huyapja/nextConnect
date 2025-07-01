@@ -1,7 +1,7 @@
 import { useFrappePostCall } from 'frappe-react-sdk'
-import { Fragment, useContext } from 'react'
+import { Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChannelListContext, ChannelListContextType, ChannelListItem } from '@/utils/channel/ChannelListProvider'
+import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { ChannelIcon } from '@/utils/layout/channelIcon'
 import { AlertDialog, Button, Dialog, Flex, Text } from '@radix-ui/themes'
 import { Loader } from '@/components/common/Loader'
@@ -19,14 +19,13 @@ export const LeaveChannelModal = ({ onClose, channelData, isDrawer, closeDetails
   const { call, loading: deletingDoc, error } = useFrappePostCall('raven.api.raven_channel.leave_channel')
   const navigate = useNavigate()
 
-  const { mutate } = useContext(ChannelListContext) as ChannelListContextType
+  // const { mutate } = useContext(ChannelListContext) as ChannelListContextType
 
   const onSubmit = async () => {
     return call({ channel_id: channelData?.name })
       .then(() => {
         toast('You have left the channel')
         onClose()
-        mutate()
         navigate('../')
         closeDetailsModal()
       })
@@ -44,9 +43,9 @@ export const LeaveChannelModal = ({ onClose, channelData, isDrawer, closeDetails
   return (
     <>
       <Title>
-        <Flex gap='1'>
-          <Text>Leave </Text>
-          <ChannelIcon type={channelData?.type} className={'mt-1'} />
+        <Flex gap='2'>
+          <Text>Rời </Text>
+          <ChannelIcon groupImage={channelData.group_image} type={channelData?.type} className={'mt-1'} />
           <Text>{channelData?.channel_name}?</Text>
         </Flex>
       </Title>
@@ -55,13 +54,13 @@ export const LeaveChannelModal = ({ onClose, channelData, isDrawer, closeDetails
         <ErrorBanner error={error} />
         {channelData?.type === 'Private' ? (
           <Text size='1'>
-            When you leave this channel, you’ll no longer be able to see any of its messages. To rejoin, you’ll need to
-            be invited.
+            Khi bạn rời khỏi kênh này, bạn sẽ không còn xem được bất kỳ tin nhắn nào trong kênh. Để tham gia lại, bạn
+            cần được mời.
           </Text>
         ) : (
           <Text size='1'>
-            When you leave this channel, you’ll no longer be able to send anymore messages, you will have to rejoin the
-            channel to continue participation.
+            Khi bạn rời khỏi kênh này, bạn sẽ không thể gửi thêm tin nhắn. Bạn sẽ cần tham gia lại để tiếp tục trao đổi
+            trong kênh.
           </Text>
         )}
       </Flex>
@@ -75,7 +74,7 @@ export const LeaveChannelModal = ({ onClose, channelData, isDrawer, closeDetails
         <DialogAction>
           <Button variant='solid' color='red' onClick={onSubmit} disabled={deletingDoc}>
             {deletingDoc && <Loader className='text-white' />}
-            {deletingDoc ? 'Leaving' : 'Leave'}
+            {deletingDoc ? 'Đang rời' : 'Rời khỏi kênh'}
           </Button>
         </DialogAction>
       </Flex>

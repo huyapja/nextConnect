@@ -60,11 +60,12 @@ export const AddChannelMembersModalContent = ({ onClose }: AddChannelMemberModal
         <FormProvider {...methods}>
           <form onSubmit={handleSubmit(onSubmit)}>
             <Dialog.Title>
-              <Text as='span'>
-                Thêm thành viên vào
-                <ChannelIcon type={channel?.channelData.type} size='18' className='inline-block -mb-0.5 ml-1' />
-                {channel?.channelData.channel_name}
-              </Text>
+              <div className='flex items-center gap-1 px-1'>
+                {/* <span className='text-md font-medium'>Thêm thành viên</span>
+                <ChannelIcon type={channel?.channelData.type} size='18' className='-mb-0.5' />
+                <span className='text-md font-medium'>{channel?.channelData.channel_name}</span> */}
+                <div className='inline-flex items-center gap-2 text-base font-medium'>Thêm thành viên</div>
+              </div>
             </Dialog.Title>
             <Dialog.Description size='2'>
               Thành viên mới sẽ có thể xem toàn bộ lịch sử của <strong>{channel?.channelData.channel_name}</strong>, bao

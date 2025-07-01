@@ -1,18 +1,21 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Avatar, Theme } from '@radix-ui/themes'
+import { Avatar, Dialog, IconButton, Theme } from '@radix-ui/themes'
 import { AvatarProps } from '@radix-ui/themes/dist/cjs/components/avatar'
 import { BoxProps } from '@radix-ui/themes/dist/cjs/components/box'
 import { clsx } from 'clsx'
 import { generateAvatarColor } from '../feature/selectDropdowns/GenerateAvatarColor'
 import { RiRobot2Fill } from 'react-icons/ri'
-import { useMemo } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import { AvailabilityStatus } from '../feature/userSettings/AvailabilityStatus/SetUserAvailabilityMenu'
+import { BiX } from 'react-icons/bi'
+import ImageViewer from './ImageViewer'
 
 interface UserAvatarProps extends Partial<AvatarProps> {
   alt?: string
   isActive?: boolean
   availabilityStatus?: AvailabilityStatus
   isBot?: boolean
+  canUserView?: boolean
   skeletonSize?: BoxProps['width'] | BoxProps['height']
 }
 
@@ -57,26 +60,33 @@ export const UserAvatar = ({
   skeletonSize = '5',
   fallback,
   isBot,
+  canUserView = false,
   className,
   ...props
 }: UserAvatarProps) => {
   const color = useMemo(() => generateAvatarColor(alt), [alt])
+  const [open, setOpen] = useState(false)
+
+  const avatar = (
+    <Avatar
+      src={src}
+      alt={alt}
+      loading='lazy'
+      fallback={fallback ?? getInitials(alt)}
+      size={size}
+      radius={radius}
+      className={clsx(className, canUserView && src && 'cursor-pointer')}
+      onClick={canUserView && src ? () => setOpen(true) : undefined}
+      {...props}
+    />
+  )
 
   return (
     <Theme accentColor={color}>
       <span className='relative inline-block'>
-        <Avatar
-          src={src}
-          alt={alt}
-          loading='lazy'
-          fallback={fallback ?? getInitials(alt)}
-          size={size}
-          radius={radius}
-          className={className}
-          {...props}
-        />
+        {avatar}
 
-        {availabilityStatus && availabilityStatus === 'Away' && (
+        {availabilityStatus === 'Away' && (
           <span
             className={clsx(
               'absolute block translate-x-1/2 translate-y-1/2 transform rounded-full',
@@ -87,7 +97,7 @@ export const UserAvatar = ({
           </span>
         )}
 
-        {availabilityStatus && availabilityStatus === 'Do not disturb' && (
+        {availabilityStatus === 'Do not disturb' && (
           <span
             className={clsx(
               'absolute block translate-x-1/2 translate-y-1/2 transform rounded-full',
@@ -120,6 +130,41 @@ export const UserAvatar = ({
           </span>
         )}
       </span>
+
+      {/* Image viewer chỉ bật khi có ảnh và canUserView */}
+      {canUserView && src && (
+        <Dialog.Root open={open} onOpenChange={setOpen}>
+          <Dialog.Content
+            className={clsx(
+              'p-0 rounded-md overflow-auto bg-white dark:backdrop-blur-[20px] dark:bg-[#151518CC]',
+              'dark:border dark:border-[#ffffff1a] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.1),0_3px_16px_rgba(0,0,0,0.6)]',
+              'w-full max-w-[100vw] sm:max-w-[85vw] sm:max-h-[85vh]'
+            )}
+          >
+            <IconButton
+              size='3'
+              variant='ghost'
+              color='gray'
+              className='fixed top-4 right-4 z-10 text-gray-11'
+              onClick={() => setOpen(false)}
+            >
+              <BiX size='24' />
+            </IconButton>
+
+            <div className='w-full flex flex-col items-center justify-center px-4 py-6'>
+              <Suspense
+                fallback={
+                  <img src={src} alt='Avatar Preview' className='object-contain w-full max-h-[80vh] rounded-md' />
+                }
+              >
+                <ImageViewer>
+                  <img src={src} alt='Avatar Preview' className='object-contain w-full max-h-[80vh] rounded-md' />
+                </ImageViewer>
+              </Suspense>
+            </div>
+          </Dialog.Content>
+        </Dialog.Root>
+      )}
     </Theme>
   )
 }

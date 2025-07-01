@@ -11,7 +11,6 @@ import { useSidebarMode } from '@/utils/layout/sidebar'
 import { useLabelList } from '@/components/feature/labels/conversations/atoms/labelAtom'
 import { FC } from 'react'
 import { PinnedChannels } from './PinnedChannels'
-import { useFrappeEventListener } from 'frappe-react-sdk'
 
 // import BeatLoader from '../Loaders/BeatLoader'
 
