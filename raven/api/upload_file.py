@@ -10,6 +10,8 @@ from frappe.handler import upload_file
 from frappe.utils.image import optimize_image
 from PIL import Image, ImageOps
 
+# Giới hạn kích thước file cho Raven messaging (5MB)
+RAVEN_MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB in bytes
 
 def upload_JPEG_wrt_EXIF(content, filename, optimize=False):
 	"""
@@ -62,6 +64,28 @@ def upload_file_with_message():
 	3. If the file is an image, we need to measure it's dimensions
 	4. Store the file URL and the dimensions in the Raven Message Doc
 	"""
+	
+	# Kiểm tra kích thước file trước khi xử lý
+	files = frappe.request.files
+	if "file" in files:
+		file = files["file"]
+		
+		# Đọc nội dung file để kiểm tra kích thước
+		file_content = file.stream.read()
+		file_size = len(file_content)
+		
+		# Reset lại stream position về đầu
+		file.stream.seek(0)
+		
+		# Kiểm tra nếu file vượt quá 5MB
+		if file_size > RAVEN_MAX_FILE_SIZE:
+			frappe.throw(
+				_("Kích thước file không được vượt quá 5MB. File của bạn có kích thước {0} MB").format(
+					round(file_size / 1024 / 1024, 2)
+				),
+				exc=frappe.ValidationError
+			)
+	
 	fileExt = ["jpg", "JPG", "jpeg", "JPEG", "png", "PNG", "gif", "GIF", "webp", "WEBP"]
 	thumbnailExt = ["jpg", "JPG", "jpeg", "JPEG", "png", "PNG"]
 
@@ -99,9 +123,7 @@ def upload_file_with_message():
 
 	frappe.form_dict.docname = message_doc.name
 
-	# Get the files
-	files = frappe.request.files
-	# Get the file & content
+	# Get the file & content (files đã được kiểm tra ở trên)
 	if "file" in files:
 		file = files["file"]
 		filename = file.filename

@@ -169,7 +169,7 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
         height='100%'
         width={'w-[calc((100vw-var(--sidebar-width)-var(--space-8)-var(--space-5))/2)]'}
         maxFiles={10}
-        maxFileSize={10000000}
+        maxFileSize={5}
       >
         <ThreadFirstMessage message={threadMessage} />
         <ChatStream
