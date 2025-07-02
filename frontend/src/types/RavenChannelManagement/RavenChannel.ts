@@ -1,5 +1,3 @@
-import { RavenPinnedMessages } from '../Raven/RavenPinnedMessages'
-
 export interface RavenChannel {
   creation: string
   name: string
@@ -39,15 +37,12 @@ export interface RavenChannel {
   last_message_timestamp?: string
   /**	Last Message Details : JSON	*/
   last_message_details?: any
-  /**	Pinned Messages : Table - Raven Pinned Messages	*/
-  pinned_messages?: RavenPinnedMessages[]
-  /**	Pinned Messages String : Small Text	*/
-  pinned_messages_string?: string
   /**	Is AI Thread : Check	*/
   is_ai_thread?: 0 | 1
   /**	OpenAI Thread ID : Data	*/
   openai_thread_id?: string
   /**	Thread Bot : Link - Raven Bot	*/
   thread_bot?: string
-  group_type: 'channel' | 'dm'
+  group_image?: string
+  pinned_messages_string?: string
 }

@@ -1,7 +1,7 @@
 import { getErrorMessage } from '@/components/layout/AlertBanner/ErrorBanner'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { RavenChannel } from '@/types/RavenChannelManagement/RavenChannel'
-import { FrappeError, useFrappeEventListener, useFrappeGetCall, useSWRConfig } from 'frappe-react-sdk'
+import { FrappeError, useFrappeGetCall, useSWRConfig } from 'frappe-react-sdk'
 import { PropsWithChildren, createContext, useContext, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { KeyedMutator } from 'swr'
@@ -38,6 +38,7 @@ export type ChannelListItem = Pick<
   | 'workspace'
   | 'pinned_messages_string'
   | 'group_type'
+  | 'group_image'
 > & {
   member_id: string
   is_done: number // <== thêm dòng này

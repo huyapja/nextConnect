@@ -60,6 +60,7 @@ export const DirectMessageItemList = ({ channel_list }: any) => {
 
   // Ưu tiên các component đặc biệt trước
   if (title === 'Đã gắn cờ') return <MessageSaved />
+  // if (title === 'Cuộc gọi nhỡ') return <MissedCallsList />
   if (title === 'Nhắc đến') return <MentionList />
   if (title === 'Xong') return <DoneChannelList key='done-list' />
   if (title === 'Chủ đề') return <ThreadsCustom />
@@ -365,7 +366,7 @@ export const DirectMessageItemElement = ({
               availabilityStatus={peerUser.availability_status}
             />
           ) : (
-            <ChannelIcon type={channel.type} className={isTablet ? 'w-[32px] h-[32px]' : 'w-[24px] h-[24px]'} />
+            <ChannelIcon groupImage={channel.group_image} type={channel.type} />
           )}
           {shouldShowBadge && (
             <SidebarBadge className='absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 w-[14px] h-[14px] text-[8px] rounded-full bg-red-500 text-white flex items-center justify-center'>
