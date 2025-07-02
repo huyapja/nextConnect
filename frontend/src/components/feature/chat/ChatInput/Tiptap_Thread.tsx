@@ -1,7 +1,7 @@
 import { ChannelMembers } from '@/hooks/fetchers/useFetchChannelMembers'
 import { useIsDesktop, useIsMobile } from '@/hooks/useMediaQuery'
 import { useStickyState } from '@/hooks/useStickyState'
-import useUnreadMessageCount from '@/hooks/useUnreadMessageCount'
+import useUnreadThreadsCount from '@/hooks/useUnreadThreadsCount'
 import { ChannelListContext, ChannelListContextType } from '@/utils/channel/ChannelListProvider'
 import eventBus from '@/utils/event-emitter'
 import { EnterKeyBehaviourAtom } from '@/utils/preferences'
@@ -134,14 +134,22 @@ const TiptapThread = forwardRef(
 
     const channelMembersRef = useRef<MemberSuggestions[]>([])
 
-    const { unread_count } = useUnreadMessageCount()
+    const { data: unreadThreads, markThreadAsRead } = useUnreadThreadsCount()
 
     const handleClick = async () => {
-      const unreadEntry = unread_count?.message.find((c) => c.name === channelID)
+      const threadID = channelID ?? ''
 
-      if (!unreadEntry || unreadEntry.unread_count <= 0) return // Không có hoặc = 0 → không cần track
+      if (!threadID) return
+
+      const unreadThread = unreadThreads?.message?.threads.find((t) => t.name === threadID)
+      const unreadCount = unreadThread?.unread_count ?? 0
+
+      if (unreadCount > 0) {
+        markThreadAsRead(threadID)
+      }
 
       try {
+        // trackseen
         eventBus.emit('user:interacted', {
           source: 'input',
           timestamp: Date.now()

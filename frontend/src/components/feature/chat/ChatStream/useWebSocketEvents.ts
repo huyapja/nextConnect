@@ -185,8 +185,6 @@ export const useWebSocketEvents = (
     }
 
     if (channel_id !== channelID) return
-    console.log('mutate')
-
     mutate(
       (data: any) => {
         if (!message_id || !data?.message?.messages) return data

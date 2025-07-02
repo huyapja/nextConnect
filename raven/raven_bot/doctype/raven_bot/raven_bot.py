@@ -462,6 +462,7 @@ class RavenBot(Document):
 				"file": file,
 				"is_bot_message": 1,
 				"bot": self.raven_user,
+				"owner": self.raven_user,
 				"link_doctype": link_doctype,
 				"link_document": link_document,
 				"notification": notification_name,

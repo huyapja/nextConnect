@@ -11,7 +11,6 @@ export function useChannelDoneListener() {
         ...prev,
         [channel_id]: is_done
       }
-      console.log('channelIsDoneAtom updated', next)
       return next
     })
   })

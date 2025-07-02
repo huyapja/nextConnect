@@ -220,8 +220,15 @@ class RavenMessage(Document):
 
 	def before_insert(self):
 		"""
-		If the message is a reply, update the replied_message_details field
+		- Nếu là tin nhắn trả lời (reply) → lấy chi tiết message gốc
+		- Nếu là tin nhắn từ bot → đảm bảo self.owner được set
 		"""
+
+		# Fix: nếu là bot nhắn nhưng không có session → ép self.owner
+		if not self.owner and self.is_bot_message and self.bot:
+			self.owner = self.bot
+
+		# ✅ Nếu là reply → lưu thông tin tin nhắn được trả lời
 		if self.is_reply and self.linked_message:
 			details = frappe.db.get_value(
 				"Raven Message",
@@ -315,101 +322,109 @@ class RavenMessage(Document):
 		)
 
 	def set_last_message_timestamp(self):
+		import json
 
-		# Update directly via SQL since we do not want to invalidate the document cache
-		message_details = json.dumps(
-			{
-				"message_id": self.name,
-				"content": self.content,
-				"message_type": self.message_type,
-				"owner": self.owner,
-				"is_bot_message": self.is_bot_message,
-				"bot": self.bot,
-			}
-		)
+		message_details = json.dumps({
+			"message_id": self.name,
+			"content": self.content,
+			"message_type": self.message_type,
+			"owner": self.owner,
+			"is_bot_message": self.is_bot_message,
+			"bot": self.bot,
+		})
 
 		raven_channel = frappe.qb.DocType("Raven Channel")
 		query = (
 			frappe.qb.update(raven_channel)
 			.where(raven_channel.name == self.channel_id)
 			.set(raven_channel.last_message_timestamp, self.creation)
+			.set(raven_channel.last_message_details, message_details)
 		)
 		query.run()
 
 		return message_details
 
+
+	import json
+
 	def publish_unread_count_event(self, last_message_details=None):
-
+		import json
 		channel_doc = frappe.get_cached_doc("Raven Channel", self.channel_id)
-		# If the message is a direct message, then we can only send it to one user
+
+		is_bot = 0
+		sent_by = self.owner
+		actual_owner = self.owner
+		play_sound = False
+
+		# ✅ Parse JSON nếu cần
+		if isinstance(last_message_details, str):
+			try:
+				last_message_details = json.loads(last_message_details)
+			except Exception:
+				last_message_details = {}
+
+		# ✅ Check nếu là bot
+		if last_message_details.get("is_bot_message") and last_message_details.get("bot"):
+			bot_info = frappe.get_all(
+				"Raven Bot",
+				filters={"raven_user": last_message_details["bot"]},
+				fields=["bot_name", "owner"]
+			)
+			if bot_info:
+				is_bot = 1
+				play_sound = True  # ✅ Nếu là bot thì bật play_sound
+				sent_by = bot_info[0].bot_name or self.owner
+				actual_owner = bot_info[0].owner or self.owner
+
+		payload = {
+			"channel_id": self.channel_id,
+			"play_sound": play_sound,
+			"is_bot": is_bot,
+			"sent_by": sent_by,
+			"last_message_timestamp": self.creation,
+			"last_message_details": last_message_details,
+		}
+
 		if channel_doc.is_direct_message:
-
 			if not channel_doc.is_self_message:
-
 				peer_user_doc = get_peer_user(self.channel_id, 1)
-
 				if peer_user_doc.get("type") == "User":
-
 					frappe.publish_realtime(
 						"raven:unread_channel_count_updated",
-						{
-							"channel_id": self.channel_id,
-							"play_sound": True,
-							"sent_by": self.owner,
-							"is_dm_channel": True,
-							"last_message_timestamp": self.creation,
-							"last_message_details": last_message_details,
-						},
+						{**payload, "is_dm_channel": True},
 						user=peer_user_doc.user_id,
-						after_commit=True,
+						after_commit=True
 					)
 
-			# Need to send this to sender as well since they need to update the last message timestamp
 			frappe.publish_realtime(
 				"raven:unread_channel_count_updated",
-				{
-					"channel_id": self.channel_id,
-					"play_sound": False,
-					"is_dm_channel": True,
-					"sent_by": self.owner,
-					"last_message_timestamp": self.creation,
-					"last_message_details": last_message_details,
-				},
-				user=self.owner,
-				after_commit=True,
+				{**payload, "is_dm_channel": True},
+				user=actual_owner,
+				after_commit=True
 			)
-		elif channel_doc.is_thread:
-			# TODO: Might be a good idea to just send this to the users who are participants in the thread - maybe not a lot of users?
 
-			# Get the number of replies in the thread
+		elif channel_doc.is_thread:
 			reply_count = refresh_thread_reply_count(self.channel_id)
 			frappe.publish_realtime(
 				"thread_reply",
 				{
 					"channel_id": self.channel_id,
-					"sent_by": self.owner,
+					"sent_by": sent_by,
 					"last_message_timestamp": self.creation,
 					"number_of_replies": reply_count,
 				},
 				after_commit=True,
 				room=get_raven_room(),
 			)
+
 		else:
-			# This event needs to be published to all users on Raven (desk + website)
 			frappe.publish_realtime(
 				"raven:unread_channel_count_updated",
-				{
-					"channel_id": self.channel_id,
-					"play_sound": False,
-					"sent_by": self.owner,
-					"is_dm_channel": False,
-					"is_thread": channel_doc.is_thread,
-					"last_message_timestamp": self.creation,
-					"last_message_details": last_message_details,  # ✅ THÊM DÒNG NÀY
-				},
+				{**payload, "is_dm_channel": False, "is_thread": channel_doc.is_thread},
 				after_commit=True,
 				room=get_raven_room(),
 			)
+
 
 	def send_push_notification(self):
 		# Comment: Firebase notification được xử lý tự động qua doc_events hook
