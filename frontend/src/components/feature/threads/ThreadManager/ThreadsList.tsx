@@ -115,7 +115,7 @@ const ThreadsList = ({
   // ✅ Force refresh nếu có thread không hợp lệ (workspace null hoặc không có channel_id)
   useEffect(() => {
     if (threads && threads.length > 0) {
-      const invalidThreads = threads.filter(thread => !thread.workspace && !thread.channel_id)
+      const invalidThreads = threads.filter((thread) => !thread.workspace && !thread.channel_id)
       if (invalidThreads.length > 0) {
         console.log('🚨 Found invalid threads, forcing refresh:', invalidThreads)
         mutate()
@@ -231,6 +231,9 @@ const ThreadsList = ({
     eventBus.on('thread:created', handleThreadCreated)
     eventBus.on('thread:deleted', handleThreadDeleted)
     
+    // ✅ Listen custom event
+    window.addEventListener('thread_deleted_custom', handleCustomThreadDeleted as EventListener)
+
     // ✅ Listen custom event
     window.addEventListener('thread_deleted_custom', handleCustomThreadDeleted as EventListener)
 

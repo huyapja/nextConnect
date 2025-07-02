@@ -11,14 +11,7 @@ export const useGetFilePreviewUrl = (file: CustomFile): string => {
 
   useEffect(() => {
     let objectUrl = ''
-    const validPreviewTypes = [
-      'image/gif',
-      'image/jpeg',
-      'image/png',
-      'image/svg+xml',
-      'image/webp',
-      'image/jpg'
-    ]
+    const validPreviewTypes = ['image/gif', 'image/jpeg', 'image/png', 'image/svg+xml', 'image/webp', 'image/jpg']
 
     //Only create a URL for images
     if (validPreviewTypes.includes(file.type)) {
@@ -31,6 +24,7 @@ export const useGetFilePreviewUrl = (file: CustomFile): string => {
 
     // free memory when ever this component is unmounted
     return () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       objectUrl && URL.revokeObjectURL(objectUrl)
     }
   }, [file])

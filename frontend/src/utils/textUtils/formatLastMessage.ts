@@ -39,15 +39,19 @@ export function formatLastMessageParts(
   }
 
   const isCurrentUser = raw.owner === currentUser
+
+  // Xác định senderLabel
   let senderLabel = ''
   if (raw.content?.includes('thu hồi')) {
     senderLabel = ''
+  } else if (raw.is_bot_message) {
+    senderLabel = raw.bot || 'bot'
   } else {
     senderLabel = isCurrentUser ? 'Bạn' : channel.is_direct_message ? '' : senderName || raw.owner || 'Người dùng'
   }
 
+  // Xác định contentLabel
   let contentLabel = ''
-
   if (typeof raw.content === 'string') {
     const filename = raw.content
 
@@ -69,12 +73,13 @@ export function formatLastMessageParts(
           contentLabel = 'gửi file'
         }
         break
-      case 'Text':
-        // eslint-disable-next-line no-case-declarations
+      case 'Text': {
         const text = stripHtmlTags(filename)
         contentLabel = truncateText(text, maxLength)
         break
+      }
     }
   }
+
   return { senderLabel, contentLabel }
 }

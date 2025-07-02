@@ -60,7 +60,7 @@ const EmptyStateForChannel = ({ channelData }: EmptyStateForChannelProps) => {
     <Flex direction='column' className={'p-2'} gap='2'>
       <Flex direction='column' gap='2'>
         <Flex align={'center'} gap='1'>
-          <ChannelIcon type={channelData?.type} />
+          <ChannelIcon groupImage={channelData?.group_image} type={channelData?.type} />
           <Heading size='4'>{channelData?.channel_name}</Heading>
         </Flex>
         <Text size='2'>

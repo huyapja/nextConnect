@@ -14,6 +14,8 @@ import { ChannelSettings } from '../channel-settings/ChannelSettings'
 import { useFetchWorkspaceMembers } from '../workspaces/WorkspaceMemberManagement'
 import { UserFields, UserListContext } from '@/utils/users/UserListProvider'
 import { GroupImageUploadManager } from '../channel-details/change-image-channel/ImageChannelUpload'
+import { ImageChannelDelete } from '../channel-details/change-image-channel/ImageChannelDelete'
+
 
 interface ViewChannelDetailsModalContentProps {
   open: boolean
@@ -53,6 +55,7 @@ const ViewChannelDetailsModal = ({ open, setOpen, channelData, defaultTab }: Vie
       ) : null}
 
       <GroupImageUploadManager />
+      <ImageChannelDelete />
     </>
   )
 }

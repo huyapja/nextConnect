@@ -102,7 +102,6 @@ class RavenDocumentNotification(Document):
 		frappe.cache().hdel("raven_doc_notifications", self.document_type)
 
 	def send_notification(self, context, link_doctype, link_document):
-
 		bot = frappe.get_doc("Raven Bot", self.sender)
 
 		channels, users = self.get_recipients(context)
@@ -110,6 +109,7 @@ class RavenDocumentNotification(Document):
 		message = frappe.render_template(self.message, context)
 
 		for channel in channels:
+			# Gửi tin nhắn vào channel
 			bot.send_message(
 				channel_id=channel,
 				text=message,
@@ -119,7 +119,26 @@ class RavenDocumentNotification(Document):
 				notification_name=self.name,
 			)
 
+			# Reset is_done = 0 cho các user đã từng mark done channel này
+			members = frappe.get_all(
+				"Raven Channel Member",
+				filters={"channel_id": channel, "is_done": 1},
+				fields=["name", "user_id"]
+			)
+
+			for member in members:
+				frappe.db.set_value("Raven Channel Member", member.name, "is_done", 0)
+
+				# Gửi sự kiện realtime để cập nhật UI
+				frappe.publish_realtime(
+					event="raven:channel_done_updated",
+					message={"channel_id": channel, "is_done": 0},
+					user=member.user_id,
+					after_commit=True
+				)
+
 		for user in users:
+			# Gửi tin nhắn trực tiếp (DM)
 			bot.send_direct_message(
 				user_id=user,
 				text=message,

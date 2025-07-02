@@ -86,7 +86,7 @@ const DeleteThreadButton = () => {
           detail: { thread_id: threadID }
         })
       )
-      
+
       navigate('../')
       return Promise.resolve()
     })
