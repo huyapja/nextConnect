@@ -10,37 +10,55 @@ const PushNotificationToggle = () => {
   const isPushAvailable = useIsPushNotificationEnabled()
 
   const [pushNotificationsEnabled, setPushNotificationsEnabled] = useState(
-    window.frappePushNotification?.isNotificationEnabled()
+    // Kiểm tra Firebase notification permission thay vì frappePushNotification
+    Notification.permission === 'granted' && (window as any).firebaseNotificationService?.getToken()
   )
 
   const togglePushNotifications = async () => {
-    if (!pushNotificationsEnabled) {
-      enablePushNotifications()
-    } else {
-      window.frappePushNotification
-        .disableNotification()
-        .then((data: any) => {
-          setPushNotificationsEnabled(false) // Disable the switch
-          toast.info(__('Push notifications disabled'))
-        })
-        .catch((error: any) => {
-          toast.error(__('There was an error'), {
-            description: getErrorMessage(error)
-          })
-        })
-    }
+    // Disable chức năng này vì đã có FirebaseNotificationToggle riêng
+    toast.info('Vui lòng sử dụng tùy chọn "Bật/Tắt thông báo" cho Firebase', {
+      description: 'Chức năng Frappe Push Notification đã được vô hiệu hóa'
+    })
+    return
+    
+    // Code cũ bị disable
+    // if (!pushNotificationsEnabled) {
+    //   enablePushNotifications()
+    // } else {
+    //   // Disable Firebase notification bằng cách unregister token
+    //   (window as any).firebaseNotificationService?.unregisterToken()
+    //     .then((data: any) => {
+    //       setPushNotificationsEnabled(false) // Disable the switch
+    //       toast.info('Đã tắt thông báo Firebase')
+    //     })
+    //     .catch((error: any) => {
+    //       toast.error(__('There was an error'), {
+    //         description: getErrorMessage(error)
+    //       })
+    //     })
+    // }
   }
 
   const enablePushNotifications = async () => {
     toast.promise(
-      window.frappePushNotification
-        .enableNotification()
-        .then((data: any) => {
-          if (data.permission_granted) {
+      // Sử dụng Firebase notification service thay vì frappePushNotification
+      (window as any).firebaseNotificationService?.refreshToken()
+        .then(() => {
+          // Kiểm tra permission
+          if (Notification.permission === 'granted') {
             setPushNotificationsEnabled(true)
+            return { permission_granted: true }
           } else {
-            setPushNotificationsEnabled(false)
-            throw new Error('Permission denied for push notifications')
+            // Request permission
+            return Notification.requestPermission().then(permission => {
+              if (permission === 'granted') {
+                setPushNotificationsEnabled(true)
+                return { permission_granted: true }
+              } else {
+                setPushNotificationsEnabled(false)
+                throw new Error('Không có quyền sử dụng thông báo')
+              }
+            })
           }
         })
         .catch((error: any) => {
@@ -48,30 +66,19 @@ const PushNotificationToggle = () => {
           throw error
         }),
       {
-        success: __('Push notifications enabled'),
-        loading: __('Enabling...'),
-        error: (e: Error) => e.message
+        success: 'Đã bật thông báo Firebase',
+        loading: 'Đang bật thông báo Firebase...',
+        error: (e: Error) => e.message || 'Không thể bật thông báo Firebase'
       }
     )
   }
 
-  // @ts-expect-error
-  if (!window.frappe?.boot.push_relay_server_url && !isPushAvailable) {
-    return null
-  }
-  return (
-    <DropdownMenu.Item color='gray' onClick={togglePushNotifications} className={'flex justify-normal gap-2'}>
-      {pushNotificationsEnabled ? (
-        <>
-          <BsBellSlash size='14' /> {__('Disable Notifications')}
-        </>
-      ) : (
-        <>
-          <BsBell size='14' /> {__('Enable Notifications')}
-        </>
-      )}
-    </DropdownMenu.Item>
-  )
+  // Comment lại để cho phép sử dụng Firebase notifications
+  // if (!window.frappe?.boot.push_relay_server_url && !isPushAvailable) {
+  //   return null
+  // }
+  // Ẩn nút Frappe/Raven Cloud vì đã có FirebaseNotificationToggle
+  return null
 }
 
 export default PushNotificationToggle
