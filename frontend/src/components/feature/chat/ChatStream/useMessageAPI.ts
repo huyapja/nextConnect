@@ -25,47 +25,56 @@ export const useMessageAPI = (
   const isDraftChannel = channelID.startsWith('_')
 
   // Tạo fake data cho draft channels
-  const draftChannelData: GetMessagesResponse = useMemo(() => ({
-    message: {
-      messages: [],
-      has_old_messages: false,
-      has_new_messages: false
-    }
-  }), [])
+  const draftChannelData: GetMessagesResponse = useMemo(
+    () => ({
+      message: {
+        messages: [],
+        has_old_messages: false,
+        has_new_messages: false
+      }
+    }),
+    []
+  )
 
   // Hook cho channels thực sự - chỉ gọi khi không phải draft channel
   const realChannelAPI = useFrappeGetCall<GetMessagesResponse>(
     'raven.api.chat_stream.get_messages',
-    isDraftChannel ? undefined : {
-      channel_id: channelID,
-      base_message: selected_message ? selected_message : undefined
-    },
-    isDraftChannel ? `draft_channel_${channelID}` : {
-      path: `get_messages_for_channel_${channelID}`,
-      baseMessage: selected_message ? selected_message : undefined
-    },
-    isDraftChannel ? {
-      fallbackData: draftChannelData,
-      revalidateOnFocus: false,
-      revalidateOnMount: false
-    } : {
-      revalidateOnFocus: isMobile ? true : false,
-      revalidateOnMount: true,
-      dedupingInterval: 0,
-      keepPreviousData: false,
-      onSuccess: (data) => {
-        if (!highlightedMessage) {
-          if (!data.message.has_new_messages) {
-            requestAnimationFrame(() => {
-              scrollToBottom()
-            })
-            latestMessagesLoadedRef.current = true
-          }
-        } else {
-          scrollToMessageElement(highlightedMessage)
+    isDraftChannel
+      ? undefined
+      : {
+          channel_id: channelID,
+          base_message: selected_message ? selected_message : undefined
+        },
+    isDraftChannel
+      ? `draft_channel_${channelID}`
+      : {
+          path: `get_messages_for_channel_${channelID}`,
+          baseMessage: selected_message ? selected_message : undefined
+        },
+    isDraftChannel
+      ? {
+          fallbackData: draftChannelData,
+          revalidateOnFocus: false,
+          revalidateOnMount: false
         }
-      }
-    }
+      : {
+          revalidateOnFocus: isMobile ? true : false,
+          revalidateOnMount: true,
+          dedupingInterval: 0,
+          keepPreviousData: false,
+          onSuccess: (data) => {
+            if (!highlightedMessage) {
+              if (!data.message.has_new_messages) {
+                requestAnimationFrame(() => {
+                  scrollToBottom()
+                })
+                latestMessagesLoadedRef.current = true
+              }
+            } else {
+              scrollToMessageElement(highlightedMessage)
+            }
+          }
+        } // ← thiếu dấu } ở đây, đã thêm
   )
 
   const { call: fetchOlderMessages, loading: loadingOlderMessages } = useFrappePostCall(

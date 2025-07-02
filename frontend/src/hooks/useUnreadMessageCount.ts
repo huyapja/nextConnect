@@ -101,34 +101,40 @@ export const useFetchUnreadMessageCount = () => {
   const { play } = useNotificationAudio()
 
   useFrappeEventListener('raven:unread_channel_count_updated', async (event) => {
-    if (event.sent_by !== currentUser) {
-      const currentUnread = unread_count?.message.find((c) => c.name === event.channel_id)?.unread_count || 0
-      const isManuallyMarked = manuallyMarked.has(event.channel_id)
+    const messageId = event.last_message_details?.message_id
+    const isBot = event.is_bot === 1 || event.is_bot === true
+    const isNotSelf = event.sent_by !== currentUser
 
-      const shouldPlay = !isManuallyMarked || (isManuallyMarked && currentUnread > 1) || event.play_sound
+    const currentUnread = unread_count?.message.find((c) => c.name === event.channel_id)?.unread_count || 0
+    const isManuallyMarked = manuallyMarked.has(event.channel_id)
 
-      // Kiểm tra channel có nằm trong danh sách của user không
-      const isKnownChannel =
-        channels.some((c) => c.name === event.channel_id) || dm_channels.some((c) => c.name === event.channel_id)
+    const shouldPlay = !isManuallyMarked || (isManuallyMarked && currentUnread > 1) || event.play_sound
 
-      if (isKnownChannel && shouldPlay) {
-        setLatestUnreadData({
-          name: event.channel_id,
-          last_message_sender_name: event.last_message_sender_name,
-          is_direct_message: event.is_direct_message,
-          channel_name: event.channel_name,
-          last_message_timestamp: event.last_message_timestamp
-        })
-        play(event.last_message_timestamp)
+    const isKnownChannel =
+      channels.some((c) => c.name === event.channel_id) || dm_channels.some((c) => c.name === event.channel_id)
+
+    if (isKnownChannel && shouldPlay) {
+      setLatestUnreadData({
+        name: event.channel_id,
+        last_message_sender_name: event.last_message_sender_name,
+        is_direct_message: event.is_direct_message,
+        channel_name: event.channel_name,
+        last_message_timestamp: event.last_message_timestamp
+      })
+
+      // Tách rõ ràng điều kiện phát âm thanh
+      if (isBot || isNotSelf) {
+        play(messageId)
       }
+    }
 
-      // 🚀 Luôn gọi fetch để cập nhật updatedChannel
-      fetchUnreadCountForChannel(event.channel_id)
-    } else {
+    if (!isNotSelf) {
       updateUnreadCountToZero(event.channel_id)
     }
 
     updateLastMessageInChannelList(event.channel_id, event.last_message_timestamp, event.last_message_details)
+
+    fetchUnreadCountForChannel(event.channel_id)
   })
 
   const updateUnreadCountToZero = (channel_id?: string) => {

@@ -14,6 +14,8 @@ import { groupImageUploadAtom } from './change-image-channel/ImageChannelUpload'
 import { useSetAtom } from 'jotai'
 import { useParams } from 'react-router-dom'
 import { CiCamera } from 'react-icons/ci'
+import { CgTrash } from 'react-icons/cg'
+import { imageChannelDeleteAtom } from './change-image-channel/ImageChannelDelete'
 
 interface ChannelDetailsProps {
   allowSettingChange?: boolean
@@ -36,6 +38,8 @@ export const ChannelDetails = ({ channelData, channelMembers, allowSettingChange
   }, [channelMembers, currentUser])
 
   const setUploadState = useSetAtom(groupImageUploadAtom)
+  const setDeleteState = useSetAtom(imageChannelDeleteAtom)
+
   return (
     <Flex direction='column' gap='4' className={'h-[60vh]'}>
       <Box className={'p-4 rounded-md border border-gray-6'}>
@@ -46,12 +50,22 @@ export const ChannelDetails = ({ channelData, channelMembers, allowSettingChange
           <Flex gap='2' pt='1' align='center'>
             <ChannelIcon groupImage={channelData.group_image} type={channelData.type} size='18' />
             {allowSettingChange && (
-              <CiCamera
-                className='cursor-pointer text-gray-11 hover:text-gray-12'
-                size={16}
-                onClick={() => setUploadState({ open: true, groupID })}
-                title='Cập nhật ảnh đại diện'
-              />
+              <>
+                <CiCamera
+                  className='cursor-pointer text-gray-11 hover:text-gray-12'
+                  size={16}
+                  onClick={() => setUploadState({ open: true, groupID })}
+                  title='Cập nhật ảnh đại diện'
+                />
+                {channelData.group_image && (
+                  <CgTrash
+                    onClick={() => setDeleteState({ open: true, groupID })}
+                    className='cursor-pointer text-gray-11 hover:text-gray-12'
+                    title='Xoá ảnh đại diện'
+                    size={16}
+                  />
+                )}
+              </>
             )}
           </Flex>
         </Flex>

@@ -38,7 +38,9 @@ export const useSendMessage = (
   selectedMessage?: Message | null
 ) => {
   const { call, loading } = useFrappePostCall<{ message: RavenMessage }>('raven.api.raven_message.send_message')
-  const { call: createDMChannel } = useFrappePostCall<{ message: string }>('raven.api.raven_channel.create_direct_message_channel')
+  const { call: createDMChannel } = useFrappePostCall<{ message: string }>(
+    'raven.api.raven_channel.create_direct_message_channel'
+  )
   const { updateLastMessageForChannel } = useUpdateLastMessageDetails()
   const { currentUser } = useContext(UserContext)
   const { workspaceID } = useParams()
@@ -113,18 +115,17 @@ export const useSendMessage = (
       try {
         const result = await createDMChannel({ user_id: userID })
         const realChannelID = result?.message
-        
+
         if (realChannelID) {
           // Cập nhật channel list
           mutate('channel_list')
-          
+
           // Chuyển hướng đến channel thực sự
           if (workspaceID) {
             navigate(`/${workspaceID}/${realChannelID}`, { replace: true })
           } else {
             navigate(`/channel/${realChannelID}`, { replace: true })
           }
-          
           return realChannelID
         }
       } catch (error) {
@@ -285,7 +286,6 @@ export const useSendMessage = (
         if (file) {
           // Xử lý draft channel trước khi upload file
           await handleDraftChannel(channelID)
-          
           const result = await uploadOneFile(file, selectedMessage)
           if (result.message) {
             // Gửi xuống cuối bằng cách thêm resend_at

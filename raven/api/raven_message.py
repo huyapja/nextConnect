@@ -621,7 +621,7 @@ def get_unread_count_for_channel(channel_id):
     # Lấy message mới nhất
     latest_msg = frappe.db.sql(
         """
-        SELECT content, creation, owner
+        SELECT name, content, creation, owner, is_bot_message, bot
         FROM `tabRaven Message`
         WHERE channel_id = %s AND message_type != 'System'
         ORDER BY creation DESC
@@ -631,18 +631,34 @@ def get_unread_count_for_channel(channel_id):
         as_dict=True,
     )
     latest = latest_msg[0] if latest_msg else {}
+
+    message_id = latest.get("name")
     content = latest.get("content", "")
     timestamp = latest.get("creation")
     sender_id = latest.get("owner")
+    is_bot = latest.get("is_bot_message") or 0
+    bot_id = latest.get("bot")
 
     sender_name = None
     sender_image = None
-    if sender_id:
+
+    if is_bot and bot_id:
+        # Nếu là tin từ bot
+        if frappe.db.exists("Raven Bot", bot_id):
+            bot_doc = frappe.get_cached_doc("Raven Bot", bot_id)
+            sender_name = bot_doc.bot_name
+        else:
+            sender_name = bot_id
+            sender_image = None
+    elif sender_id and frappe.db.exists("Raven User", sender_id):
+        # Nếu là user thường
         user_doc = frappe.get_cached_doc("Raven User", sender_id)
         sender_name = user_doc.full_name
         sender_image = user_doc.user_image
+    else:
+        sender_name = sender_id or "Unknown"
 
-    # Xây dựng kết quả
+    # Kết quả
     result = {
         "name": channel_id,
         "channel_name": channel_doc.channel_name,
@@ -653,9 +669,17 @@ def get_unread_count_for_channel(channel_id):
         "last_message_sender_name": sender_name,
         "last_message_sender_image": sender_image,
         "is_direct_message": 1 if channel_doc.is_direct_message else 0,
+        "last_message_details": {
+            "message_id": message_id,
+            "content": content,
+            "owner": sender_id,
+            "is_bot_message": is_bot,
+            "bot": bot_id,
+            "message_type": "Text"  # hoặc lấy từ `message_type` nếu cần
+        }
     }
 
-    # Nếu là DM thì lấy peer_user_id, nếu là group thì lấy danh sách peer_user_ids
+    # Nếu là DM
     if channel_doc.is_direct_message:
         peer_user_id = frappe.db.get_value(
             "Raven Channel Member",
@@ -1191,4 +1215,3 @@ def find_dm_channel_between_users(user1, user2):
     )
     
     return channel_id
-
