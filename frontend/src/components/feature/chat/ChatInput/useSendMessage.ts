@@ -1,8 +1,9 @@
 import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
 import { UserContext } from '@/utils/auth/UserProvider'
 import { useUpdateLastMessageDetails } from '@/utils/channel/ChannelListProvider'
-import { useFrappePostCall } from 'frappe-react-sdk'
+import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
 import { useContext, useEffect, useRef, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Message } from '../../../../../../types/Messaging/Message'
 // import { useOnlineStatus } from '../../network/useNetworkStatus'
 import { get as idbGet, set as idbSet } from 'idb-keyval'
@@ -37,8 +38,14 @@ export const useSendMessage = (
   selectedMessage?: Message | null
 ) => {
   const { call, loading } = useFrappePostCall<{ message: RavenMessage }>('raven.api.raven_message.send_message')
+  const { call: createDMChannel } = useFrappePostCall<{ message: string }>(
+    'raven.api.raven_channel.create_direct_message_channel'
+  )
   const { updateLastMessageForChannel } = useUpdateLastMessageDetails()
   const { currentUser } = useContext(UserContext)
+  const { workspaceID } = useParams()
+  const navigate = useNavigate()
+  const { mutate } = useSWRConfig()
   const STORAGE_KEY = `pending_messages_${channelID}`
 
   const [pendingMessages, setPendingMessages] = useState<Record<string, PendingMessage[]>>({})
@@ -101,9 +108,41 @@ export const useSendMessage = (
     })
   }
 
+  // Hàm xử lý tạo DM channel cho draft channel
+  const handleDraftChannel = async (draftChannelID: string): Promise<string> => {
+    if (draftChannelID.startsWith('_')) {
+      const userID = draftChannelID.substring(1)
+      try {
+        const result = await createDMChannel({ user_id: userID })
+        const realChannelID = result?.message
+
+        if (realChannelID) {
+          // Cập nhật channel list
+          mutate('channel_list')
+
+          // Chuyển hướng đến channel thực sự
+          if (workspaceID) {
+            navigate(`/${workspaceID}/${realChannelID}`, { replace: true })
+          } else {
+            navigate(`/channel/${realChannelID}`, { replace: true })
+          }
+
+          return realChannelID
+        }
+      } catch (error) {
+        console.error('Không thể tạo DM channel:', error)
+        throw error
+      }
+    }
+    return draftChannelID
+  }
+
   const sendOneMessage = async (content: string, client_id: string, json?: any, sendSilently = false) => {
+    // Xử lý draft channel trước khi gửi tin nhắn
+    const actualChannelID = await handleDraftChannel(channelID)
+
     const res = await call({
-      channel_id: channelID,
+      channel_id: actualChannelID,
       text: content,
       client_id,
       json_content: json,
@@ -133,6 +172,9 @@ export const useSendMessage = (
   }
 
   const sendFileMessages = async () => {
+    // Xử lý draft channel trước khi upload files
+    await handleDraftChannel(channelID)
+
     const uploadedFiles = await uploadFiles(selectedMessage)
 
     uploadedFiles.forEach(({ client_id, message, file }) => {
@@ -243,6 +285,9 @@ export const useSendMessage = (
         }
 
         if (file) {
+          // Xử lý draft channel trước khi upload file
+          await handleDraftChannel(channelID)
+
           const result = await uploadOneFile(file, selectedMessage)
           if (result.message) {
             // Gửi xuống cuối bằng cách thêm resend_at

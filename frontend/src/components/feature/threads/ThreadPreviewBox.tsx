@@ -10,8 +10,7 @@ import { Badge, Box, Flex, Text } from '@radix-ui/themes'
 import clsx from 'clsx'
 import { useContext, useMemo } from 'react'
 import { NavLink, useParams } from 'react-router-dom'
-import { Message } from '../../../../../types/Messaging/Message'
-import { MessageContent, MessageSenderAvatar, UserHoverCard } from '../chat/ChatMessage/MessageItem'
+import { MessageSenderAvatar, UserHoverCard } from '../chat/ChatMessage/MessageItem'
 import { ViewThreadParticipants } from './ThreadParticipants'
 import { ThreadMessage } from './Threads'
 
@@ -76,12 +75,12 @@ export const ThreadPreviewBox = ({ thread, unreadCount }: { thread: ThreadMessag
                 <Box>
                   <UserHoverCard user={user} userID={thread.owner} isActive={false} />
                 </Box>
-                <MessageContent
-                  message={thread as unknown as Message}
-                  user={user}
-                  currentUser={currentUser}
-                  forceHideLinkPreview
-                />
+                <Text
+                  className='line-clamp-2 text-sm text-gray-700 dark:text-gray-300 leading-snug'
+                  title={thread.content}
+                >
+                  {thread.content}
+                </Text>
               </Flex>
             </Flex>
             <Flex align={'center'} gap='2' className='pl-11'>

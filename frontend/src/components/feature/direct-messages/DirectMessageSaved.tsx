@@ -246,8 +246,6 @@ const DirectMessageSaved = ({ message, handleUnflagMessage, messageId }: Message
   const { channel_id } = message
   const messageParams = searchParams.get('message_id')
 
-  console.log(message)
-
   const users = useGetUserRecords()
   const user = useGetUser(message.is_bot_message && message.bot ? message.bot : message.owner)
   const { channel } = useCurrentChannelData(channel_id)

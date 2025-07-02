@@ -13,3 +13,44 @@
   overflow-x: auto;
   padding-right: 4rem;
 }
+
+/* Styles cho emoji khi chỉ gửi emoji */
+.emoji-only-message em-emoji {
+  font-size: 2rem !important;
+  line-height: 1.2;
+}
+
+.emoji-only-message em-emoji img {
+  width: 2rem !important;
+  height: 2rem !important;
+  max-width: 2rem !important;
+  max-height: 2rem !important;
+}
+
+.emoji-only-message .emoji-large {
+  width: 2rem !important;
+  height: 2rem !important;
+  max-width: 2rem !important;
+  max-height: 2rem !important;
+}
+
+.emoji-only-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+/* Responsive cho mobile */
+@media (max-width: 640px) {
+  .emoji-only-message em-emoji {
+    font-size: 1.5rem !important;
+  }
+  
+  .emoji-only-message em-emoji img,
+  .emoji-only-message .emoji-large {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    max-width: 1.5rem !important;
+    max-height: 1.5rem !important;
+  }
+}

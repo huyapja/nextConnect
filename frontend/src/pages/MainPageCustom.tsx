@@ -85,7 +85,7 @@ const MainPageContent = () => {
       })
     }
 
-    if (event.sent_by === currentUser || threadID === event.channel_id) return
+    if (event.sent_by === currentUser) return
     onThreadReplyEvent(event.channel_id)
   })
 

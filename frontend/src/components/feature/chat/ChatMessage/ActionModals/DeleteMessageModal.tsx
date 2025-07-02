@@ -32,7 +32,7 @@ export const DeleteMessageModal = ({ onClose, message }: DeleteMessageModalProps
 
   return (
     <>
-      <AlertDialog.Title>{message.is_thread ? 'Thu hồi Chủ đề' : 'Thu hồi Tin nhắn'}</AlertDialog.Title>
+      <AlertDialog.Title>{message.is_thread ? 'Thu hồi chủ đề' : 'Thu hồi tin nhắn'}</AlertDialog.Title>
 
       <Flex direction='column' gap='2'>
         <Callout.Root color='red' size='1'>

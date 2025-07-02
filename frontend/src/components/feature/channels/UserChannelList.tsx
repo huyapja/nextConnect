@@ -19,8 +19,35 @@ const UserChannelList = () => {
   const { dm_channels } = useChannelList()
   const { enabledUsers: users } = useContext(UserListContext)
 
-  const peerIds = new Set(dm_channels?.map((c) => c.peer_user_id))
+  // Phân chia DM channels thành 2 nhóm: có tin nhắn và chưa có tin nhắn
+  const dmChannelsWithMessages = []
+  const dmChannelsWithoutMessages = []
 
+  for (const channel of dm_channels || []) {
+    const peerUser = users?.find((u) => u.name === channel.peer_user_id)
+    // Chỉ xử lý channels của users thông thường (không phải bot)
+    if (peerUser?.enabled === 1 && peerUser?.type?.toLowerCase?.() !== 'bot') {
+      // Kiểm tra xem channel có tin nhắn hay chưa
+      const hasMessages =
+        channel.last_message_details && channel.last_message_details !== 'null' && channel.last_message_timestamp
+
+      if (hasMessages) {
+        dmChannelsWithMessages.push(channel)
+      } else {
+        dmChannelsWithoutMessages.push(channel)
+      }
+    }
+  }
+
+  // Lấy danh sách users từ channels chưa có tin nhắn
+  const usersFromEmptyChannels = dmChannelsWithoutMessages
+    .map((channel) => {
+      return users?.find((u) => u.name === channel.peer_user_id)
+    })
+    .filter(Boolean)
+
+  // Lấy danh sách users hoàn toàn chưa có channel
+  const peerIds = new Set(dm_channels?.map((c) => c.peer_user_id))
   const usersWithoutChannels = []
   for (const user of users || []) {
     const hasChannel = peerIds.has(user.name)
@@ -30,14 +57,10 @@ const UserChannelList = () => {
     }
   }
 
-  const filteredDmChannels = []
-  for (const channel of dm_channels || []) {
-    const peerUser = users?.find((u) => u.name === channel.peer_user_id)
-    if (peerUser?.enabled === 1 && peerUser?.type?.toLowerCase?.() !== 'bot') {
-      filteredDmChannels.push(channel)
-    }
-  }
+  // Gộp tất cả users chưa từng nhắn: users từ channels rỗng + users chưa có channel
+  const allUsersWithoutMessages = [...usersFromEmptyChannels, ...usersWithoutChannels]
 
+  // Xử lý Bot channels như cũ
   const botDmChannels = dm_channels?.filter((channel) => {
     const peerUser = users?.find((user) => user.name === channel.peer_user_id)
     return peerUser && peerUser.type?.toLowerCase() === 'bot'
@@ -50,7 +73,8 @@ const UserChannelList = () => {
   return (
     <div>
       <div>
-        {filteredDmChannels.map((channel) => (
+        {/* Chỉ hiển thị DM channels đã có tin nhắn */}
+        {dmChannelsWithMessages.map((channel) => (
           <ChannelItem
             key={channel.name}
             channelID={channel.name}
@@ -59,14 +83,13 @@ const UserChannelList = () => {
           />
         ))}
         <br />
-        {usersWithoutChannels.length > 0 && <h5 className='text-sm mt-0 font-medium'>Những người chưa từng nhắn</h5>}
-        {usersWithoutChannels.map((user) => (
-          <UserWithoutDMItem key={user.name} userID={user.name} />
-        ))}
+        {/* Hiển thị tất cả users chưa từng nhắn tin */}
+        {allUsersWithoutMessages.length > 0 && <h5 className='text-sm mt-0 font-medium'>Những người chưa từng nhắn</h5>}
+        {allUsersWithoutMessages.map((user) => user && <UserWithoutDMItem key={user.name} userID={user.name} />)}
 
         {bots.length > 0 && (
           <>
-            <h5 className={`text-sm ${usersWithoutChannels.length > 0 ? 'mt-5' : 'mt-0'} font-medium`}>Bot</h5>
+            <h5 className={`text-sm ${allUsersWithoutMessages.length > 0 ? 'mt-5' : 'mt-0'} font-medium`}>Bot</h5>
             {bots.map((item) => (
               <BotItem key={item.name} item={item} />
             ))}
@@ -78,32 +101,47 @@ const UserChannelList = () => {
 }
 
 const UserWithoutDMItem = ({ userID }: { userID: string }) => {
+  // const { workspaceID } = useParams()
+  // const user = useGetUser(userID)
+  // const isActive = useIsUserActive(userID)
+  // const navigate = useNavigate()
+
+  // const { call, loading } = useFrappePostCall<{ message: string }>(
+  //   'raven.api.raven_channel.create_direct_message_channel'
+  // )
+
+  // const { mutate } = useSWRConfig()
+
+  // const onClick = () => {
+  //   call({ user_id: userID })
+  //     .then((res) => {
+  //       mutate('channel_list')
+  //       if (workspaceID) {
+  //         navigate(`/${workspaceID}/${res?.message}`)
+  //       } else {
+  //         navigate(`/channel/${res?.message}`)
+  //       }
+  //     })
+  //     .catch((err) => {
+  //       toast.error('Không thể tạo được đoạn chat', {
+  //         description: getErrorMessage(err)
+  //       })
+  //     })
+  // }
+
   const { workspaceID } = useParams()
   const user = useGetUser(userID)
   const isActive = useIsUserActive(userID)
   const navigate = useNavigate()
 
-  const { call, loading } = useFrappePostCall<{ message: string }>(
-    'raven.api.raven_channel.create_direct_message_channel'
-  )
-
-  const { mutate } = useSWRConfig()
-
   const onClick = () => {
-    call({ user_id: userID })
-      .then((res) => {
-        mutate('channel_list')
-        if (workspaceID) {
-          navigate(`/${workspaceID}/${res?.message}`)
-        } else {
-          navigate(`/channel/${res?.message}`)
-        }
-      })
-      .catch((err) => {
-        toast.error('Không thể tạo được đoạn chat', {
-          description: getErrorMessage(err)
-        })
-      })
+    const draftChannelID = `_${userID}`
+
+    if (workspaceID) {
+      navigate(`/${workspaceID}/${draftChannelID}`)
+    } else {
+      navigate(`/channel/${draftChannelID}`)
+    }
   }
 
   return (
@@ -128,7 +166,7 @@ const UserWithoutDMItem = ({ userID }: { userID: string }) => {
           </Text>
         </Flex>
 
-        {loading ? <Loader /> : null}
+        {/* {loading ? <Loader /> : null} */}
 
         {!user?.enabled && (
           <Badge color='gray' variant='soft'>

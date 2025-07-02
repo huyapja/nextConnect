@@ -12,6 +12,7 @@ import { labelListAtom } from './conversations/atoms/labelAtom'
 import { atom } from 'jotai'
 import { FiPlus } from 'react-icons/fi'
 import { useUpdateChannelLabels } from '@/utils/channel/ChannelAtom'
+import { useSidebarMode } from '@/utils/layout/sidebar'
 
 export const createLabelModalAtom = atom<{
   isOpen: boolean
@@ -34,18 +35,18 @@ export const CreateLabelButton = () => {
   const isDesktop = useIsDesktop()
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (dialogRef.current && !dialogRef.current.contains(e.target as Node)) {
-        setModalState((prev) => ({ ...prev, isOpen: false }))
-      }
-    }
+  // useEffect(() => {
+  //   const handleOutsideClick = (e: MouseEvent) => {
+  //     if (dialogRef.current && !dialogRef.current.contains(e.target as Node)) {
+  //       setModalState((prev) => ({ ...prev, isOpen: false }))
+  //     }
+  //   }
 
-    if (isDesktop && isOpen) {
-      document.addEventListener('mousedown', handleOutsideClick)
-      return () => document.removeEventListener('mousedown', handleOutsideClick)
-    }
-  }, [isOpen, isDesktop, setModalState])
+  //   if (isDesktop && isOpen) {
+  //     document.addEventListener('mousedown', handleOutsideClick)
+  //     return () => document.removeEventListener('mousedown', handleOutsideClick)
+  //   }
+  // }, [isOpen, isDesktop, setModalState])
 
   const handleChangeOpen = (open: boolean) => {
     if (!open) setModalState((prev) => ({ ...prev, isOpen: false }))
@@ -72,16 +73,7 @@ export const CreateLabelButton = () => {
         </IconButton>
 
         <Dialog.Root open={isOpen} onOpenChange={handleChangeOpen}>
-          <Dialog.Content
-            onInteractOutside={(e) => {
-              // Ngăn đóng dialog nếu click bên trong
-              if (dialogRef.current?.contains(e.target as Node)) {
-                e.preventDefault()
-              }
-            }}
-            ref={dialogRef}
-            className={DIALOG_CONTENT_CLASS}
-          >
+          <Dialog.Content ref={dialogRef} className={DIALOG_CONTENT_CLASS}>
             <CreateLabelContent />
           </Dialog.Content>
         </Dialog.Root>
@@ -166,7 +158,6 @@ export const CreateLabelContent = () => {
             label: label_name
           })
         }
-        // mutate("channel_list")
         setLabelList((prev) => [...prev, { label_id, label: label_name, channels: [] }])
         toast.success('Đã tạo nhãn')
         reset()

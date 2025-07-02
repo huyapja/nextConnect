@@ -3,7 +3,7 @@ import BeatLoader from '@/components/layout/Loaders/BeatLoader'
 import useUnreadThreadsCount from '@/hooks/useUnreadThreadsCount'
 import eventBus, { EventBusEvents } from '@/utils/event-emitter'
 import { Flex, Text } from '@radix-ui/themes'
-import { FrappeConfig, FrappeContext, FrappeError, useSWRInfinite } from 'frappe-react-sdk'
+import { FrappeConfig, FrappeContext, FrappeError, useFrappeEventListener, useSWRInfinite } from 'frappe-react-sdk'
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react'
 import { LuListTree } from 'react-icons/lu'
 import { useParams } from 'react-router-dom'
@@ -53,7 +53,7 @@ const ThreadsList = ({
   const { data: unreadThreads } = useUnreadThreadsCount()
 
   const unreadThreadsMap = useMemo(() => {
-    return unreadThreads?.message.reduce(
+    return unreadThreads?.message?.threads?.reduce(
       (acc, thread) => {
         acc[thread.name] = thread.unread_count
         return acc
@@ -112,10 +112,55 @@ const ThreadsList = ({
     [data]
   )
 
+  // ✅ Force refresh nếu có thread không hợp lệ (workspace null hoặc không có channel_id)
+  useEffect(() => {
+    if (threads && threads.length > 0) {
+      const invalidThreads = threads.filter((thread) => !thread.workspace && !thread.channel_id)
+      if (invalidThreads.length > 0) {
+        console.log('🚨 Found invalid threads, forcing refresh:', invalidThreads)
+        mutate()
+      }
+    }
+  }, [threads, mutate])
+
+  useFrappeEventListener('thread_list_updated', (event) => {
+    console.log('🧵 Thread list updated event received:', event)
+    if (event.action === 'removed') {
+      mutate(
+        (d) => {
+          if (!d) return d
+
+          return d?.map((page) => ({
+            ...page,
+            message: page.message.filter((message) => message.name !== event.channel_id)
+          }))
+        },
+        {
+          revalidate: false
+        }
+      )
+    }
+  })
+
+  useFrappeEventListener('thread_deleted', (event) => {
+    console.log('🔥 Thread deleted event received in ThreadsList:', event)
+    mutate(
+      (d) => {
+        if (!d) return d
+
+        return d?.map((page) => ({
+          ...page,
+          message: page.message.filter((message) => message.name !== event.thread_id)
+        }))
+      },
+      {
+        revalidate: false
+      }
+    )
+  })
+
   useEffect(() => {
     const handleThreadUpdate = (data: EventBusEvents['thread:updated']) => {
-      // Revalidate the thread reply count when we receive a thread update
-      // Only update locally, do not refetch from the server
       mutate(
         (d) => {
           if (!d) return d
@@ -144,13 +189,11 @@ const ThreadsList = ({
       )
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleThreadCreated = (data: EventBusEvents['thread:created']) => {
       mutate()
     }
 
     const handleThreadDeleted = (data: EventBusEvents['thread:deleted']) => {
-      // Remove thread from local data without refetching
       mutate(
         (d) => {
           if (!d) return d
@@ -166,14 +209,36 @@ const ThreadsList = ({
       )
     }
 
+    // ✅ Backup listener cho custom browser event
+    const handleCustomThreadDeleted = (event: CustomEvent) => {
+      console.log('🔥 Custom thread deleted event received:', event.detail)
+      mutate(
+        (d) => {
+          if (!d) return d
+
+          return d?.map((page) => ({
+            ...page,
+            message: page.message.filter((message) => message.name !== event.detail.thread_id)
+          }))
+        },
+        {
+          revalidate: false
+        }
+      )
+    }
+
     eventBus.on('thread:updated', handleThreadUpdate)
     eventBus.on('thread:created', handleThreadCreated)
     eventBus.on('thread:deleted', handleThreadDeleted)
+
+    // ✅ Listen custom event
+    window.addEventListener('thread_deleted_custom', handleCustomThreadDeleted as EventListener)
 
     return () => {
       eventBus.off('thread:updated', handleThreadUpdate)
       eventBus.off('thread:created', handleThreadCreated)
       eventBus.off('thread:deleted', handleThreadDeleted)
+      window.removeEventListener('thread_deleted_custom', handleCustomThreadDeleted as EventListener)
     }
   }, [mutate])
 

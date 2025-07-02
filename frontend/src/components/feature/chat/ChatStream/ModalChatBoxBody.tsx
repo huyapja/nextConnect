@@ -46,7 +46,7 @@ export const ModalChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
         onFileChange={setFiles}
         width={threadID ? 'w-[calc((100vw-var(--sidebar-width)-var(--space-8))/2)]' : undefined}
         maxFiles={10}
-        maxFileSize={10000000}
+        maxFileSize={5}
       >
         <ModalChatStream
           channelID={channelData.name}

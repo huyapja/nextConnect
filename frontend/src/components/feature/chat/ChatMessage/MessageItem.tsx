@@ -30,13 +30,13 @@ import { MessageSeenStatus } from './MessageSeenStatus'
 import { DateTooltip, DateTooltipShort } from './Renderers/DateTooltip'
 import { DoctypeLinkRenderer } from './Renderers/DoctypeLinkRenderer'
 import { FileMessageBlock } from './Renderers/FileMessage'
+// import { GroupCallMessage } from './Renderers/GroupCallMessage'
 import { ImageMessageBlock } from './Renderers/ImageMessage'
 import { PollMessageBlock } from './Renderers/PollMessage'
+import { TextMessageBlock } from './Renderers/TextMessage'
 import { ThreadMessage } from './Renderers/ThreadMessage'
-import { TiptapRenderer } from './Renderers/TiptapRenderer/TiptapRenderer'
 import { ReplyMessageBox } from './ReplyMessageBox/ReplyMessageBox'
 import RetractedMessage from './RetractedMessage'
-import { TextMessageBlock } from './Renderers/TextMessage'
 
 interface SeenUser {
   name: string
@@ -396,7 +396,7 @@ export const MessageItem = React.memo(
                       {/* Hiển thị thông tin luồng nếu đây là tin nhắn trong luồng */}
                       {message.is_thread === 1 ? <ThreadMessage thread={message} /> : null}
                       {!isPending && (
-                        <div className='absolute bottom-0 -right-5'>
+                        <Box className='absolute bottom-0 -right-5'>
                           <MessageSeenStatus
                             hasBeenSeen={hasBeenSeen}
                             channelType={channel?.type}
@@ -404,7 +404,7 @@ export const MessageItem = React.memo(
                             unseenByOthers={unseenByOthers}
                             currentUserOwnsMessage={message.owner === currentUser}
                           />
-                        </div>
+                        </Box>
                       )}
                     </Flex>
                     {/* Hiển thị các hành động nhanh khi hover hoặc mở emoji picker */}
@@ -819,7 +819,9 @@ export const MessageContent = ({
   ...props
 }: MessageContentProps) => {
   const displayText =
-    message.message_type === 'File' || message.message_type === 'Image' ? '' : message.text || message.content
+    message.message_type === 'File' || message.message_type === 'Image' || message.message_type === 'Poll'
+      ? ''
+      : message.text || message.content
 
   return (
     <Box {...props}>
@@ -863,6 +865,10 @@ export const MessageContent = ({
       )}
 
       {message.message_type === 'Poll' && <PollMessageBlock message={message} user={user} />}
+
+      {/* {message.message_type === 'GroupCall' && (
+        <GroupCallMessage message={message} user={user} currentUser={currentUser} />
+      )} */}
     </Box>
   )
 }

@@ -69,7 +69,7 @@ const AttachFileToDocumentModal = ({ onClose, message }: AttachFileToDocumentMod
         })
         .catch((err) => {
           setError(err)
-          toast.error('Failed to attach file')
+          toast.error('Không thể đính kèm file')
         })
         .finally(() => {
           setLoading(false)

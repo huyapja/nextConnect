@@ -7,7 +7,13 @@ import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
 import { getTimePassed } from '@/utils/dateConversions'
 import { ChannelIcon } from '@/utils/layout/channelIcon'
 import { Box, Flex, Text } from '@radix-ui/themes'
-import { FrappeConfig, FrappeContext, useFrappeGetCall, useFrappePostCall } from 'frappe-react-sdk'
+import {
+  FrappeConfig,
+  FrappeContext,
+  useFrappeEventListener,
+  useFrappeGetCall,
+  useFrappePostCall
+} from 'frappe-react-sdk'
 import parse from 'html-react-parser'
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { BiHide, BiMessageAltDetail } from 'react-icons/bi'
@@ -37,11 +43,14 @@ const PAGE_SIZE = 10
 const MentionsList: React.FC = () => {
   const { call } = useContext(FrappeContext) as FrappeConfig
   const { workspaceID } = useParams<{ workspaceID: string }>()
-  const [hiddenMentionIds, setHiddenMentionIds] = React.useState<Set<string>>(new Set())
+  const [hiddenMentionIds, setHiddenMentionIds] = useState<Set<string>>(new Set())
   const location = useLocation()
   const searchParams = new URLSearchParams(location.search)
   const messageParams = searchParams.get('message_id')
-  const { mutate: mutateUnreadCount } = useFrappeGetCall('raven.api.mentions.get_unread_mention_count')
+
+  const { mutate: mutateUnreadCount, data: unreadCount } = useFrappeGetCall(
+    'raven.api.mentions.get_unread_mention_count'
+  )
 
   const getKey = useCallback((pageIndex: number, prev: { message: MentionObject[] } | null) => {
     if (prev && !prev.message?.length) return null
@@ -56,7 +65,33 @@ const MentionsList: React.FC = () => {
     [call]
   )
 
-  const { data, size, isLoading, setSize } = useSWRInfinite(getKey, fetcher, { revalidateOnFocus: false })
+  const {
+    data,
+    size,
+    isLoading,
+    setSize,
+    mutate: mutateMentionsList
+  } = useSWRInfinite(getKey, fetcher, { revalidateOnFocus: false })
+
+  // Refetch nếu unreadCount thay đổi
+  const previousUnreadRef = useRef<number | undefined>(undefined)
+  useEffect(() => {
+    if (previousUnreadRef.current === undefined) {
+      previousUnreadRef.current = unreadCount
+      return
+    }
+
+    if (unreadCount !== previousUnreadRef.current) {
+      mutateMentionsList(data, true) // tránh flash
+      previousUnreadRef.current = unreadCount
+    }
+  }, [unreadCount, mutateMentionsList, data])
+
+  // Realtime: cập nhật khi nhận sự kiện socket
+  useFrappeEventListener('raven_mention', () => {
+    mutateMentionsList(data, true)
+    mutateUnreadCount()
+  })
 
   const pages = data ?? []
   const mentions = useMemo(() => pages.flatMap((page) => page.message), [pages])
@@ -163,11 +198,10 @@ const MentionItem: React.FC<{
   const to = useMemo(() => {
     const w = mention.workspace ?? workspaceID
     if (mention.is_thread) {
-      return { pathname: `/${w}/threads/${mention.channel_id}` }
+      return `/${w}/threads/${mention.channel_id}?message_id=${mention.name}`
     }
-    return { pathname: `/${w}/${mention.channel_id}`, search: `message_id=${mention.name}` }
+    return `/${w}/${mention.channel_id}?message_id=${mention.name}`
   }, [mention, workspaceID])
-
   const handleClickHide = () => {
     call({ mention_id: mention.mention_id })
       .then(() => {
@@ -189,7 +223,6 @@ const MentionItem: React.FC<{
           console.warn('Mark as read failed')
         })
     }
-
     navigate(to)
   }
 
@@ -227,19 +260,19 @@ const ChannelContext: React.FC<{ mention: MentionObject }> = ({ mention }) => {
     <HStack gap='2' align='start' className='w-full'>
       <UserAvatar src={user?.user_image} alt={senderName} size='2' className='mt-0.5' />
       <Box className='w-full'>
-        <HStack className='w-full justify-between'>
-          <Text size='2' weight='medium'>
+        <HStack className='w-full items-center flex-nowrap gap-2'>
+          <Text size='2' weight='medium' className='truncate'>
             {senderName}
           </Text>
           {mention.is_thread ? (
-            <HStack className='ml-auto' gap='1' align='center'>
+            <HStack gap='1' align='center' className='shrink-0'>
               <BiMessageAltDetail size={14} />
             </HStack>
           ) : mention.is_direct_message ? null : (
-            <HStack className='ml-auto' gap='0.5' align='center'>
+            <HStack gap='0.5' align='center' className='shrink-0'>
               <ChannelIcon type={mention.channel_type} size={14} />
-              <Text size='1' weight='medium'>
-                {mention.channel_name.length > 10 ? `${mention.channel_name.slice(0, 10)}...` : mention.channel_name}
+              <Text size='1' weight='medium' className='truncate max-w-[80px]'>
+                {mention.channel_name}
               </Text>
             </HStack>
           )}
@@ -254,9 +287,7 @@ const ChannelContext: React.FC<{ mention: MentionObject }> = ({ mention }) => {
 }
 
 const MessageContent: React.FC<{ content: string }> = ({ content }) => (
-  <Text as='p' className='text-sm line-clamp-2 text-ellipsis'>
-    <span className='[&_.mention]:text-accent-11'>{parse(content)}</span>
-  </Text>
+  <div className='text-sm line-clamp-2 text-ellipsis [&_.mention]:text-accent-11'>{parse(content)}</div>
 )
 
 const TimeStamp: React.FC<{ creation: string }> = ({ creation }) => (

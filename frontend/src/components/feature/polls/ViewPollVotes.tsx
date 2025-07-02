@@ -34,8 +34,8 @@ export const ViewPollVotes = ({ poll }: ViewPollVotesProps) => {
     return (
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Trigger>
-          <Button variant='ghost' size={'1'} className='-mb-2.5 bg-transparent hover:text-accent-10 w-full'>
-            View Votes
+          <Button variant='ghost' size={'1'} className='-mb-2.5 bg-transparent hover:text-accent-10 flex-1'>
+            Xem votes
           </Button>
         </Dialog.Trigger>
 
@@ -49,8 +49,8 @@ export const ViewPollVotes = ({ poll }: ViewPollVotesProps) => {
       <Drawer open={open} onOpenChange={setOpen}>
         <Separator className='w-full' />
         <DrawerTrigger asChild>
-          <Button variant='ghost' size={'1'} className='bg-transparent hover:text-accent-10 w-full'>
-            View Votes
+          <Button variant='ghost' size={'1'} className='bg-transparent hover:text-accent-10 flex-1'>
+            Xem votes
           </Button>
         </DrawerTrigger>
         <DrawerContent>
@@ -95,9 +95,9 @@ const VotesBlock = ({ votesData, poll }: { votesData: PollVotesResponse; poll: P
     <Flex direction={'column'}>
       <Dialog.Title>
         <Flex justify={'between'} align={'baseline'}>
-          <Text>Poll Votes</Text>
+          <Text>Kết quả bình chọn</Text>
           <Text size={'2'} color='gray' className='not-cal'>
-            {poll.poll.total_votes} votes
+            {poll.poll.total_votes} phiếu bầu
           </Text>
         </Flex>
       </Dialog.Title>
@@ -122,7 +122,7 @@ const VotesBlock = ({ votesData, poll }: { votesData: PollVotesResponse; poll: P
                       </Text>
                     </Flex>
                     <Text size='1' color='gray'>
-                      {option.count} vote{option.count > 1 ? 's' : ''}
+                      {option.count} phiếu bầu
                     </Text>
                   </div>
                   <Flex direction={'column'} gap={'2'} className='bg-gray-100 dark:bg-gray-3 rounded-md py-2 px-2'>
