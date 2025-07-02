@@ -13,7 +13,7 @@ import { UserContext } from '@/utils/auth/UserProvider'
 import { useSidebarMode } from '@/utils/layout/sidebar'
 import { truncateText } from '@/utils/textUtils/truncateText'
 import { __ } from '@/utils/translations'
-import { Box, DropdownMenu, Flex, IconButton, Tooltip } from '@radix-ui/themes'
+import { Box, DropdownMenu, Flex, IconButton, Text, Tooltip } from '@radix-ui/themes'
 import { useSetAtom } from 'jotai'
 import { useContext, useState, Suspense, lazy } from 'react'
 import { FiPlus } from 'react-icons/fi'
@@ -48,7 +48,7 @@ export const SidebarHeader = () => {
 
   const renderCreateModal = labelID && (
     <Suspense fallback={null}>
-      <CreateConversationModal name={labelID} label={title} isOpen={isCreateOpen} setIsOpen={setIsCreateOpen} />
+      <CreateConversationModal name={labelID} label={displayTitle} isOpen={isCreateOpen} setIsOpen={setIsCreateOpen} />
     </Suspense>
   )
 
