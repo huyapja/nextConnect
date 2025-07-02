@@ -115,6 +115,12 @@ const CreatePollContent = ({ channelID, setIsOpen }: { channelID: string; setIsO
                 maxLength: {
                   value: 255,
                   message: 'Câu hỏi không được vượt quá 255 ký tự'
+                },
+                validate: (value) => {
+                  if (!value || !value.trim()) {
+                    return 'Vui lòng nhập câu hỏi hợp lệ, không được để trống hoặc chỉ có dấu cách'
+                  }
+                  return true
                 }
               })}
               placeholder='Đặt câu hỏi để thu thập ý kiến'
@@ -144,6 +150,12 @@ const CreatePollContent = ({ channelID, setIsOpen }: { channelID: string; setIsO
                           maxLength: {
                             value: 255,
                             message: 'Lựa chọn không được vượt quá 255 ký tự'
+                          },
+                          validate: (value) => {
+                            if (!value || !value.trim()) {
+                              return 'Vui lòng nhập lựa chọn hợp lệ, không được để trống hoặc chỉ có dấu cách'
+                            }
+                            return true
                           }
                         })}
                         maxLength={255}
