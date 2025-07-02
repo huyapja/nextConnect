@@ -35,6 +35,7 @@ import { createLabelModalAtom } from '../labels/CreateLabelModal'
 import LabelByUserList from '../labels/LabelByUserList'
 import ThreadsCustom from '../threads/ThreadsCustom'
 import { MessageSaved } from './DirectMessageSaved'
+import { ScrollArea } from '@radix-ui/themes'
 
 import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
 
@@ -122,7 +123,6 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
   const selectedChannelRef = useRef<UnifiedChannel | null>(dm_channel)
   const channelID = dm_channel.name
 
-  // 👇 Pin state
   const pinnedIDs = useAtomValue(pinnedChannelsAtom)
   const togglePin = useSetAtom(togglePinnedChannelAtom)
   const isPinned = pinnedIDs.includes(channelID)
@@ -188,23 +188,25 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
         </ContextMenu.SubTrigger>
 
         <ContextMenu.SubContent className='dark:bg-gray-800 rounded px-1 py-1 w-48 z-50'>
-          {labelList?.map((label) => {
-            const isAssigned = dm_channel.user_labels?.some((l) => l.label_id === label.label_id)
-            return (
-              <ContextMenu.Item
-                key={label.label_id}
-                onSelect={(e) => e.preventDefault()}
-                onClick={() => handleToggleLabel(label, isAssigned)}
-                className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center justify-between'
-              >
-                <div className='flex items-center gap-2'>
-                  <MdLabelOutline size={14} />
-                  <span className='truncate max-w-[70px]'>{label.label}</span>
-                </div>
-                {isAssigned && <HiCheck size={14} className='text-green-500' />}
-              </ContextMenu.Item>
-            )
-          })}
+          <ScrollArea type='hover' className={clsx(labelList?.length > 5 && 'max-h-40 sidebar-scroll')}>
+            {labelList?.map((label) => {
+              const isAssigned = dm_channel.user_labels?.some((l) => l.label_id === label.label_id)
+              return (
+                <ContextMenu.Item
+                  key={label.label_id}
+                  onSelect={(e) => e.preventDefault()}
+                  onClick={() => handleToggleLabel(label, isAssigned)}
+                  className='cursor-pointer dark:hover:bg-gray-700 px-2 py-1 rounded flex items-center justify-between'
+                >
+                  <div className='flex items-center gap-2'>
+                    <MdLabelOutline size={14} />
+                    <span className='truncate max-w-[70px]'>{label.label}</span>
+                  </div>
+                  {isAssigned && <HiCheck size={14} className='text-green-500' />}
+                </ContextMenu.Item>
+              )
+            })}
+          </ScrollArea>
 
           <ContextMenu.Separator className='h-px bg-gray-600 my-2' />
 
@@ -285,19 +287,18 @@ export const DirectMessageItemElement = ({
   const { clearManualMark } = useChannelActions()
   const { markAsDone, markAsNotDone } = useChannelDone()
 
+  const { title, labelID } = useSidebarMode()
   const isDM = isDMChannel(channel)
   const isGroupChannel = !channel.is_direct_message && !channel.is_self_message
   const peerUserId = isDM ? channel.peer_user_id : ''
+
   const peerUser = useGetUser(peerUserId || '')
-  const isActive = peerUserId ? useIsUserActive(peerUserId) : false
+  const isActiveRaw = useIsUserActive(peerUserId || '')
+  const isActive = !!peerUserId && isActiveRaw
+
   const isSelectedChannel = channelID === channel.name
   const isManuallyMarked = manuallyMarked.has(channel.name)
   const isChannelDone = channel.is_done === 1
-
-  const { title, labelID } = useSidebarMode()
-
-  // Loại bỏ nếu không render được
-  if (!(isGroupChannel || (isDM && peerUserId && peerUser?.enabled))) return null
 
   const lastOwner = useMemo(() => {
     try {
@@ -324,15 +325,6 @@ export const DirectMessageItemElement = ({
   const shouldShowBadge = channel.unread_count > 0 || isManuallyMarked
 
   const handleNavigate = () => {
-    // const lastRead = lastReadStorage.get(channel.name)
-
-    // const params = new URLSearchParams()
-
-    // if (lastRead) {
-    //   params.set('message_id', lastRead)
-    //   params.set('message_source', 'read') // 👈 phân biệt nguồn
-    // }
-
     navigate(`/${workspaceID}/${channel.name}`)
     clearManualMark(channel.name)
   }
@@ -347,6 +339,9 @@ export const DirectMessageItemElement = ({
   const showDoneButton =
     (isTablet && !channel.last_message_details) || (channel.last_message_details && !(title === 'Nhãn' || labelID))
 
+  const shouldRender = isGroupChannel || (isDM && peerUserId && peerUser?.enabled)
+
+  if (!shouldRender) return null
   return (
     <div
       onClick={handleNavigate}

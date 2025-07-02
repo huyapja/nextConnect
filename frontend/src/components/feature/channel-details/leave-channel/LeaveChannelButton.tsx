@@ -24,7 +24,7 @@ export const LeaveChannelButton = ({ channelData, onClose: onParentClose }: Leav
       <AlertDialog.Root open={open} onOpenChange={setOpen}>
         <AlertDialog.Trigger>
           <Button variant='ghost' className={'text-left text-red-700 hover:bg-red-3 w-fit not-cal'}>
-            Leave channel
+            Rời kênh
           </Button>
         </AlertDialog.Trigger>
         <AlertDialog.Content className={DIALOG_CONTENT_CLASS}>
@@ -37,7 +37,7 @@ export const LeaveChannelButton = ({ channelData, onClose: onParentClose }: Leav
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerTrigger asChild>
           <Button variant='ghost' className={'text-left text-red-700 hover:bg-red-3 w-fit not-cal'}>
-            Leave channel
+            Rời kênh
           </Button>
         </DrawerTrigger>
         <DrawerContent>

@@ -1,6 +1,6 @@
 import { Box, Flex } from '@radix-ui/themes'
 import { lazy, Suspense, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { Outlet, useParams } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 // import { Sidebar } from '../components/layout/Sidebar/Sidebar'
 import CommandMenu from '@/components/feature/CommandMenu/CommandMenu'
 import MessageActionController from '@/components/feature/message-actions/MessageActionController'
@@ -14,7 +14,6 @@ import { HStack } from '@/components/layout/Stack'
 import { useFetchActiveUsersRealtime } from '@/hooks/fetchers/useFetchActiveUsers'
 import { useActiveSocketConnection } from '@/hooks/useActiveSocketConnection'
 import { useChannelDoneListener } from '@/hooks/useChannelDoneListener'
-import { useLastMessageUpdatedListener } from '@/hooks/useLastMessageUpdatedListener'
 import { useIsMobile, useIsTablet } from '@/hooks/useMediaQuery'
 import { useUnreadThreadsCountEventListener } from '@/hooks/useUnreadThreadsCount'
 import { UserContext } from '@/utils/auth/UserProvider'
@@ -27,6 +26,9 @@ import { UserListProvider } from '@/utils/users/UserListProvider'
 import { useFrappeEventListener, useSWRConfig } from 'frappe-react-sdk'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { ChannelListProvider } from '../utils/channel/ChannelListProvider'
+import { useAddChannelRealtimeListener } from '@/hooks/useAddChannelRealtimeListener'
+import { useMemberRemovedListener } from '@/hooks/useMemberRemovedListener'
+import { useUpdateChannelListener } from '@/hooks/useUpdateChannelListener'
 
 const AddRavenUsersPage = lazy(() => import('@/pages/AddRavenUsersPage'))
 
@@ -51,7 +53,6 @@ export const MainPageCustom = () => {
 
 const MainPageContent = () => {
   const { currentUser } = useContext(UserContext)
-  const { threadID } = useParams()
   const isMobile = useIsMobile()
   const isTablet = useIsTablet()
   const sidebarRef = useRef<any>(null)
@@ -64,8 +65,10 @@ const MainPageContent = () => {
   useFetchActiveUsersRealtime()
   useActiveSocketConnection()
   useChannelDoneListener()
-
-  useLastMessageUpdatedListener()
+  useAddChannelRealtimeListener()
+  // useLastMessageUpdatedListener()
+  useMemberRemovedListener()
+  useUpdateChannelListener()
 
   const { mutate } = useSWRConfig()
   const onThreadReplyEvent = useUnreadThreadsCountEventListener()

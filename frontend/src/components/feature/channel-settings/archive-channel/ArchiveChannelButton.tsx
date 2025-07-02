@@ -36,7 +36,7 @@ export const ArchiveChannelButton = ({
             disabled={!allowSettingChange}
           >
             <BiBox />
-            Archive channel
+            Lưu trữ kênh
           </Button>
         </AlertDialog.Trigger>
         <AlertDialog.Content className={DIALOG_CONTENT_CLASS}>
@@ -55,7 +55,7 @@ export const ArchiveChannelButton = ({
             disabled={!allowSettingChange}
           >
             <BiBox />
-            Archive channel
+            Lưu trữ kênh
           </Button>
         </DrawerTrigger>
         <DrawerContent>

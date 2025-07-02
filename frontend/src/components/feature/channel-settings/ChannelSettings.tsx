@@ -1,6 +1,5 @@
 import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { ArchiveChannelButton } from './archive-channel/ArchiveChannelButton'
-import { ChangeChannelTypeButton } from './change-channel-type/ChangeChannelTypeButton'
 import { DeleteChannelButton } from './delete-channel/DeleteChannelButton'
 import { Box, Flex, Separator, Text } from '@radix-ui/themes'
 
@@ -25,10 +24,7 @@ export const ChannelSettings = ({ onClose, channelData, allowSettingChange }: Pr
         </Box>
         <Flex direction='column' gap='1'>
           <Text size='1' weight='light' className={'px-1'}>
-            Only channel admins are allowed to change the channel settings
-          </Text>
-          <Text size='1' weight='light' className={'px-1'}>
-            General channel cannot be modified/ removed
+            Chỉ quản trị viên kênh mới được phép thay đổi cài đặt kênh
           </Text>
         </Flex>
       </Flex>

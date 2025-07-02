@@ -44,28 +44,28 @@ export const EditChannelDescriptionModalContent = ({ channelData, onClose }: Ren
       <form onSubmit={handleSubmit(onSubmit)}>
         <Dialog.Title>
           {channelData && channelData?.channel_description && channelData?.channel_description?.length > 0
-            ? __('Edit description')
-            : __('Add description')}
+            ? __('Sửa mô tả')
+            : __('Thêm mô tả')}
         </Dialog.Title>
 
         <Flex gap='2' direction='column' width='100%'>
           <ErrorBanner error={error} />
           <Box width='100%'>
-            <Label htmlFor='channel_description'>{__('Channel description')}</Label>
+            <Label htmlFor='channel_description'>Mô tả kênh</Label>
             <TextArea
               maxLength={140}
               id='channel_description'
-              placeholder={__('Add description')}
+              placeholder='Thêm mô tả'
               {...register('channel_description', {
                 maxLength: {
                   value: 140,
-                  message: __('Channel description cannot be more than 200 characters.')
+                  message: 'Mô tả kênh không được vượt quá 200 ký tự.'
                 }
               })}
               aria-invalid={errors.channel_description ? 'true' : 'false'}
             />
             <Text size='1' weight='light'>
-              {__('This is how people will know what this channel is about.')}
+              Đây là cách mọi người hiểu nội dung của kênh này.
             </Text>
             {errors?.channel_description && <ErrorText>{errors.channel_description?.message}</ErrorText>}
           </Box>
@@ -74,12 +74,12 @@ export const EditChannelDescriptionModalContent = ({ channelData, onClose }: Ren
         <Flex gap='3' mt='6' justify='end' align='center'>
           <Dialog.Close disabled={updatingDoc}>
             <Button variant='soft' color='gray'>
-              {__('Hủy')}
+              Hủy
             </Button>
           </Dialog.Close>
           <Button type='submit' disabled={updatingDoc}>
             {updatingDoc && <Loader className='text-white' />}
-            {updatingDoc ? __('Saving') : __('Lưu')}
+            {updatingDoc ? 'Đang lưu' : 'Lưu'}
           </Button>
         </Flex>
       </form>

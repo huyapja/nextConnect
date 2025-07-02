@@ -5,7 +5,7 @@ import { useIsDesktop } from '@/hooks/useMediaQuery'
 import { ChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { ChannelIcon } from '@/utils/layout/channelIcon'
 import { Box, Button, Dialog, Flex, Text, TextField } from '@radix-ui/themes'
-import { useFrappeUpdateDoc } from 'frappe-react-sdk'
+import { useFrappeUpdateDoc, useSWRConfig } from 'frappe-react-sdk'
 import { ChangeEvent, useCallback } from 'react'
 import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -15,6 +15,7 @@ interface RenameChannelForm {
 }
 
 interface RenameChannelModalContentProps {
+  groupImage?: string
   channelID: string
   channelName: string
   type: ChannelListItem['type']
@@ -22,6 +23,7 @@ interface RenameChannelModalContentProps {
 }
 
 export const RenameChannelModalContent = ({
+  groupImage,
   channelID,
   channelName,
   type,
@@ -94,7 +96,7 @@ export const RenameChannelModalContent = ({
                   aria-invalid={error ? 'true' : 'false'}
                   onChange={handleChange}
                 >
-                  <TextField.Slot side='left'>{<ChannelIcon type={type} />}</TextField.Slot>
+                  <TextField.Slot side='left'>{<ChannelIcon groupImage={groupImage} type={type} />}</TextField.Slot>
                   <TextField.Slot side='right'>
                     <Text size='2' weight='light' color='gray'>
                       {50 - field.value?.length}

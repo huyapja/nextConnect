@@ -6,11 +6,10 @@ import { ChannelIcon } from '@/utils/layout/channelIcon'
 import { UserFields } from '@/utils/users/UserListProvider'
 import { Box, Button, Dialog, Flex, Text } from '@radix-ui/themes'
 import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
-import { Suspense, lazy } from 'react'
 import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-const AddMembersDropdown = lazy(() => import('../../selectDropdowns/AddMembersDropdown'))
+import AddMembersDropdown from '../../selectDropdowns/AddMembersDropdown'
 
 interface AddChannelMemberForm {
   add_members: UserFields[] | null
@@ -61,11 +60,12 @@ export const AddChannelMembersModalContent = ({ onClose }: AddChannelMemberModal
         <FormProvider {...methods}>
           <form onSubmit={handleSubmit(onSubmit)}>
             <Dialog.Title>
-              <Text as='span'>
-                Thêm thành viên vào
-                <ChannelIcon type={channel?.channelData.type} size='18' className='inline-block -mb-0.5' />
-                {channel?.channelData.channel_name}
-              </Text>
+              <div className='flex items-center gap-1 px-1'>
+                {/* <span className='text-md font-medium'>Thêm thành viên</span>
+                <ChannelIcon type={channel?.channelData.type} size='18' className='-mb-0.5' />
+                <span className='text-md font-medium'>{channel?.channelData.channel_name}</span> */}
+                <div className='inline-flex items-center gap-2 text-base font-medium'>Thêm thành viên</div>
+              </div>
             </Dialog.Title>
             <Dialog.Description size='2'>
               Thành viên mới sẽ có thể xem toàn bộ lịch sử của <strong>{channel?.channelData.channel_name}</strong>, bao
@@ -78,29 +78,27 @@ export const AddChannelMembersModalContent = ({ onClose }: AddChannelMemberModal
               <Box width='100%'>
                 <Flex direction='column' gap='2'>
                   <Flex direction='column' gap='2'>
-                    <Suspense fallback={<Loader />}>
-                      <Controller
-                        control={control}
-                        name='add_members'
-                        rules={{
-                          validate: (value) => {
-                            if (value && value?.length > 0) {
-                              return true
-                            }
-                            return 'Vui lòng chọn ít nhất một thành viên'
+                    <Controller
+                      control={control}
+                      name='add_members'
+                      rules={{
+                        validate: (value) => {
+                          if (value && value?.length > 0) {
+                            return true
                           }
-                        }}
-                        render={({ field: { onChange, value } }) => (
-                          <AddMembersDropdown
-                            setSelectedUsers={onChange}
-                            workspaceID={channel?.channelData.workspace ?? ''}
-                            selectedUsers={value ?? []}
-                            channelID={channelID}
-                            label=''
-                          />
-                        )}
-                      />
-                    </Suspense>
+                          return 'Vui lòng chọn ít nhất một thành viên'
+                        }
+                      }}
+                      render={({ field: { onChange, value } }) => (
+                        <AddMembersDropdown
+                          setSelectedUsers={onChange}
+                          workspaceID={channel?.channelData.workspace ?? ''}
+                          selectedUsers={value ?? []}
+                          channelID={channelID}
+                          label=''
+                        />
+                      )}
+                    />
                     <ErrorText>{methods.formState.errors.add_members?.message}</ErrorText>
                   </Flex>
                 </Flex>

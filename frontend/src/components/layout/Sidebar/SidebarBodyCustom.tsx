@@ -11,6 +11,7 @@ import { useSidebarMode } from '@/utils/layout/sidebar'
 import { useLabelList } from '@/components/feature/labels/conversations/atoms/labelAtom'
 import { FC } from 'react'
 import { PinnedChannels } from './PinnedChannels'
+import { useFrappeEventListener } from 'frappe-react-sdk'
 
 // import BeatLoader from '../Loaders/BeatLoader'
 
@@ -21,6 +22,7 @@ export const SidebarBody: FC = () => {
 
   const currentChannelIsDone = useAtomValue(channelIsDoneAtom)
 
+  // ko xóa dòng này
   const { refreshLabelList } = useLabelList()
   const prev = useAtomValue(sortedChannelsAtom)
 
@@ -33,24 +35,26 @@ export const SidebarBody: FC = () => {
     setSortedChannels(sorted)
   }, [channels, dm_channels, setSortedChannels, currentChannelIsDone])
 
-  useEffect(() => {
-    refreshLabelList()
-  }, [])
-
   const isTablet = useIsTablet()
 
   const { title } = useSidebarMode()
 
+  // useFrappeEventListener('raven:new_message', (data) => {
+  //   console.log('Socket nhận được:', data)
+  // })
+
   const content = (
-    <Flex direction='column' gap='2' className='overflow-hidden pb-12 sm:pb-0' px='2'>
-      <Flex direction='column' gap='1' className='pb-0.5'></Flex>
-      {/* <CircleUserList /> */}
-      <PinnedChannels />
-      {/* <p>hello</p> */}
-      {isTablet && <IsTabletSidebarNav />}
-      {/* <PinnedChannels unread_count={unread_count?.message} /> */}
-      <DirectMessageList />
-    </Flex>
+    <ScrollArea type='hover' scrollbars='vertical' className='h-[calc(100vh-4rem)] sidebar-scroll'>
+      <Flex direction='column' gap='2' className='overflow-hidden pb-12 sm:pb-0' px='2'>
+        <Flex direction='column' gap='1' className='pb-0.5'></Flex>
+        {/* <CircleUserList /> */}
+        <PinnedChannels />
+        {/* <p>hello</p> */}
+        {isTablet && <IsTabletSidebarNav />}
+        {/* <PinnedChannels unread_count={unread_count?.message} /> */}
+        <DirectMessageList />
+      </Flex>
+    </ScrollArea>
   )
 
   if (title === 'Chủ đề') {

@@ -10,16 +10,21 @@ import ChannelPushNotificationToggle from './ChannelPushNotificationToggle'
 import { EditDescriptionButton } from './edit-channel-description/EditDescriptionButton'
 import { LeaveChannelButton } from './leave-channel/LeaveChannelButton'
 import { EditChannelNameButton } from './rename-channel/EditChannelNameButton'
+import { groupImageUploadAtom } from './change-image-channel/ImageChannelUpload'
+import { useSetAtom } from 'jotai'
+import { useParams } from 'react-router-dom'
+import { CiCamera } from 'react-icons/ci'
 
 interface ChannelDetailsProps {
+  allowSettingChange?: boolean
   channelData: ChannelListItem
   channelMembers: ChannelMembers
   onClose: () => void
 }
 
-export const ChannelDetails = ({ channelData, channelMembers, onClose }: ChannelDetailsProps) => {
+export const ChannelDetails = ({ channelData, channelMembers, allowSettingChange, onClose }: ChannelDetailsProps) => {
   const { currentUser } = useContext(UserContext)
-
+  const { channelID: groupID } = useParams()
   const channelOwner = useGetUser(channelData.owner)
 
   const { channelMember, isAdmin } = useMemo(() => {
@@ -30,26 +35,48 @@ export const ChannelDetails = ({ channelData, channelMembers, onClose }: Channel
     }
   }, [channelMembers, currentUser])
 
+  const setUploadState = useSetAtom(groupImageUploadAtom)
   return (
-    <Flex direction='column' gap='4' className={'h-[66vh] pb-2 sm:h-96'}>
+    <Flex direction='column' gap='4' className={'h-[60vh]'}>
+      <Box className={'p-4 rounded-md border border-gray-6'}>
+        <Flex align={'center'} justify={'between'}>
+          <Text weight='medium' size='2'>
+            Ảnh group
+          </Text>
+          <Flex gap='2' pt='1' align='center'>
+            <ChannelIcon groupImage={channelData.group_image} type={channelData.type} size='18' />
+            {allowSettingChange && (
+              <CiCamera
+                className='cursor-pointer text-gray-11 hover:text-gray-12'
+                size={16}
+                onClick={() => setUploadState({ open: true, groupID })}
+                title='Cập nhật ảnh đại diện'
+              />
+            )}
+          </Flex>
+        </Flex>
+      </Box>
       <Box className={'p-4 rounded-md border border-gray-6'}>
         <Flex justify={'between'}>
           <Flex direction={'column'}>
             <Text weight='medium' size='2'>
-              Channel name
+              Tên group
             </Text>
             <Flex gap='1' pt='1' align='center'>
-              <ChannelIcon type={channelData.type} size='14' />
+              <ChannelIcon groupImage={channelData.group_image} type={channelData.type} size='14' />
               <Text size='2'>{channelData?.channel_name}</Text>
             </Flex>
           </Flex>
-          <EditChannelNameButton
-            channelID={channelData.name}
-            channel_name={channelData.channel_name}
-            className=''
-            channelType={channelData.type}
-            disabled={channelData.is_archived == 1 && !isAdmin}
-          />
+          {allowSettingChange && (
+            <EditChannelNameButton
+              groupImage={channelData.group_image}
+              channelID={channelData.name}
+              channel_name={channelData.channel_name}
+              className=''
+              channelType={channelData.type}
+              disabled={channelData.is_archived == 1 && !isAdmin}
+            />
+          )}
         </Flex>
       </Box>
       <ChannelPushNotificationToggle channelID={channelData.name} channelMember={channelMember} />
@@ -59,32 +86,34 @@ export const ChannelDetails = ({ channelData, channelMembers, onClose }: Channel
           <Flex justify={'between'}>
             <Flex direction={'column'} gap='1'>
               <Text weight='medium' size='2'>
-                Channel description
+                Mô tả kênh
               </Text>
               <Text size='1' color='gray'>
                 {channelData && channelData.channel_description && channelData.channel_description?.length > 0
                   ? channelData.channel_description
-                  : 'No description'}
+                  : 'Không có mô tả'}
               </Text>
             </Flex>
-            <EditDescriptionButton
-              channelData={channelData}
-              is_in_box={true}
-              disabled={channelData.is_archived == 1 && !isAdmin}
-            />
+            {allowSettingChange && (
+              <EditDescriptionButton
+                channelData={channelData}
+                is_in_box={true}
+                disabled={channelData.is_archived == 1 && !isAdmin}
+              />
+            )}
           </Flex>
 
           <Separator className={'w-full'} />
 
           <Flex direction={'column'} gap='1'>
             <Text weight='medium' size='2'>
-              Created by
+              Được tạo bởi
             </Text>
             <Flex gap='1'>
               {channelData?.owner && <Text size='1'>{channelOwner?.full_name ?? channelData?.owner}</Text>}
               {channelData.creation && (
                 <Text size='1' color='gray' as='span'>
-                  on <DateMonthYear date={channelData?.creation} />
+                  vào <DateMonthYear date={channelData?.creation} />
                 </Text>
               )}
             </Flex>

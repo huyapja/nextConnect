@@ -33,7 +33,7 @@ export const UserActionsMenu = ({ channelData, updateMembers, selectedMember }: 
           </DropdownMenu.Item>
           <DropdownMenu.Item color='red' onClick={onRemove} className='flex items-center gap-2'>
             <FiUserMinus />
-            Remove from channel
+            Xóa khỏi kênh
           </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Root>
