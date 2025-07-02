@@ -206,18 +206,22 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
     const debouncedRangeChanged = useDebounceDynamic(
       useCallback(
         (range: any) => {
+          // Safety checks for all required conditions
           if (
-            !messages ||
+            !Array.isArray(messages) ||
             !renderState.isInitialLoadComplete ||
             !renderState.isVirtuosoReady ||
             scrollState.isScrolling
-          )
+          ) return
+          
+          // Additional safety check for range object
+          if (!range || typeof range.startIndex !== 'number' || typeof range.endIndex !== 'number') {
             return
+          }
 
           const shouldLoadNewer =
             hasNewMessages &&
-            range &&
-            range.endIndex >= messages?.length - 5 &&
+            range.endIndex >= messages.length - 5 &&
             !loadingState.isLoadingMessages &&
             !loadingState.hasInitialLoadedWithMessageId
 
@@ -228,10 +232,14 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
             })
           }
 
-          if (range && newMessageIds.size > 0) {
-            const visibleMessages = messages.slice(range.startIndex, range.endIndex + 1)
+          // Batch process visible messages with safety checks
+          if (newMessageIds.size > 0 && range.startIndex >= 0 && range.endIndex < messages.length) {
+            const visibleMessages = messages.slice(
+              Math.max(0, range.startIndex), 
+              Math.min(messages.length, range.endIndex + 1)
+            )
             visibleMessages?.forEach((message: any) => {
-              if (message.name && newMessageIds.has(message.name)) {
+              if (message && message.name && newMessageIds.has(message.name)) {
                 setTimeout(() => markMessageAsSeen(message.name), 2000)
               }
             })
@@ -270,8 +278,9 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
     )
 
     const targetIndex = useMemo(() => {
-      if (!messageId || !messages) return undefined
-      return messages.findIndex((msg) => msg.name === messageId)
+      if (!messageId || !Array.isArray(messages) || messages.length === 0) return undefined
+      const index = messages.findIndex((msg) => msg.name === messageId)
+      return index >= 0 ? index : undefined
     }, [messageId, messages])
 
     useEffect(() => {
