@@ -27,7 +27,8 @@
    "fieldtype": "Small Text",
    "in_list_view": 1,
    "label": "Question",
-   "reqd": 1
+   "reqd": 1,
+   "description": "Câu hỏi không được để trống hoặc chỉ chứa dấu cách"
   },
   {
    "fieldname": "section_break_poll_options",

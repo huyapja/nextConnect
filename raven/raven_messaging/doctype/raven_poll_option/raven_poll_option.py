@@ -21,8 +21,4 @@ class RavenPollOption(Document):
 		votes: DF.Int
 	# end: auto-generated types
 
-	def validate(self):
-		if not self.option or not self.option.strip():
-			frappe.throw("Vui lòng nhập lựa chọn hợp lệ, không được để trống hoặc chỉ có dấu cách")
-
 	pass

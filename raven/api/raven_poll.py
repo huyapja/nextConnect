@@ -17,30 +17,35 @@ def create_poll(
 	if not frappe.has_permission(doctype="Raven Channel", doc=channel_id, ptype="read"):
 		frappe.throw(_("Bạn không có quyền truy cập kênh này"), frappe.PermissionError)
 
-	# Validate question
+	# Validate input data before creating poll
 	if not question or not question.strip():
-		frappe.throw("Vui lòng nhập câu hỏi hợp lệ, không được để trống hoặc chỉ có dấu cách")
-
-	# Validate options
-	if not options:
-		frappe.throw("Vui lòng thêm ít nhất một lựa chọn cho cuộc thăm dò")
+		frappe.throw(_("Câu hỏi không được để trống hoặc chỉ chứa dấu cách"))
 	
-	for idx, option in enumerate(options, 1):
+	if not options or len(options) < 2:
+		frappe.throw(_("Phải có ít nhất 2 lựa chọn"))
+	
+	# Validate each option
+	valid_options = []
+	for idx, option in enumerate(options):
 		if not option.get('option') or not option.get('option').strip():
-			frappe.throw(f"Lựa chọn #{idx}: Vui lòng nhập lựa chọn hợp lệ, không được để trống hoặc chỉ có dấu cách")
+			frappe.throw(_("Lựa chọn thứ {0} không được để trống hoặc chỉ chứa dấu cách").format(idx + 1))
+		valid_options.append(option)
 
 	poll = frappe.get_doc(
 		{
 			"doctype": "Raven Poll",
-			"question": question,
+			"question": question.strip(),
 			"is_multi_choice": is_multi_choice,
 			"is_anonymous": is_anonymous,
 			"channel_id": channel_id,
 		}
 	)
 
-	for option in options:
-		poll.append("options", option)
+	for option in valid_options:
+		# Strip whitespace from option text
+		option_copy = option.copy()
+		option_copy['option'] = option_copy['option'].strip()
+		poll.append("options", option_copy)
 
 	poll.insert()
 
