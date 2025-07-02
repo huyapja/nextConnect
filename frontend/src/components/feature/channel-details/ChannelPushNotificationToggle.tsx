@@ -52,31 +52,39 @@ const ChannelPushNotificationToggle = ({ channelID, channelMember }: Props) => {
 
   if (!channelMember) return null
 
-  return (
-    <Box className={'p-4 rounded-md border border-gray-6'}>
-      <Flex justify={'between'}>
-        <Flex direction={'column'} gap='1'>
-          <Text as='label' weight='medium' htmlFor='channel_push' size='2'>
-            Push Notifications
-          </Text>
-          {isPushAvailable ? null : (
-            <Text size='1' color='gray'>
-              Push notification is not enabled for the site. Please contact your administrator.
-            </Text>
-          )}
-        </Flex>
-        <Flex gap='2'>
-          <Switch
-            size='2'
-            checked={channelMember.allow_notifications ? true : false}
-            id='channel_push'
-            onCheckedChange={onToggle}
-            disabled={!isPushAvailable}
-          />
-        </Flex>
-      </Flex>
-    </Box>
-  )
+  // Comment lại toàn bộ Push Notifications trong cài đặt kênh vì không cần thiết
+  return null
+  
+  // Code cũ được comment
+  // return (
+  //   <Box className={'p-4 rounded-md border border-gray-6'}>
+  //     <Flex justify={'between'}>
+  //       <Flex direction={'column'} gap='1'>
+  //         <Text as='label' weight='medium' htmlFor='channel_push' size='2'>
+  //           Push Notifications
+  //         </Text>
+  //         {/* Comment lại để sử dụng Firebase notifications */}
+  //         {/* {isPushAvailable ? null : (
+  //           <Text size='1' color='gray'>
+  //             Push notification is not enabled for the site. Please contact your administrator.
+  //           </Text>
+  //         )} */}
+  //         <Text size='1' color='green'>
+  //           🔥 Sử dụng Firebase Cloud Messaging cho thông báo
+  //         </Text>
+  //       </Flex>
+  //       <Flex gap='2'>
+  //         <Switch
+  //           size='2'
+  //           checked={channelMember.allow_notifications ? true : false}
+  //           id='channel_push'
+  //           onCheckedChange={onToggle}
+  //           disabled={false} // Enable cho Firebase notifications
+  //         />
+  //       </Flex>
+  //     </Flex>
+  //   </Box>
+  // )
 }
 
 export default ChannelPushNotificationToggle

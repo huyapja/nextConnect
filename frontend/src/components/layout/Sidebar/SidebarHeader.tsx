@@ -4,7 +4,6 @@ import { commandMenuOpenAtom } from '@/components/feature/CommandMenu/CommandMen
 import { CreateChannelButton } from '@/components/feature/channels/CreateChannelModal'
 import { CreateLabelButton } from '@/components/feature/labels/CreateLabelModal'
 import { SetUserAvailabilityMenu } from '@/components/feature/userSettings/AvailabilityStatus/SetUserAvailabilityMenu'
-import PushNotificationToggle from '@/components/feature/userSettings/PushNotifications/PushNotificationToggle'
 import { FirebaseNotificationToggle } from '@/components/feature/firebase-notifications/FirebaseNotificationToggle'
 // import { FirebaseNotificationIndicator } from '@/components/feature/firebase-notifications/FirebaseNotificationIndicator'
 import useCurrentRavenUser from '@/hooks/useCurrentRavenUser'
@@ -128,7 +127,7 @@ export const SidebarHeader = () => {
               </Tooltip>
               <DropdownMenu.Content variant='soft'>
                 <SetUserAvailabilityMenu />
-                <PushNotificationToggle />
+                {/* PushNotificationToggle đã được thay thế bằng FirebaseNotificationToggle */}
                 <FirebaseNotificationToggle />
                 <DropdownMenu.Separator />
                 <DropdownMenu.Item color='red' className='flex justify-normal gap-2' onClick={logout}>

@@ -339,4 +339,17 @@ if (typeof window !== 'undefined') {
   };
   
   console.log('🔥 Firebase messaging exposed to window for debugging');
+  
+  // Load Firebase debug console utility (async)
+  fetch('/assets/raven/firebase-debug-console.js')
+    .then(response => response.text())
+    .then(script => {
+      const scriptElement = document.createElement('script');
+      scriptElement.textContent = script;
+      document.head.appendChild(scriptElement);
+      console.log('🔧 Firebase Debug Console loaded - gõ firebaseDebug.help() để xem hướng dẫn');
+    })
+    .catch((error) => {
+      console.warn('⚠️ Firebase Debug Console không load được:', error);
+    });
 } 

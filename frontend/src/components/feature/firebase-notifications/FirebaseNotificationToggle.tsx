@@ -30,8 +30,8 @@ export const FirebaseNotificationToggle: React.FC = () => {
       if (!isEnabled) {
         // Enable Firebase notifications
         if (Notification.permission === 'denied') {
-          toast.error(__('Notifications are blocked'), {
-            description: __('Please enable notifications in your browser settings')
+          toast.error('Thông báo đã bị chặn', {
+            description: 'Vui lòng bật thông báo trong cài đặt trình duyệt'
           });
           setIsLoading(false);
           return;
@@ -40,7 +40,7 @@ export const FirebaseNotificationToggle: React.FC = () => {
         if (Notification.permission === 'default') {
           const permission = await Notification.requestPermission();
           if (permission !== 'granted') {
-            toast.error(__('Permission denied for notifications'));
+            toast.error('Không có quyền sử dụng thông báo');
             setIsLoading(false);
             return;
           }
@@ -49,21 +49,21 @@ export const FirebaseNotificationToggle: React.FC = () => {
         // Refresh/register Firebase token
         await refreshToken();
         
-        toast.success(__('Firebase notifications enabled'));
+        toast.success('Đã bật thông báo Firebase');
         setIsEnabled(true);
 
       } else {
         // Disable Firebase notifications
         await unregisterToken();
         
-        toast.info(__('Firebase notifications disabled'));
+        toast.info('Đã tắt thông báo Firebase');
         setIsEnabled(false);
       }
 
     } catch (error) {
       console.error('Firebase notification toggle error:', error);
-      toast.error(__('Failed to toggle notifications'), {
-        description: error instanceof Error ? error.message : 'Unknown error'
+      toast.error('Không thể bật/tắt thông báo', {
+        description: error instanceof Error ? error.message : 'Lỗi không xác định'
       });
     } finally {
       setIsLoading(false);
@@ -85,12 +85,12 @@ export const FirebaseNotificationToggle: React.FC = () => {
       {isEnabled ? (
         <>
           <FiBellOff size={14} className="text-orange-600" /> 
-          {isLoading ? __('Disabling...') : __('Disable Firebase Notifications')}
+          {isLoading ? 'Đang tắt...' : 'Tắt thông báo'}
         </>
       ) : (
         <>
           <FiBell size={14} className="text-green-600" /> 
-          {isLoading ? __('Enabling...') : __('Enable Firebase Notifications')}
+          {isLoading ? 'Đang bật...' : 'Bật thông báo'}
         </>
       )}
     </DropdownMenu.Item>

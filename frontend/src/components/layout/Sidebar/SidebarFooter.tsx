@@ -10,7 +10,6 @@ import { MdOutlineExitToApp } from 'react-icons/md'
 import { useNavigate } from 'react-router-dom'
 import { SetUserAvailabilityMenu } from '@/components/feature/userSettings/AvailabilityStatus/SetUserAvailabilityMenu'
 import { SetCustomStatusModal } from '@/components/feature/userSettings/CustomStatus/SetCustomStatusModal'
-import PushNotificationToggle from '@/components/feature/userSettings/PushNotifications/PushNotificationToggle'
 import { FirebaseNotificationToggle } from '@/components/feature/firebase-notifications/FirebaseNotificationToggle'
 import { __ } from '@/utils/translations'
 import { Stack } from '../Stack'
@@ -86,7 +85,7 @@ export const SidebarFooter = () => {
             >
               <BsEmojiSmile size='14' /> {__('Set custom status')}
             </DropdownMenu.Item>
-            <PushNotificationToggle />
+            {/* PushNotificationToggle đã được thay thế bằng FirebaseNotificationToggle */}
             <FirebaseNotificationToggle />
             <DropdownMenu.Separator />
             <DropdownMenu.Item color='red' className={'flex justify-normal gap-2'} onClick={logout}>

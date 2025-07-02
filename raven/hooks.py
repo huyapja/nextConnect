@@ -43,12 +43,12 @@ sounds = [
 
 extend_bootinfo = "raven.boot.boot_session"
 
-# Firebase Integration
+# Firebase Integration - Auto patch RavenMessage để sử dụng Firebase notifications
 after_app_install = [
 	"raven.firebase_message_integration.patch_raven_message"
 ]
 
-# Startup hooks để khởi tạo Firebase integration
+# Startup hooks để khởi tạo Firebase integration khi app khởi động
 startup = [
 	"raven.firebase_message_integration.patch_raven_message"
 ]

@@ -95,4 +95,8 @@ def patch_raven_message():
 
 
 # Auto-patch khi module được import
-patch_raven_message() 
+try:
+	patch_raven_message()
+except Exception as e:
+	frappe.logger().error(f"Error auto-patching RavenMessage on import: {str(e)}")
+	# Patch sẽ được thử lại trong startup hook 

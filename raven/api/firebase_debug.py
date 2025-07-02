@@ -398,4 +398,58 @@ def check_patch_status():
         return {
             "success": False,
             "error": str(e)
-        } 
+        }
+
+
+@frappe.whitelist()
+def test_message_with_firebase():
+	"""
+	Test tạo message và kiểm tra Firebase notification được gửi
+	"""
+	try:
+		# Patch RavenMessage để ensure Firebase hoạt động
+		from raven.firebase_message_integration import patch_raven_message
+		patch_raven_message()
+		
+		from raven.raven_messaging.doctype.raven_message.raven_message import RavenMessage
+		
+		# Kiểm tra method đã được patch chưa
+		has_backup = hasattr(RavenMessage, '_original_send_push_notification')
+		
+		# Tìm DM channel
+		dm_channel = frappe.get_value("Raven Channel", {"is_direct_message": 1}, "name")
+		
+		if not dm_channel:
+			return {
+				"success": False,
+				"message": "No DM channel found for testing"
+			}
+		
+		# Tạo test message
+		test_message = frappe.get_doc({
+			"doctype": "Raven Message",
+			"channel_id": dm_channel,
+			"text": f"<p>🔥 Test Firebase API - {frappe.utils.now()}</p>",
+			"message_type": "Text",
+			"owner": "Administrator"
+		})
+		
+		# Insert và commit
+		test_message.insert()
+		frappe.db.commit()
+		
+		return {
+			"success": True,
+			"message": "Test message created successfully",
+			"message_id": test_message.name,
+			"channel_id": dm_channel,
+			"has_backup_method": has_backup,
+			"method_patched": True
+		}
+		
+	except Exception as e:
+		frappe.logger().error(f"Error in test_message_with_firebase: {str(e)}")
+		return {
+			"success": False,
+			"message": str(e)
+		} 
