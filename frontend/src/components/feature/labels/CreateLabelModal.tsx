@@ -73,10 +73,7 @@ export const CreateLabelButton = () => {
         </IconButton>
 
         <Dialog.Root open={isOpen} onOpenChange={handleChangeOpen}>
-          <Dialog.Content
-            ref={dialogRef}
-            className={DIALOG_CONTENT_CLASS}
-          >
+          <Dialog.Content ref={dialogRef} className={DIALOG_CONTENT_CLASS}>
             <CreateLabelContent />
           </Dialog.Content>
         </Dialog.Root>
@@ -161,7 +158,6 @@ export const CreateLabelContent = () => {
             label: label_name
           })
         }
-        // mutate("channel_list")
         setLabelList((prev) => [...prev, { label_id, label: label_name, channels: [] }])
         toast.success('Đã tạo nhãn')
         reset()

@@ -39,7 +39,7 @@ const CommandMenu = () => {
   }
 
   const content = (
-    <div className='min-h-[80vh]'>
+    <div>
       <CommandList showSettings={settingsOpen} />
     </div>
   )

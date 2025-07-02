@@ -221,7 +221,7 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
                   {!isIconOnly && <span className='truncate flex-1 min-w-0 font-medium text-[13px]'>{item.label}</span>}
                 </div>
 
-                {!isIconOnly && (
+                {(
                   <div className='flex items-center gap-2'>
                     <div onClick={(e) => e.stopPropagation()}>
                       <CreateLabelButton />
@@ -244,7 +244,7 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
               </li>
             </div>
 
-            {!isIconOnly && isLabelOpen && (
+            {isLabelOpen && (
               <LabelList
                 visible={isLabelOpen}
                 onClickLabel={(label) => {
