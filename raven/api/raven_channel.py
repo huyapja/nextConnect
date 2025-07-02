@@ -9,6 +9,57 @@ from frappe.query_builder import DocType
 
 
 
+
+@frappe.whitelist(methods=["POST"])
+def update_channel(**args):
+	"""
+	Cập nhật thông tin kênh (Raven Channel) — bao gồm cả group_image.
+	Yêu cầu có quyền chỉnh sửa (là admin hoặc owner).
+	"""
+	channel_id = args.get("channel_id")
+	if not channel_id:
+		frappe.throw(_("Thiếu channel_id"))
+
+	doc = frappe.get_doc("Raven Channel", channel_id)
+
+	if not frappe.has_permission(doc.doctype, "write", doc.name):
+		frappe.throw(_("Bạn không có quyền cập nhật kênh này"))
+
+	doc.update(args)
+	doc.save()
+
+	# Chọn ra các field quan trọng để đẩy về frontend
+	updated_fields = {
+		"channel_id": channel_id,
+		"group_image": doc.group_image,
+		"channel_name": doc.channel_name,
+		"channel_description": doc.channel_description
+	}
+
+	frappe.publish_realtime(
+		event="channel_updated",
+		message=updated_fields,
+		after_commit=True
+	)
+
+	return {"message": "Đã cập nhật thành công", **updated_fields}
+
+
+@frappe.whitelist(methods=["GET"])
+def get_channel_info(channel_id: str):
+    """
+    Lấy thông tin chi tiết của một kênh (channel), bao gồm tên, kiểu, timestamp,...
+    Dùng cho realtime cập nhật danh sách channel.
+    """
+    channel = frappe.get_doc("Raven Channel", channel_id)
+
+    return {
+        "name": channel.name,
+        "channel_name": channel.channel_name,
+        "is_direct_message": channel.is_direct_message,
+        "creation": channel.creation,
+    }
+
 @frappe.whitelist()
 def get_all_channels(hide_archived=True):
     """
@@ -58,6 +109,7 @@ def get_channel_list(hide_archived=False):
             channel.channel_name,
             channel.type,
             channel.channel_description,
+            channel.group_image, 
             channel.is_archived,
             channel.is_direct_message,
             channel.is_self_message,
@@ -331,7 +383,7 @@ def leave_channel(channel_id):
 	)
 
 	for member in members:
-		frappe.delete_doc("Raven Channel Member", member.name)
+		frappe.delete_doc("Raven Channel Member", member.name, ignore_permissions=True)
 
 	return "Ok"
 
