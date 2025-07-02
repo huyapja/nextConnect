@@ -58,7 +58,7 @@ def extract_text_from_file(file_url):
     return "[Định dạng file không hỗ trợ]"
 
 # Helper: Xây dựng context từ các tin nhắn gần nhất
-def build_context(conversation_id, model="gpt-3.5-turbo"):
+def build_context(conversation_id, model="gpt-4o"):
     MAX_TOTAL_TOKENS = 3000
     MAX_FILE_TOKENS = 1500
     MAX_MESSAGE_COUNT = 50
@@ -81,8 +81,14 @@ def build_context(conversation_id, model="gpt-3.5-turbo"):
         limit_page_length=MAX_MESSAGE_COUNT
     )[::-1]
 
-    context = []
-    total_tokens = 0
+    # Thêm system message để ghi đè thông tin mặc định
+    system_message = {
+        "role": "system",
+        "content": "Bạn là trợ lý AI thông minh được hỗ trợ bởi mô hình GPT-4o của OpenAI. Hãy trả lời một cách hữu ích, chính xác và thân thiện bằng tiếng Việt."
+    }
+    
+    context = [system_message]
+    total_tokens = token_len(system_message["content"])
 
     for msg in messages:
         content = msg.message or ""
@@ -133,7 +139,7 @@ def call_openai(context):
         return "Không thể kết nối OpenAI. Vui lòng kiểm tra cấu hình API key."
 
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4o",
         messages=context,
         temperature=0.7,
         max_tokens=2000

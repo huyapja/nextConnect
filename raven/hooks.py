@@ -41,6 +41,17 @@ sounds = [
 	},
 ]
 
+# Service Workers
+# ---------------
+# Register service workers for offline functionality and push notifications
+service_worker = [
+	{
+		"name": "firebase-messaging-sw",
+		"src": "/assets/raven/firebase-messaging-sw.js",
+		"scope": "/"
+	}
+]
+
 extend_bootinfo = "raven.boot.boot_session"
 
 # Firebase Integration - Auto patch RavenMessage để sử dụng Firebase notifications

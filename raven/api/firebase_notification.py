@@ -256,4 +256,48 @@ def get_firebase_config():
 				"measurementId": "G-13L796L4FB"
 			},
 			"vapidKey": "BDSp283ejn319EfnQTWDrD-4Vq587ulgFEMrl9hgA6tfyuci3PfNIsGu3wmwbHAJPgh0zLW59LG4PGyidiJoCUQ"
-		} 
+		}
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+def get_firebase_service_worker():
+	"""
+	Serve Firebase service worker file
+	
+	Returns:
+		Response: Service worker JavaScript file
+	"""
+	try:
+		import os
+		from frappe.utils import get_site_path
+		
+		# Try multiple possible locations for the service worker
+		possible_paths = [
+			os.path.join(get_site_path(), "public", "firebase-messaging-sw.js"),
+			os.path.join(frappe.get_app_path("raven"), "public", "firebase-messaging-sw.js"),
+			os.path.join(frappe.get_app_path("raven"), "raven", "public", "firebase-messaging-sw.js"),
+			os.path.join(frappe.get_app_path("raven"), "frontend", "public", "firebase-messaging-sw.js")
+		]
+		
+		service_worker_content = None
+		for path in possible_paths:
+			if os.path.exists(path):
+				with open(path, 'r', encoding='utf-8') as f:
+					service_worker_content = f.read()
+				break
+		
+		if not service_worker_content:
+			frappe.throw(_("Service worker file not found"))
+		
+		# Set appropriate headers for service worker
+		frappe.local.response.headers.update({
+			"Content-Type": "application/javascript",
+			"Service-Worker-Allowed": "/",
+			"Cache-Control": "no-cache, no-store, must-revalidate"
+		})
+		
+		return service_worker_content
+		
+	except Exception as e:
+		frappe.logger().error(f"Error serving service worker: {str(e)}")
+		frappe.throw(_("Error loading service worker: {0}").format(str(e))) 

@@ -48,9 +48,33 @@ class FirebaseNotificationService {
   private async registerServiceWorker(): Promise<void> {
     if ('serviceWorker' in navigator) {
       try {
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-          scope: '/'
-        });
+        // Try multiple possible paths for the service worker
+        let registration;
+        const possiblePaths = [
+          '/firebase-messaging-sw.js',
+          '/assets/firebase-messaging-sw.js',
+          '/assets/raven/firebase-messaging-sw.js',
+          '/api/method/raven.api.firebase_notification.get_firebase_service_worker'
+        ];
+        
+        for (const path of possiblePaths) {
+          try {
+            registration = await navigator.serviceWorker.register(path, {
+              scope: '/'
+            });
+            console.log(`Service Worker registered successfully with path: ${path}`, registration);
+            break;
+          } catch (pathError) {
+            console.warn(`Failed to register service worker with path ${path}:`, pathError);
+            if (path === possiblePaths[possiblePaths.length - 1]) {
+              throw pathError; // Throw error only if all paths failed
+            }
+          }
+        }
+        
+        if (!registration) {
+          throw new Error('All service worker registration paths failed');
+        }
         
         console.log('Service Worker registered:', registration);
         
