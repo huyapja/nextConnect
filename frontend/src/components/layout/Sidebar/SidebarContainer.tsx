@@ -119,8 +119,7 @@ export default function SidebarContainer({ sidebarRef }: { sidebarRef: React.Ref
         </div>
       </div>
 
-      {tempMode === 'default' && <FilterList />}
-      {isIconOnly && <FilterList />}
+      {(tempMode === 'default' || isIconOnly) && <FilterList />}
     </div>
   )
 }
@@ -221,7 +220,7 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
                   {!isIconOnly && <span className='truncate flex-1 min-w-0 font-medium text-[13px]'>{item.label}</span>}
                 </div>
 
-                {(
+                {
                   <div className='flex items-center gap-2'>
                     <div onClick={(e) => e.stopPropagation()}>
                       <CreateLabelButton />
@@ -240,7 +239,7 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
                       )}
                     </div>
                   </div>
-                )}
+                }
               </li>
             </div>
 

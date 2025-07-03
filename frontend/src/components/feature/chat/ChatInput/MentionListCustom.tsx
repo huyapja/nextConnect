@@ -265,7 +265,7 @@ const ChannelContext: React.FC<{ mention: MentionObject }> = ({ mention }) => {
             {senderName}
           </Text>
           {mention.is_thread ? (
-            <HStack gap='1' align='center' className='shrink-0'>
+            <HStack gap='1' align='center' className='shrink-0 ml-auto'>
               <BiMessageAltDetail size={14} />
             </HStack>
           ) : mention.is_direct_message ? null : (
