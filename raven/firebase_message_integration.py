@@ -28,4 +28,4 @@ def should_send_firebase_notification(message):
 	DEPRECATED: Function này đã được thay thế
 	"""
 	frappe.logger().warning("⚠️  should_send_firebase_notification() is deprecated. Use firebase_hooks.py instead")
-	return False 
+		return False

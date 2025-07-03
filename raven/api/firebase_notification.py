@@ -4,7 +4,7 @@ from ..firebase_env import get_firebase_config, get_firebase_vapid_key
 from typing import Optional
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True, methods=["POST"])
 def register_firebase_token(firebase_token: str, environment: str = "Web", device_information: Optional[str] = None):
 	"""
 	Đăng ký Firebase token cho user hiện tại
@@ -66,7 +66,7 @@ def register_firebase_token(firebase_token: str, environment: str = "Web", devic
 		}
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True, methods=["POST"])
 def unregister_firebase_token(firebase_token: str):
 	"""
 	Hủy đăng ký Firebase token
@@ -127,7 +127,7 @@ def get_user_firebase_tokens():
 		}
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True, methods=["POST"])
 def send_test_notification(user_id: str = None):
 	"""
 	Gửi test notification (chỉ dành cho System Manager)
