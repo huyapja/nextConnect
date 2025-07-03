@@ -6,7 +6,7 @@ import { RavenChannel } from '@/types/RavenChannelManagement/RavenChannel'
 import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
 import { getTimePassed } from '@/utils/dateConversions'
 import { ChannelIcon } from '@/utils/layout/channelIcon'
-import { Box, Flex, Text } from '@radix-ui/themes'
+import { Box, Button, Flex, Link, Text } from '@radix-ui/themes'
 import {
   FrappeConfig,
   FrappeContext,
@@ -97,7 +97,12 @@ const MentionsList: React.FC = () => {
   const pages = data ?? []
   const mentions = useMemo(() => pages.flatMap((page) => page.message), [pages])
 
-  const isEmpty = pages[0]?.message?.length === 0
+  const visibleMentions = useMemo(
+    () => mentions.filter((m) => !hiddenMentionIds.has(m.name)),
+    [mentions, hiddenMentionIds]
+  )
+
+  const isEmpty = visibleMentions.length === 0
   const isLoadingMore = isLoading || (size > 0 && !pages[size - 1])
   const isReachingEnd = isEmpty || (pages[size - 1]?.message?.length ?? 0) < PAGE_SIZE
 
@@ -131,6 +136,9 @@ const MentionsList: React.FC = () => {
       return { message: Math.max(0, count - 1) }
     }, false)
   }
+  const { call: hideAllMention, loading: isLoadingHideAllMentionAction } = useFrappePostCall(
+    'raven.api.mentions.hide_all_mentions'
+  )
 
   if (isEmpty) {
     return (
@@ -146,8 +154,41 @@ const MentionsList: React.FC = () => {
     )
   }
 
+  const handleAllMentions = async () => {
+    try {
+      const res = await hideAllMention({})
+
+      const hiddenIDs = res?.message?.hidden_ids ?? []
+
+      // ✅ So khớp danh sách mentions hiện tại
+      const matchingIDs = mentions
+        .filter((m) => hiddenIDs.includes(m.name)) // đảm bảo name trùng
+        .map((m) => m.name)
+
+      setHiddenMentionIds((prev) => {
+        const next = new Set(prev)
+        matchingIDs.forEach((id) => next.add(id))
+        return next
+      })
+
+      toast.success(res?.message?.message)
+    } catch {
+      toast.error('Ẩn toàn bộ lượt nhắc thất bại')
+    }
+  }
+
   return (
     <ul role='list' className='list-none h-full overflow-y-auto scrollbar-hide'>
+      <div className='text-right mb-3'>
+        <Link
+          onClick={() => {
+            if (!isLoadingHideAllMentionAction) handleAllMentions()
+          }}
+          className='text-xs cursor-pointer'
+        >
+          Ẩn toàn bộ
+        </Link>
+      </div>
       {mentions
         ?.filter((m) => !hiddenMentionIds.has(m.name))
         .map((mention) => (
@@ -203,6 +244,7 @@ const MentionItem: React.FC<{
     }
     return `/${w}/${mention.channel_id}?message_id=${mention.name}`
   }, [mention, workspaceID])
+
   const handleClickHide = () => {
     call({ mention_id: mention.mention_id })
       .then(() => {
@@ -235,7 +277,7 @@ const MentionItem: React.FC<{
       >
         <ChannelContext mention={mention} />
 
-        {!isRead && <span className='absolute top-3.5 right-2 w-2.5 h-2.5 rounded-full bg-blue-500 shadow-md' />}
+        {!isRead && <span className='absolute top-1.5 right-1 w-2 h-2 rounded-full bg-blue-500 shadow-md' />}
       </Box>
 
       <button

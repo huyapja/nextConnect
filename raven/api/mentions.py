@@ -37,7 +37,9 @@ def get_mentions(limit: int = 10, start: int = 0):
 			message.owner,
 			message.text,
 			mention.is_hidden,
-			mention.is_read
+			mention.is_read,
+            mention.name.as_("name"),
+    		mention.name.as_("mention_id"),
 		)
 		.left_join(message)
 		.on(mention.parent == message.name)
@@ -137,4 +139,44 @@ def mark_mention_as_read():
         "status": "success",
         "mention_id": mention_id,
         "is_read": 1
+    }
+
+@frappe.whitelist(methods=["POST"])
+def hide_all_mentions():
+    """
+    Ẩn tất cả các lượt nhắc (mentions) chưa bị ẩn của user hiện tại.
+    Trả về danh sách mention.name để frontend dùng filter local.
+    """
+    user = frappe.session.user
+
+    # Lấy tất cả mentions chưa bị ẩn
+    mentions = frappe.get_all(
+        "Raven Mention",
+        filters={
+            "user": user,
+            "is_hidden": 0,
+        },
+        fields=["name"]  # chỉ cần name
+    )
+
+    if not mentions:
+        return {
+            "message": _("Không có lượt nhắc nào để ẩn."),
+            "hidden_ids": []
+        }
+
+    mention_names = [m.name for m in mentions]
+
+    # Cập nhật is_hidden = 1 theo name (là mention_id thực tế)
+    frappe.db.set_value(
+        "Raven Mention",
+        {"name": ["in", mention_names]},
+        "is_hidden",
+        1,
+        update_modified=False
+    )
+
+    return {
+        "message": _("Đã ẩn {0} lượt nhắc.").format(len(mention_names)),
+        "hidden_ids": mention_names  # frontend filter theo mention.name
     }
