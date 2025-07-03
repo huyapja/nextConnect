@@ -40,17 +40,43 @@ def get_firebase_worker_status():
 		# Kiểm tra queue status
 		queue_status = _check_queue_status()
 		
+		# Kiểm tra service worker file
+		sw_status = _check_service_worker_file()
+		
 		return {
 			"success": True,
 			"status": {
 				"redis": redis_status,
 				"firebase": firebase_status,
-				"queue": queue_status
+				"queue": queue_status,
+				"service_worker": sw_status
 			}
 		}
 		
 	except Exception as e:
 		frappe.logger().error(f"Error checking Firebase worker status: {str(e)}")
+		return {
+			"success": False,
+			"message": str(e)
+		}
+
+
+@frappe.whitelist()
+def create_firebase_service_worker():
+	"""
+	Tạo lại Firebase service worker file
+	"""
+	try:
+		from raven.install import create_firebase_service_worker_file
+		create_firebase_service_worker_file()
+		
+		return {
+			"success": True,
+			"message": "Firebase service worker file created successfully"
+		}
+		
+	except Exception as e:
+		frappe.logger().error(f"Error creating Firebase service worker: {str(e)}")
 		return {
 			"success": False,
 			"message": str(e)
@@ -160,6 +186,54 @@ def _check_queue_status():
 		return {
 			"status": "error",
 			"message": f"Error checking queue status: {str(e)}"
+		}
+
+
+def _check_service_worker_file():
+	"""Kiểm tra Firebase service worker file"""
+	try:
+		import os
+		from frappe.utils import get_site_path
+		
+		# Check if service worker file exists
+		site_root = get_site_path()
+		sw_file_path = os.path.join(site_root, "public", "firebase-messaging-sw.js")
+		
+		if os.path.exists(sw_file_path):
+			# Check file size and content
+			file_size = os.path.getsize(sw_file_path)
+			with open(sw_file_path, 'r', encoding='utf-8') as f:
+				content = f.read()
+			
+			# Basic validation
+			has_firebase = "firebase" in content.lower()
+			has_messaging = "messaging" in content.lower()
+			
+			if has_firebase and has_messaging and file_size > 100:
+				return {
+					"status": "exists",
+					"message": f"Service worker file exists ({file_size} bytes)",
+					"path": sw_file_path,
+					"file_size": file_size
+				}
+			else:
+				return {
+					"status": "invalid",
+					"message": f"Service worker file exists but seems invalid ({file_size} bytes)",
+					"path": sw_file_path,
+					"file_size": file_size
+				}
+		else:
+			return {
+				"status": "missing",
+				"message": "Service worker file not found",
+				"expected_path": sw_file_path
+			}
+			
+	except Exception as e:
+		return {
+			"status": "error",
+			"message": f"Error checking service worker: {str(e)}"
 		}
 
 
