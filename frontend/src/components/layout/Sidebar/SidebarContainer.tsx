@@ -18,7 +18,7 @@ import {
 
 import { CreateLabelButton } from '@/components/feature/labels/CreateLabelModal'
 import LabelList from '@/components/feature/labels/LabelListSidebar'
-import { useMissedCallCount } from '@/hooks/useMissedCallCount'
+// import { useMissedCallCount } from '@/hooks/useMissedCallCount'
 import { useSavedMessageCount } from '@/hooks/useSavedMessageCount'
 import useUnreadThreadsCount from '@/hooks/useUnreadThreadsCount'
 import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
@@ -220,7 +220,7 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
                   {!isIconOnly && <span className='truncate flex-1 min-w-0 font-medium text-[13px]'>{item.label}</span>}
                 </div>
 
-                {(
+                {!isIconOnly && (
                   <div className='flex items-center gap-2'>
                     <div onClick={(e) => e.stopPropagation()}>
                       <CreateLabelButton />

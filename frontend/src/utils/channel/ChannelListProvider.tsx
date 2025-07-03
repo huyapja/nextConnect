@@ -215,6 +215,7 @@ export const useUpdateLastMessageDetails = () => {
 
   const updateLastMessageForChannel = (channelID: string, message: any, lastMessageTimestamp?: string) => {
     const timestamp = lastMessageTimestamp ?? new Date().toISOString()
+    console.log(message)
 
     mutate(
       (prev) => {

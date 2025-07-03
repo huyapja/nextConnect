@@ -68,7 +68,8 @@ export const DirectMessageList = () => {
     <SidebarGroup pb='4'>
       <SidebarGroup>
         {enriched?.length > 0 && (title === 'Trò chuyện' || title === 'Chưa đọc') && (
-          <div className='ml-auto mr-2'>
+          <div className='flex items-center gap-2 ml-auto mr-2'>
+            <p className='text-xs'>Đánh dấu tất cả đã xong</p>
             <Tooltip content={'Đánh dấu tất cả đã xong'} side='top'>
               <button
                 onClick={handleMarkAllDone}
