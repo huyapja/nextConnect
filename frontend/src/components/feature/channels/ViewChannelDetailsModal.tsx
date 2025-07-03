@@ -16,7 +16,6 @@ import { UserFields, UserListContext } from '@/utils/users/UserListProvider'
 import { GroupImageUploadManager } from '../channel-details/change-image-channel/ImageChannelUpload'
 import { ImageChannelDelete } from '../channel-details/change-image-channel/ImageChannelDelete'
 
-
 interface ViewChannelDetailsModalContentProps {
   open: boolean
   setOpen: (open: boolean) => void

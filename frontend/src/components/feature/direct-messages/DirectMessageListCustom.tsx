@@ -43,22 +43,50 @@ import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/Pinne
 type UnifiedChannel = ChannelWithUnreadCount | DMChannelWithUnreadCount | any
 
 export const DirectMessageList = () => {
-  const { labelID } = useSidebarMode()
-
+  const { title, labelID } = useSidebarMode()
   const enriched = useEnrichedSortedChannels(labelID ? undefined : 0)
+  const { call, loading } = useFrappePostCall('raven.api.raven_channel.mark_selected_channels_done')
+
+  const handleMarkAllDone = async () => {
+    // Lọc các channel chưa được đánh dấu là done
+    const channelIDs = enriched.map((ch) => ch.name)
+    try {
+      const res = await call({ channel_ids: channelIDs })
+
+      if (res?.message?.status === 'success') {
+        toast.success(`Đã đánh dấu tất cả các kênh thành đã xong`)
+      } else {
+        toast.warning('Không thể đánh dấu các kênh')
+      }
+    } catch (err) {
+      toast.error('Có lỗi xảy ra khi đánh dấu')
+      console.error(err)
+    }
+  }
 
   return (
     <SidebarGroup pb='4'>
       <SidebarGroup>
-        <DirectMessageItemList channel_list={enriched} />
+        {enriched?.length > 0 && (title === 'Trò chuyện' || title === 'Chưa đọc') && (
+          <div className='ml-auto mr-2'>
+            <Tooltip content={'Đánh dấu tất cả đã xong'} side='top'>
+              <button
+                onClick={handleMarkAllDone}
+                disabled={loading}
+                className='p-1 rounded-full bg-gray-200 hover:bg-gray-300 h-[20px] w-[20px] flex items-center justify-center cursor-pointer'
+              >
+                <HiCheck className='h-3 w-3 transition-colors duration-150 text-green-600' />
+              </button>
+            </Tooltip>
+          </div>
+        )}
+        <DirectMessageItemList channel_list={enriched} labelID={labelID} title={title} />
       </SidebarGroup>
     </SidebarGroup>
   )
 }
 
-export const DirectMessageItemList = ({ channel_list }: any) => {
-  const { title, labelID } = useSidebarMode()
-
+export const DirectMessageItemList = ({ channel_list, title, labelID }: any) => {
   // Ưu tiên các component đặc biệt trước
   if (title === 'Đã gắn cờ') return <MessageSaved />
   if (title === 'Cuộc gọi nhỡ') return <MissedCallsList />
@@ -398,7 +426,6 @@ export const DirectMessageItemElement = ({
               isTablet ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
               'p-1 rounded-full bg-gray-200 hover:bg-gray-300 h-[20px] w-[20px] flex items-center justify-center cursor-pointer'
             )}
-            title={isChannelDone ? 'Chưa xong' : 'Đã xong'}
           >
             <HiCheck
               className={clsx(

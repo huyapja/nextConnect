@@ -237,6 +237,9 @@ const ThreadsList = ({
     // ✅ Listen custom event
     window.addEventListener('thread_deleted_custom', handleCustomThreadDeleted as EventListener)
 
+    // ✅ Listen custom event
+    window.addEventListener('thread_deleted_custom', handleCustomThreadDeleted as EventListener)
+
     return () => {
       eventBus.off('thread:updated', handleThreadUpdate)
       eventBus.off('thread:created', handleThreadCreated)

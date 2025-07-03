@@ -544,6 +544,72 @@ def get_done_channels():
 
     return results
 
+@frappe.whitelist(methods=["POST"])
+def mark_selected_channels_done(channel_ids: list[str]):
+    if not channel_ids:
+        return {"status": "no_channels"}
+
+    user = frappe.session.user
+
+    # Giới hạn để chống quá tải SQL nếu số lượng cực lớn (ví dụ >10k)
+    MAX_ALLOWED = 100
+    if len(channel_ids) > MAX_ALLOWED:
+        return {"status": "too_many_channels", "limit": MAX_ALLOWED}
+
+    # Dùng SQL trực tiếp để cập nhật nhanh
+    frappe.db.sql("""
+        UPDATE `tabRaven Channel Member`
+        SET is_done = 1
+        WHERE user_id = %s AND channel_id IN %s
+    """, (user, tuple(channel_ids)))  # tuple giúp tránh lỗi SQL syntax với IN
+
+    # Gửi realtime cho các channel này
+    for cid in channel_ids:
+        frappe.publish_realtime(
+            event="raven:channel_done_updated",
+            message={"channel_id": cid, "is_done": 1},
+            user=user,
+            after_commit=True
+        )
+
+    return {
+        "status": "success",
+        "updated_count": len(channel_ids)
+    }
+
+@frappe.whitelist(methods=["POST"])
+def mark_selected_channels_not_done(channel_ids: list[str]):
+    if not channel_ids:
+        return {"status": "no_channels"}
+
+    user = frappe.session.user
+
+    # Giới hạn để chống quá tải SQL nếu số lượng cực lớn (ví dụ >10k)
+    MAX_ALLOWED = 100
+    if len(channel_ids) > MAX_ALLOWED:
+        return {"status": "too_many_channels", "limit": MAX_ALLOWED}
+
+    # Dùng SQL trực tiếp để cập nhật nhanh
+    frappe.db.sql("""
+        UPDATE `tabRaven Channel Member`
+        SET is_done = 0
+        WHERE user_id = %s AND channel_id IN %s
+    """, (user, tuple(channel_ids)))  # tuple giúp tránh lỗi SQL syntax với IN
+
+    # Gửi realtime cho các channel này
+    for cid in channel_ids:
+        frappe.publish_realtime(
+            event="raven:channel_done_updated",
+            message={"channel_id": cid, "is_done": 0},
+            user=user,
+            after_commit=True
+        )
+
+    return {
+        "status": "success",
+        "updated_count": len(channel_ids)
+    }
+
 
 @frappe.whitelist(methods=["POST"])
 def mark_channel_as_done(channel_id):

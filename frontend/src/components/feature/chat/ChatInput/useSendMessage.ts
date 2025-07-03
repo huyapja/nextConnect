@@ -139,7 +139,6 @@ export const useSendMessage = (
   const sendOneMessage = async (content: string, client_id: string, json?: any, sendSilently = false) => {
     // Xử lý draft channel trước khi gửi tin nhắn
     const actualChannelID = await handleDraftChannel(channelID)
-    
     const res = await call({
       channel_id: actualChannelID,
       text: content,
@@ -173,7 +172,6 @@ export const useSendMessage = (
   const sendFileMessages = async () => {
     // Xử lý draft channel trước khi upload files
     await handleDraftChannel(channelID)
-    
     const uploadedFiles = await uploadFiles(selectedMessage)
 
     uploadedFiles.forEach(({ client_id, message, file }) => {

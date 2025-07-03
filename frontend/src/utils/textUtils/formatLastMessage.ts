@@ -40,6 +40,14 @@ export function formatLastMessageParts(
 
   const isCurrentUser = raw.owner === currentUser
 
+  // Nếu là bot và là tin nhắn trực tiếp -> chỉ hiển thị contentLabel
+  if (raw.is_bot_message && channel.is_direct_message) {
+    return {
+      senderLabel: '',
+      contentLabel: parseContentLabel(raw, maxLength)
+    }
+  }
+
   // Xác định senderLabel
   let senderLabel = ''
   if (raw.content?.includes('thu hồi')) {
@@ -50,36 +58,31 @@ export function formatLastMessageParts(
     senderLabel = isCurrentUser ? 'Bạn' : channel.is_direct_message ? '' : senderName || raw.owner || 'Người dùng'
   }
 
-  // Xác định contentLabel
-  let contentLabel = ''
-  if (typeof raw.content === 'string') {
-    const filename = raw.content
-
-    switch (raw.message_type) {
-      case 'Image':
-        contentLabel = 'gửi ảnh'
-        break
-      case 'Audio':
-        contentLabel = 'gửi âm thanh'
-        break
-      case 'File':
-        if (isImageFile(filename)) {
-          contentLabel = 'gửi ảnh'
-        } else if (isVideoFile(filename)) {
-          contentLabel = 'gửi video'
-        } else if (isAudioFile(filename)) {
-          contentLabel = 'gửi âm thanh'
-        } else {
-          contentLabel = 'gửi file'
-        }
-        break
-      case 'Text': {
-        const text = stripHtmlTags(filename)
-        contentLabel = truncateText(text, maxLength)
-        break
-      }
-    }
+  return {
+    senderLabel,
+    contentLabel: parseContentLabel(raw, maxLength)
   }
+}
 
-  return { senderLabel, contentLabel }
+function parseContentLabel(raw: any, maxLength: number): string {
+  if (typeof raw.content !== 'string') return ''
+  const filename = raw.content
+
+  switch (raw.message_type) {
+    case 'Image':
+      return 'gửi ảnh'
+    case 'Audio':
+      return 'gửi âm thanh'
+    case 'File':
+      if (isImageFile(filename)) return 'gửi ảnh'
+      if (isVideoFile(filename)) return 'gửi video'
+      if (isAudioFile(filename)) return 'gửi âm thanh'
+      return 'gửi file'
+    case 'Text':
+      // eslint-disable-next-line no-case-declarations
+      const text = stripHtmlTags(filename)
+      return truncateText(text, maxLength)
+    default:
+      return ''
+  }
 }

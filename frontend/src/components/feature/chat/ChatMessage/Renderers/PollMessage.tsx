@@ -289,7 +289,6 @@ const MultiChoicePoll = ({ data, messageID }: { data: Poll; messageID: string })
 
 const RetractVoteButton = ({ pollId }: { pollId: string }) => {
   const { call, loading } = useFrappePostCall('raven.api.raven_poll.retract_vote')
-  
   const onRetractVote = () => {
     return call({
       poll_id: pollId
@@ -305,13 +304,7 @@ const RetractVoteButton = ({ pollId }: { pollId: string }) => {
   }
 
   return (
-    <Button 
-      variant='outline' 
-      size='1' 
-      onClick={onRetractVote}
-      disabled={loading}
-      className='shrink-0'
-    >
+    <Button variant='outline' size='1' onClick={onRetractVote} disabled={loading} className='shrink-0'>
       <TiArrowBackOutline size={14} />
       Vote lại
     </Button>

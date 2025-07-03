@@ -119,8 +119,7 @@ export default function SidebarContainer({ sidebarRef }: { sidebarRef: React.Ref
         </div>
       </div>
 
-      {tempMode === 'default' && <FilterList />}
-      {isIconOnly && <FilterList />}
+      {(tempMode === 'default' || isIconOnly) && <FilterList />}
     </div>
   )
 }
@@ -244,7 +243,13 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
               </li>
             </div>
 
-            {isLabelOpen && (
+            {isIconOnly && (
+              <div className='absolute left-[1000%]'>
+                <CreateLabelButton />
+              </div>
+            )}
+
+            {!isIconOnly && isLabelOpen && (
               <LabelList
                 visible={isLabelOpen}
                 onClickLabel={(label) => {
