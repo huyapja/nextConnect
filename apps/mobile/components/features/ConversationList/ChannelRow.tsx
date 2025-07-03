@@ -32,11 +32,12 @@ const ChannelRow = ({ dm }: { dm: ChannelWithUnreadCount }) => {
         let message_type = ''
         if (dm.last_message_details) {
             try {
-                const parsedDetails = JSON.parse(dm.last_message_details)
+                const parsedDetails = typeof dm.last_message_details === 'object' ? dm.last_message_details : JSON.parse(dm.last_message_details)
                 isSentByUser = parsedDetails.owner === myProfile?.name
                 lastMessageContent = parsedDetails.content?.trim() || ''
-                message_type = JSON.parse(dm.last_message_details)?.message_type
+                message_type = parsedDetails?.message_type
             } catch (e) {
+                console.log("dm.last_message_details", dm.last_message_details)
                 console.error('Error parsing last_message_details:', e)
             }
         }

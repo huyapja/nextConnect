@@ -37,6 +37,7 @@ export const PollMessageBlock = ({ message, ...props }: PollMessageBlockProps) =
     );
 
     useFrappeDocumentEventListener('Raven Poll', message.poll_id, () => {
+        console.log("useFrappeDocumentEventListener")
         mutate();
     });
 
