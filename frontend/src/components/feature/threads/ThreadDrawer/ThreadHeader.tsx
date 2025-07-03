@@ -27,6 +27,13 @@ export const ThreadHeader = () => {
     return null
   }, [user, channelMembers])
 
+  const memberCount = useMemo(() => {
+    if (channelMembers) {
+      return Object.keys(channelMembers).length
+    }
+    return 0
+  }, [channelMembers])
+
   return (
     <header className='dark:bg-gray-2 bg-white px-3 w-full border-b border-gray-4 pb-0' style={{ zIndex: 999 }}>
       <Flex direction={'column'} gap='2' className='pt-4'>
@@ -44,7 +51,7 @@ export const ThreadHeader = () => {
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Content className='min-w-48'>
                   <ToggleNotificationButton channelMember={channelMember} />
-                  <LeaveThreadButton />
+                  {memberCount > 1 && <LeaveThreadButton />}
                   {channelMembers[currentUser].is_admin === 1 && <DeleteThreadButton />}
                 </DropdownMenu.Content>
               </DropdownMenu.Root>
@@ -74,6 +81,12 @@ const DeleteThreadButton = () => {
 
   const onDeleteThread = () => {
     const promise = deleteDoc('Raven Channel', threadID).then(() => {
+      window.dispatchEvent(
+        new CustomEvent('thread_deleted_custom', {
+          detail: { thread_id: threadID }
+        })
+      )
+      
       navigate('../')
       return Promise.resolve()
     })

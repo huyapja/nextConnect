@@ -92,6 +92,7 @@ def workspace_member_has_permission(doc, user=None, ptype=None):
 	if ptype == "delete":
 		if doc.user == user:
 			return True
+
 		else:
 			workspace_member = get_workspace_member(doc.workspace, user)
 			if workspace_member and workspace_member.get("is_admin"):
@@ -132,8 +133,18 @@ def channel_has_permission(doc, user=None, ptype=None):
 			return channel_doc.has_permission("read", user=user)
 
 		if ptype == "delete":
-			# Only the creator of the thread can delete the thread
-			return doc.owner == user
+			# Allow thread deletion by:
+			# 1. The original creator of the thread
+			# 2. Current admin of the thread
+			if doc.owner == user:
+				return True
+			
+			# Check if user is current admin of the thread channel
+			channel_member = get_channel_member(doc.name, user)
+			if channel_member and channel_member.get("is_admin"):
+				return True
+			
+			return False
 
 	else:
 		# For regular channels
