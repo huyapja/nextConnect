@@ -34,7 +34,7 @@ export const ViewPollVotes = ({ poll }: ViewPollVotesProps) => {
     return (
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Trigger>
-          <Button variant='ghost' size={'1'} className='-mb-2.5 bg-transparent hover:text-accent-10 w-full'>
+          <Button variant='ghost' size={'1'} className='-mb-2.5 bg-transparent hover:text-accent-10 flex-1'>
             Xem votes
           </Button>
         </Dialog.Trigger>
@@ -49,7 +49,7 @@ export const ViewPollVotes = ({ poll }: ViewPollVotesProps) => {
       <Drawer open={open} onOpenChange={setOpen}>
         <Separator className='w-full' />
         <DrawerTrigger asChild>
-          <Button variant='ghost' size={'1'} className='bg-transparent hover:text-accent-10 w-full'>
+          <Button variant='ghost' size={'1'} className='bg-transparent hover:text-accent-10 flex-1'>
             Xem votes
           </Button>
         </DrawerTrigger>
