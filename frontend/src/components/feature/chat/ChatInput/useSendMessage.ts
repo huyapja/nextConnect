@@ -1,6 +1,8 @@
 import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
+import { UserContext } from '@/utils/auth/UserProvider'
+import { useUpdateLastMessageDetails } from '@/utils/channel/ChannelListProvider'
 import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Message } from '../../../../../../types/Messaging/Message'
 // import { useOnlineStatus } from '../../network/useNetworkStatus'
@@ -39,6 +41,8 @@ export const useSendMessage = (
   const { call: createDMChannel } = useFrappePostCall<{ message: string }>(
     'raven.api.raven_channel.create_direct_message_channel'
   )
+  const { updateLastMessageForChannel } = useUpdateLastMessageDetails()
+  const { currentUser } = useContext(UserContext)
   const { workspaceID } = useParams()
   const navigate = useNavigate()
   const { mutate } = useSWRConfig()
@@ -92,6 +96,18 @@ export const useSendMessage = (
     })
   }
 
+  const updateSidebarMessage = (msg: RavenMessage, fallbackText?: string) => {
+    updateLastMessageForChannel(channelID, {
+      message_id: msg.name,
+      content: fallbackText || msg.content || '',
+      owner: currentUser,
+      message_type: msg.message_type,
+      is_bot_message: msg.is_bot_message,
+      bot: msg.bot || null,
+      timestamp: new Date().toISOString()
+    })
+  }
+
   // Hàm xử lý tạo DM channel cho draft channel
   const handleDraftChannel = async (draftChannelID: string): Promise<string> => {
     if (draftChannelID.startsWith('_')) {
@@ -136,6 +152,8 @@ export const useSendMessage = (
     const { message, client_id: returnedClientId } = res.message as any
 
     const msgWithClientId = { ...message, client_id: returnedClientId }
+
+    updateSidebarMessage(msgWithClientId)
     onMessageSent([msgWithClientId])
 
     updatePendingState((msgs) => msgs.filter((m) => m.id !== returnedClientId))
@@ -158,7 +176,7 @@ export const useSendMessage = (
 
     uploadedFiles.forEach(({ client_id, message, file }) => {
       if (message) {
-        // updateSidebarMessage(message)
+        updateSidebarMessage(message)
         onMessageSent([message])
 
         // Remove pendingMessage nào có file trùng
@@ -277,6 +295,8 @@ export const useSendMessage = (
                 resend_at: resendAt
               } as any
             ])
+
+            updateSidebarMessage(result.message)
             removePendingMessage(id)
           } else {
             updatePendingState((msgs) => msgs.map((m) => (m.id === id ? { ...m, status: 'error' } : m)))

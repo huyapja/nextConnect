@@ -104,7 +104,6 @@ export const useFetchUnreadMessageCount = () => {
     const messageId = event.last_message_details?.message_id
     const isBot = event.is_bot === 1 || event.is_bot === true
     const isNotSelf = event.sent_by !== currentUser
-
     const currentUnread = unread_count?.message.find((c) => c.name === event.channel_id)?.unread_count || 0
     const isManuallyMarked = manuallyMarked.has(event.channel_id)
 
