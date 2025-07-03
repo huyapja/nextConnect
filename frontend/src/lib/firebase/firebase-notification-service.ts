@@ -51,9 +51,9 @@ class FirebaseNotificationService {
         // Try multiple possible paths for the service worker
         let registration;
         const possiblePaths = [
+          '/assets/raven/firebase-messaging-sw.js',
           '/firebase-messaging-sw.js',
           '/assets/firebase-messaging-sw.js',
-          '/assets/raven/firebase-messaging-sw.js',
           '/api/method/raven.api.firebase_notification.get_firebase_service_worker'
         ];
         

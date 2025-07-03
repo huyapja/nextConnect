@@ -54,15 +54,11 @@ service_worker = [
 
 extend_bootinfo = "raven.boot.boot_session"
 
-# Firebase Integration - Auto patch RavenMessage để sử dụng Firebase notifications
-after_app_install = [
-	"raven.firebase_message_integration.patch_raven_message"
-]
+# Firebase Integration - Hooks được xử lý qua document events
+# Không cần startup hooks vì Firebase notifications được xử lý qua document hooks
 
-# Startup hooks để khởi tạo Firebase integration khi app khởi động
-startup = [
-	"raven.firebase_message_integration.patch_raven_message"
-]
+# Auto setup Firebase worker sau khi build
+after_install = "raven.commands.setup_worker.setup_firebase_worker_auto"
 # include js, css files in header of web template
 # web_include_css = "/assets/raven/css/raven.css"
 # web_include_js = "/assets/raven/js/raven.js"
@@ -302,3 +298,5 @@ on_logout = "raven.api.user_availability.set_user_inactive"
 export_python_type_annotations = True
 
 raven_document_link_override = "raven.api.document_link.get_new_app_document_links"
+
+# Custom Commands được đăng ký qua commands module

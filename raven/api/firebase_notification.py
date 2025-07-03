@@ -290,6 +290,11 @@ def get_firebase_service_worker():
 			frappe.throw(_("Service worker file not found"))
 		
 		# Set appropriate headers for service worker
+		if not hasattr(frappe.local, 'response'):
+			frappe.local.response = frappe._dict()
+		if not frappe.local.response.get('headers'):
+			frappe.local.response.headers = frappe._dict()
+			
 		frappe.local.response.headers.update({
 			"Content-Type": "application/javascript",
 			"Service-Worker-Allowed": "/",
