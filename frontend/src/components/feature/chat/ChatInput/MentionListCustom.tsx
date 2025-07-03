@@ -36,6 +36,7 @@ interface MentionObject {
   message_type: RavenMessage['message_type']
   owner: string
   text: string
+  group_image?: string
 }
 
 const PAGE_SIZE = 10
@@ -230,7 +231,7 @@ const MentionItem: React.FC<{
     <div className='relative group'>
       <Box
         onClick={handleClickMention}
-        className={`block py-3 px-4 pr-8 hover:bg-gray-2 dark:hover:bg-gray-4 cursor-pointer ${mention.name === messageParams ? 'bg-gray-100 dark:bg-gray-800/80' : ''}`}
+        className={`block py-3 px-4 pr-3 hover:bg-gray-2 dark:hover:bg-gray-4 cursor-pointer ${mention.name === messageParams ? 'bg-gray-100 dark:bg-gray-800/80' : ''}`}
       >
         <ChannelContext mention={mention} />
 
@@ -265,19 +266,19 @@ const ChannelContext: React.FC<{ mention: MentionObject }> = ({ mention }) => {
             {senderName}
           </Text>
           {mention.is_thread ? (
-            <HStack gap='1' align='center' className='shrink-0 ml-auto'>
+            <HStack gap='1' align='center' className='shrink-0'>
               <BiMessageAltDetail size={14} />
             </HStack>
           ) : mention.is_direct_message ? null : (
-            <HStack gap='0.5' align='center' className='shrink-0'>
-              <ChannelIcon type={mention.channel_type} size={14} />
+            <HStack gap='1' align='center' className='shrink-0 ml-auto'>
+              <ChannelIcon groupImage={mention.group_image} type={mention.channel_type} size={14} />
               <Text size='1' weight='medium' className='truncate max-w-[80px]'>
                 {mention.channel_name}
               </Text>
             </HStack>
           )}
         </HStack>
-        <Box className='mt-0.5'>
+        <Box className='mt-1.5'>
           <MessageContent content={mention.text} />
         </Box>
         <TimeStamp creation={mention.creation} />

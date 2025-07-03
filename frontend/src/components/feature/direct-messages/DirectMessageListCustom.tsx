@@ -49,17 +49,11 @@ export const DirectMessageList = () => {
   const handleMarkAllDone = async () => {
     // Lọc các channel chưa được đánh dấu là done
     const channelIDs = enriched.map((ch) => ch.name)
-
-    if (channelIDs.length === 0) {
-      toast.info('Tất cả các kênh đã được đánh dấu trước đó')
-      return
-    }
-
     try {
       const res = await call({ channel_ids: channelIDs })
 
       if (res?.message?.status === 'success') {
-        toast.success(`Đã đánh dấu tất cả các kênh đã xong`)
+        toast.success(`Đã đánh dấu tất cả các kênh thành đã xong`)
       } else {
         toast.warning('Không thể đánh dấu các kênh')
       }
@@ -72,16 +66,18 @@ export const DirectMessageList = () => {
   return (
     <SidebarGroup pb='4'>
       <SidebarGroup>
-        {enriched?.length > 0 && (
-          <Tooltip content={'Đánh dấu tất cả đã xong'} side='top'>
-            <button
-              onClick={handleMarkAllDone}
-              disabled={loading}
-              className='p-1 rounded-full bg-gray-200 hover:bg-gray-300 h-[20px] w-[20px] flex items-center justify-center cursor-pointer'
-            >
-              <HiCheck className='h-3 w-3 transition-colors duration-150 text-gray-800' />
-            </button>
-          </Tooltip>
+        {enriched?.length > 0 && (title === 'Trò chuyện' || title === 'Chưa đọc') && (
+          <div className='ml-auto mr-2'>
+            <Tooltip content={'Đánh dấu tất cả đã xong'} side='top'>
+              <button
+                onClick={handleMarkAllDone}
+                disabled={loading}
+                className='p-1 rounded-full bg-gray-200 hover:bg-gray-300 h-[20px] w-[20px] flex items-center justify-center cursor-pointer'
+              >
+                <HiCheck className='h-3 w-3 transition-colors duration-150 text-green-600' />
+              </button>
+            </Tooltip>
+          </div>
         )}
         <DirectMessageItemList channel_list={enriched} labelID={labelID} title={title} />
       </SidebarGroup>

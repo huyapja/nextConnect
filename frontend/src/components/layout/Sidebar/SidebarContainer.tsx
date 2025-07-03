@@ -54,7 +54,7 @@ export const useMentionUnreadCount = () => {
 export const filterItems = [
   { label: 'Trò chuyện', icon: HiOutlineChatAlt2 },
   { label: 'Chưa đọc', icon: HiOutlineInbox },
-  // { label: 'Cuộc gọi nhỡ', icon: FiPhoneMissed },
+  { label: 'Cuộc gọi nhỡ', icon: FiPhoneMissed },
   { label: 'Đã gắn cờ', icon: HiOutlineFlag },
   { label: 'Nhắc đến', icon: HiOutlineAtSymbol },
   { label: 'Nhãn', icon: HiOutlineTag },
@@ -220,7 +220,7 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
                   {!isIconOnly && <span className='truncate flex-1 min-w-0 font-medium text-[13px]'>{item.label}</span>}
                 </div>
 
-                {
+                {!isIconOnly && (
                   <div className='flex items-center gap-2'>
                     <div onClick={(e) => e.stopPropagation()}>
                       <CreateLabelButton />
@@ -239,11 +239,17 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
                       )}
                     </div>
                   </div>
-                }
+                )}
               </li>
             </div>
 
-            {isLabelOpen && (
+            {isIconOnly && (
+              <div className='absolute left-[1000%]'>
+                <CreateLabelButton />
+              </div>
+            )}
+
+            {!isIconOnly && isLabelOpen && (
               <LabelList
                 visible={isLabelOpen}
                 onClickLabel={(label) => {

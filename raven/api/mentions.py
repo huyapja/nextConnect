@@ -31,6 +31,7 @@ def get_mentions(limit: int = 10, start: int = 0):
 			channel.workspace,
 			channel.is_thread,
 			channel.is_direct_message,
+			channel.group_image,
 			message.creation,
 			message.message_type,
 			message.owner,
