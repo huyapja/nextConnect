@@ -18,6 +18,9 @@ import { ViewPinnedMessagesButton } from '../pinned-messages/ViewPinnedMessagesB
 import ChannelHeaderMenu from './ChannelHeaderMenu'
 // import { useGlobalStringee } from '../call-stringee/GlobalStringeeProvider'
 import clsx from 'clsx'
+import { useStringee } from '@/utils/StringeeProvider'
+import IncomingCallModal from '@/utils/stringee/ui/IncomingModalCall'
+import { useStringeeToken } from '@/hooks/useStringeeToken'
 
 interface DMChannelHeaderProps {
   channelData: DMChannelListItem
@@ -48,6 +51,10 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
   )
 
   const userLabels = enrichedChannel?.user_labels || []
+
+  const { makeCall } = useStringee()
+
+  const { userId } = useStringeeToken()
 
   return (
     <PageHeader>
@@ -132,6 +139,30 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
 
       <Flex className='mr-3' gap='4' align='center'>
         {/* {peerUserId && <VideoCall toUserId={peerUserId} channelId={channelData.name} globalClient={globalClient} />} */}
+        {peerUserId && (
+          <div>
+            <button
+              onClick={() => {
+                console.log('👤 userId:', userId)
+                console.log('🎯 peerUserId:', peerUserId)
+
+                if (!peerUserId || peerUserId === userId) {
+                  console.warn('❌ Không thể gọi cho chính mình hoặc peerUserId không hợp lệ')
+                  return
+                }
+
+                if (makeCall) {
+                  makeCall(peerUserId)
+                } else {
+                  console.warn('makeCall not ready')
+                }
+              }}
+            >
+              📞 Gọi
+            </button>
+            {/* <button onClick={endCall}>🔚 Kết thúc</button> */}
+          </div>
+        )}
         <ChannelHeaderMenu channelData={channelData} />
       </Flex>
     </PageHeader>

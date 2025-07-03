@@ -12,6 +12,7 @@ declare global {
     // 👇 Thêm biến từ Stringee SDK
     StringeeClient?: any
     StringeeCall?: any
+    StringeeCall2?: any
   }
 
   interface FrappeBoot {

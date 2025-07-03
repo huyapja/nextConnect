@@ -10,6 +10,7 @@ import router from './router'
 import { ThemeProvider } from './ThemeProvider'
 import AppUpdateProvider from './utils/AppUpdateProvider'
 import { UserProvider } from './utils/auth/UserProvider'
+import { StringeeProvider } from './utils/StringeeProvider'
 
 /** Following keys will not be cached in app cache */
 // const NO_CACHE_KEYS = [
@@ -73,9 +74,11 @@ function App() {
           panelBackground='translucent'
           setAppearance={setAppearance}
         >
-          <Suspense fallback={<></>}>
-            <RouterProvider router={router} />
-          </Suspense>
+          <StringeeProvider>
+            <Suspense fallback={<></>}>
+              <RouterProvider router={router} />
+            </Suspense>
+          </StringeeProvider>
           <AppUpdateProvider />
         </ThemeProvider>
       </UserProvider>

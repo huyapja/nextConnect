@@ -325,7 +325,7 @@ export const DirectMessageItemElement = ({
   const peerUser = useGetUser(peerUserId || '')
   const isActiveRaw = useIsUserActive(peerUserId || '')
   const isActive = !!peerUserId && isActiveRaw
-
+  
   const isSelectedChannel = channelID === channel.name
   const isManuallyMarked = manuallyMarked.has(channel.name)
   const isChannelDone = channel.is_done === 1

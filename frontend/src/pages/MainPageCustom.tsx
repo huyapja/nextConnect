@@ -29,6 +29,7 @@ import { ChannelListProvider } from '../utils/channel/ChannelListProvider'
 import { useAddChannelRealtimeListener } from '@/hooks/useAddChannelRealtimeListener'
 import { useMemberRemovedListener } from '@/hooks/useMemberRemovedListener'
 import { useUpdateChannelListener } from '@/hooks/useUpdateChannelListener'
+import IncomingCallModal from '@/utils/stringee/ui/IncomingModalCall'
 
 const AddRavenUsersPage = lazy(() => import('@/pages/AddRavenUsersPage'))
 
@@ -263,6 +264,7 @@ const MainPageContent = () => {
               </Panel>
             </PanelGroup>
           )}
+          {/* <IncomingCallModal /> */}
         </HStack>
 
         <CommandMenu />
