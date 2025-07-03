@@ -35,7 +35,7 @@ init({
 })
 
 function App() {
-  const [appearance, setAppearance] = useStickyState<'light' | 'dark' | 'inherit'>('dark', 'appearance')
+  const [appearance, setAppearance] = useStickyState<'light' | 'dark' | 'inherit'>('light', 'appearance')
 
   // We not need to pass sitename if the Frappe version is v14.
 
@@ -67,7 +67,7 @@ function App() {
       <UserProvider>
         <Toaster position='top-right' richColors />
         <ThemeProvider
-          appearance={appearance}
+          appearance={'light'}
           // grayColor='slate'
           accentColor='iris'
           panelBackground='translucent'

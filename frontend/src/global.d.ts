@@ -4,7 +4,16 @@ declare global {
   interface Window {
     app_name?: string
     __blinkInterval?: NodeJS.Timeout
+
+    // Các biến sẵn có từ Frappe
+    frappe?: Frappe
+    frappePushNotification?: any
+
+    // 👇 Thêm biến từ Stringee SDK
+    StringeeClient?: any
+    StringeeCall?: any
   }
+
   interface FrappeBoot {
     user?: {
       defaults?: {
@@ -19,10 +28,5 @@ declare global {
 
   interface Frappe {
     boot?: FrappeBoot
-  }
-
-  interface Window {
-    frappe?: Frappe
-    frappePushNotification?: any
   }
 }

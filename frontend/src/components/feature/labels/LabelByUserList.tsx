@@ -1,7 +1,7 @@
 import { Flex, Text } from '@radix-ui/themes'
-import { LuAtSign } from 'react-icons/lu'
 import { useLabelListValue } from './conversations/atoms/labelAtom'
 import LabelItem from './LabelItem'
+import { HiOutlineTag } from 'react-icons/hi'
 
 const LabelByUserList = () => {
   const labelList = useLabelListValue()
@@ -9,7 +9,7 @@ const LabelByUserList = () => {
     <div className='space-y-2'>
       {labelList?.length === 0 ? (
         <Flex direction='column' align='center' justify='center' className='h-[320px] px-6 text-center'>
-          <LuAtSign size={48} className='text-gray-8 mb-4' />
+          <HiOutlineTag  size={48} className='text-gray-8 mb-4' />
           <Text size='5' weight='medium' className='mb-2'>
             Chưa có nhãn nào
           </Text>

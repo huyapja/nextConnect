@@ -98,7 +98,7 @@ const Themes = ({
             </RadioCards.Item>
             <Text weight='medium'>Sáng</Text>
           </Flex>
-          <Flex direction='column' align='center' gap='3'>
+          {/* <Flex direction='column' align='center' gap='3'>
             <RadioCards.Item value='dark' className='p-0 cursor-pointer' onClick={() => setAppearance('dark')}>
               <img src={darkModeImg} className='w-full h-auto object-cover' />
             </RadioCards.Item>
@@ -109,7 +109,7 @@ const Themes = ({
               <img src={systemModeImg} className='w-full h-auto object-cover' />
             </RadioCards.Item>
             <Text weight='medium'>Hệ thống</Text>
-          </Flex>
+          </Flex> */}
         </RadioCards.Root>
       </Box>
     </Stack>

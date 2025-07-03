@@ -30,23 +30,23 @@ export const ThemeProvider: React.FC<PropsWithChildren<ThemeProviderProps>> = ({
         }
         break
       }
-      case 'dark': {
-        if (document?.body) {
-          document.body.classList.remove('light', 'dark')
-          document.body.classList.add('dark')
-          metaThemeColor?.setAttribute('content', '#191919')
-        }
-        break
-      }
-      case 'inherit': {
-        if (document?.body) {
-          const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-          document.body.classList.remove('light', 'dark')
-          document.body.classList.add(systemTheme)
-          metaThemeColor?.setAttribute('content', systemTheme === 'dark' ? '#191919' : '#FFFFFF')
-        }
-        break
-      }
+      // case 'dark': {
+      //   if (document?.body) {
+      //     document.body.classList.remove('light', 'dark')
+      //     document.body.classList.add('dark')
+      //     metaThemeColor?.setAttribute('content', '#191919')
+      //   }
+      //   break
+      // }
+      // case 'inherit': {
+      //   if (document?.body) {
+      //     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      //     document.body.classList.remove('light', 'dark')
+      //     document.body.classList.add(systemTheme)
+      //     metaThemeColor?.setAttribute('content', systemTheme === 'dark' ? '#191919' : '#FFFFFF')
+      //   }
+      //   break
+      // }
     }
 
     // Dọn dẹp khi component unmount
