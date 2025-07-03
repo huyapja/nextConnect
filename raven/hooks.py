@@ -58,7 +58,10 @@ extend_bootinfo = "raven.boot.boot_session"
 # Không cần startup hooks vì Firebase notifications được xử lý qua document hooks
 
 # Auto setup Firebase worker sau khi build
-after_install = "raven.commands.setup_worker.setup_firebase_worker_auto"
+# Đảm bảo service worker luôn được tạo/cập nhật khi install hoặc migrate (chuẩn Frappe Cloud)
+after_install = "raven.install.create_firebase_service_worker_file"
+after_migrate = "raven.install.create_firebase_service_worker_file"
+
 # include js, css files in header of web template
 # web_include_css = "/assets/raven/css/raven.css"
 # web_include_js = "/assets/raven/js/raven.js"
@@ -109,7 +112,7 @@ after_install = "raven.commands.setup_worker.setup_firebase_worker_auto"
 # ------------
 
 # before_install = "raven.install.before_install"
-after_install = "raven.install.after_install"
+# after_install = "raven.install.after_install"
 # after_sync = ""
 
 # Uninstallation
