@@ -59,9 +59,10 @@ def extract_text_from_file(file_url):
 
 # Helper: Xây dựng context từ các tin nhắn gần nhất
 def build_context(conversation_id, model="gpt-4o"):
-    MAX_TOTAL_TOKENS = 3000
-    MAX_FILE_TOKENS = 1500
-    MAX_MESSAGE_COUNT = 50
+    # Cấu hình tokens để hỗ trợ 5 files (5MB mỗi file) + text 11,000 từ
+    MAX_TOTAL_TOKENS = 80000      # Tổng tokens cho input (trong giới hạn 128K của GPT-4o)
+    MAX_FILE_TOKENS = 10000       # Mỗi file tối đa 10K tokens (≈ 5MB content)
+    MAX_MESSAGE_COUNT = 100       # Tăng số message để lưu đủ history với files
 
     try:
         encoding = tiktoken.encoding_for_model(model)
@@ -84,7 +85,15 @@ def build_context(conversation_id, model="gpt-4o"):
     # Thêm system message để ghi đè thông tin mặc định
     system_message = {
         "role": "system",
-        "content": "Bạn là trợ lý AI thông minh được hỗ trợ bởi mô hình GPT-4o của OpenAI. Hãy trả lời một cách hữu ích, chính xác và thân thiện bằng tiếng Việt."
+        "content": """Bạn là trợ lý AI tiên tiến được hỗ trợ bởi mô hình GPT-4o của OpenAI. 
+
+Hướng dẫn trả lời:
+- Hãy trả lời một cách chính xác, chi tiết và thông minh
+- Sử dụng tiếng Việt tự nhiên và thân thiện
+- Khi được hỏi về kiến thức chuyên môn, hãy đi sâu vào chi tiết
+- Nếu cần giải quyết vấn đề phức tạp, hãy phân tích từng bước
+- Khi không chắc chắn, hãy thừa nhận và đưa ra các khả năng
+- Luôn cố gắng cung cấp giá trị thực sự trong mỗi câu trả lời"""
     }
     
     context = [system_message]
@@ -101,7 +110,8 @@ def build_context(conversation_id, model="gpt-4o"):
             if file_tokens == 0:
                 continue
             elif file_tokens > MAX_FILE_TOKENS:
-                approx_summary = file_text.strip()[:1500]
+                # Rút gọn file quá lớn nhưng giữ nhiều nội dung hơn (cho files 5MB)
+                approx_summary = file_text.strip()[:7500]  # Tăng từ 1500 lên 7500 chars
                 content += (
                     "\n\n[Nội dung file tóm tắt:]\n"
                     + approx_summary +
@@ -141,8 +151,10 @@ def call_openai(context):
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=context,
-        temperature=0.7,
-        max_tokens=2000
+        temperature=0.3,  # Giảm temperature để có response ổn định và chính xác hơn
+        max_tokens=8000,  # Tăng max_tokens để có response đầy đủ cho các files lớn
+        top_p=0.9,        # Thêm top_p để kiểm soát chất lượng response
+        frequency_penalty=0.1  # Giảm lặp lại
     )
     return response.choices[0].message.content
 
@@ -199,7 +211,7 @@ def send_message(conversation_id, message, is_user=True, message_type="Text", fi
                 "raven.api.chatbot.handle_ai_reply",
                 conversation_id=conversation_id,
                 now=False,
-                timeout=300  # 5 phút timeout
+                timeout=600  # 10 phút timeout cho files lớn
             )
 
         return chat_message.name
@@ -231,7 +243,7 @@ def trigger_ai_reply(conversation_id, message_text=None):
             "raven.api.chatbot.handle_ai_reply",
             conversation_id=conversation_id,
             now=False,
-            timeout=300  # 5 phút timeout
+            timeout=600  # 10 phút timeout cho files lớn
         )
         
         return {"success": True, "message": "AI reply đã được trigger"}

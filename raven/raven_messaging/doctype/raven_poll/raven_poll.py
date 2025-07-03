@@ -24,6 +24,27 @@ class RavenPoll(Document):
 		total_votes: DF.Int
 	# end: auto-generated types
 
+	def validate(self):
+		self.validate_question()
+		self.validate_options()
+
+	def validate_question(self):
+		if not self.question or not self.question.strip():
+			frappe.throw("Câu hỏi không được để trống hoặc chỉ chứa dấu cách")
+
+	def validate_options(self):
+		if not self.options:
+			frappe.throw("Phải có ít nhất một lựa chọn")
+		
+		valid_options = []
+		for idx, option in enumerate(self.options):
+			if not option.option or not option.option.strip():
+				frappe.throw(f"Lựa chọn thứ {idx + 1} không được để trống hoặc chỉ chứa dấu cách")
+			valid_options.append(option)
+		
+		if len(valid_options) < 2:
+			frappe.throw("Phải có ít nhất 2 lựa chọn hợp lệ")
+
 	def before_validate(self):
 		# Total_votes is the sum of all votes in the poll per user
 		poll_votes = frappe.get_all(

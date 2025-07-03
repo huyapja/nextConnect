@@ -84,10 +84,33 @@ const CreatePollContent = ({ channelID, setIsOpen }: { channelID: string; setIsO
   const { call: createPoll, error } = useFrappePostCall('raven.api.raven_poll.create_poll')
 
   const onSubmit = async (data: RavenPoll) => {
-    return createPoll({
+    // Additional client-side validation
+    if (!data.question || !data.question.trim()) {
+      toast.error('Câu hỏi không được để trống hoặc chỉ chứa dấu cách')
+      return
+    }
+
+    const validOptions = data.options?.filter(option => 
+      option.option && option.option.trim()
+    ) || []
+
+    if (validOptions.length < 2) {
+      toast.error('Phải có ít nhất 2 lựa chọn hợp lệ')
+      return
+    }
+
+    // Clean data before sending
+    const cleanedData = {
       ...data,
+      question: data.question.trim(),
+      options: validOptions.map(option => ({
+        ...option,
+        option: option.option.trim()
+      })),
       channel_id: channelID
-    })
+    }
+
+    return createPoll(cleanedData)
       .then(() => {
         toast.success('Cuộc bình chọn đã được tạo')
         onClose()
@@ -112,6 +135,14 @@ const CreatePollContent = ({ channelID, setIsOpen }: { channelID: string; setIsO
             <TextArea
               {...register('question', {
                 required: 'Câu hỏi là bắt buộc',
+                validate: {
+                  notEmpty: (value) => {
+                    if (!value || value.trim().length === 0) {
+                      return 'Câu hỏi không được để trống hoặc chỉ chứa dấu cách'
+                    }
+                    return true
+                  }
+                },
                 maxLength: {
                   value: 255,
                   message: 'Câu hỏi không được vượt quá 255 ký tự'
@@ -137,6 +168,14 @@ const CreatePollContent = ({ channelID, setIsOpen }: { channelID: string; setIsO
                         placeholder={`Lựa chọn ${index + 1}`}
                         {...register(`options.${index}.option`, {
                           required: 'Lựa chọn là bắt buộc',
+                          validate: {
+                            notEmpty: (value) => {
+                              if (!value || value.trim().length === 0) {
+                                return 'Lựa chọn không được để trống hoặc chỉ chứa dấu cách'
+                              }
+                              return true
+                            }
+                          },
                           minLength: {
                             value: 1,
                             message: 'Lựa chọn không được để trống'
