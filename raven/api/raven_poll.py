@@ -17,6 +17,18 @@ def create_poll(
 	if not frappe.has_permission(doctype="Raven Channel", doc=channel_id, ptype="read"):
 		frappe.throw(_("Bạn không có quyền truy cập kênh này"), frappe.PermissionError)
 
+	# Validate question
+	if not question or not question.strip():
+		frappe.throw("Vui lòng nhập câu hỏi hợp lệ, không được để trống hoặc chỉ có dấu cách")
+
+	# Validate options
+	if not options:
+		frappe.throw("Vui lòng thêm ít nhất một lựa chọn cho cuộc thăm dò")
+	
+	for idx, option in enumerate(options, 1):
+		if not option.get('option') or not option.get('option').strip():
+			frappe.throw(f"Lựa chọn #{idx}: Vui lòng nhập lựa chọn hợp lệ, không được để trống hoặc chỉ có dấu cách")
+
 	poll = frappe.get_doc(
 		{
 			"doctype": "Raven Poll",
