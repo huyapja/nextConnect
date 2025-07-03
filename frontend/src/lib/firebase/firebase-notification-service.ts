@@ -138,13 +138,20 @@ class FirebaseNotificationService {
     }
   }
 
+  private getCSRFToken(): string {
+    // Ưu tiên window.frappe.csrf_token, fallback lấy từ cookie
+    if ((window as any).frappe?.csrf_token) return (window as any).frappe.csrf_token;
+    const match = document.cookie.match(/csrf_token=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
   private async registerTokenWithServer(token: string): Promise<void> {
     try {
       const response = await fetch('/api/method/raven.api.firebase_notification.register_firebase_token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Frappe-CSRF-Token': (window as any).frappe?.csrf_token || ''
+          'X-Frappe-CSRF-Token': this.getCSRFToken()
         },
         body: JSON.stringify({
           firebase_token: token,
@@ -152,9 +159,7 @@ class FirebaseNotificationService {
           device_information: navigator.userAgent
         })
       });
-
       const result = await response.json();
-      
       if (result.message?.success) {
         console.log('Firebase token registered with server');
       } else {
@@ -303,15 +308,13 @@ class FirebaseNotificationService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Frappe-CSRF-Token': (window as any).frappe?.csrf_token || ''
+            'X-Frappe-CSRF-Token': this.getCSRFToken()
           },
           body: JSON.stringify({
             firebase_token: this.token
           })
         });
-
         const result = await response.json();
-        
         if (result.message?.success) {
           console.log('Firebase token unregistered');
           this.token = null;
@@ -328,10 +331,9 @@ class FirebaseNotificationService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Frappe-CSRF-Token': (window as any).frappe?.csrf_token || ''
+          'X-Frappe-CSRF-Token': this.getCSRFToken()
         }
       });
-
       const result = await response.json();
       console.log('Test notification result:', result);
     } catch (error) {

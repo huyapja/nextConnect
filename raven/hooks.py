@@ -113,7 +113,6 @@ after_migrate = "raven.install.create_firebase_service_worker_file"
 
 # before_install = "raven.install.before_install"
 # after_install = "raven.install.after_install"
-# after_sync = ""
 
 # Uninstallation
 # ------------
