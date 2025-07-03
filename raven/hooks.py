@@ -272,6 +272,11 @@ website_route_rules = [
 	{"from_route": "/raven_mobile/<path:app_path>", "to_route": "raven"},
 ]
 
+# Override whitelisted methods để serve Firebase service worker
+override_whitelisted_methods = {
+	"raven.api.firebase_notification.get_firebase_service_worker": "raven.api.firebase_notification.serve_firebase_service_worker"
+}
+
 permission_query_conditions = {
 	"Raven Channel": "raven.permissions.raven_channel_query",
 	"Raven Message": "raven.permissions.raven_message_query",

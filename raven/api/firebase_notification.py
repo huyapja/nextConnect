@@ -267,6 +267,13 @@ def get_firebase_service_worker():
 	Returns:
 		Response: Service worker JavaScript file
 	"""
+	return serve_firebase_service_worker()
+
+
+def serve_firebase_service_worker():
+	"""
+	Serve Firebase service worker file with proper headers
+	"""
 	try:
 		import os
 		from frappe.utils import get_site_path
@@ -284,10 +291,13 @@ def get_firebase_service_worker():
 			if os.path.exists(path):
 				with open(path, 'r', encoding='utf-8') as f:
 					service_worker_content = f.read()
+				frappe.logger().info(f"✅ Firebase service worker loaded from: {path}")
 				break
 		
 		if not service_worker_content:
-			frappe.throw(_("Service worker file not found"))
+			# Fallback: Generate basic service worker
+			frappe.logger().warning("⚠️ Service worker file not found, generating fallback version")
+			service_worker_content = get_fallback_service_worker()
 		
 		# Set appropriate headers for service worker
 		if not hasattr(frappe.local, 'response'):
@@ -296,13 +306,93 @@ def get_firebase_service_worker():
 			frappe.local.response.headers = frappe._dict()
 			
 		frappe.local.response.headers.update({
-			"Content-Type": "application/javascript",
+			"Content-Type": "application/javascript; charset=utf-8",
 			"Service-Worker-Allowed": "/",
-			"Cache-Control": "no-cache, no-store, must-revalidate"
+			"Cache-Control": "no-cache, no-store, must-revalidate",
+			"Access-Control-Allow-Origin": "*",
+			"Access-Control-Allow-Methods": "GET",
+			"Access-Control-Allow-Headers": "Content-Type"
 		})
 		
 		return service_worker_content
 		
 	except Exception as e:
-		frappe.logger().error(f"Error serving service worker: {str(e)}")
-		frappe.throw(_("Error loading service worker: {0}").format(str(e))) 
+		frappe.logger().error(f"❌ Error serving service worker: {str(e)}")
+		return get_fallback_service_worker()
+
+
+def get_fallback_service_worker():
+	"""
+	Generate fallback service worker content
+	"""
+	return """// Firebase Messaging Service Worker - Fallback Version
+// Import Firebase scripts
+importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
+
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBjvUyp3VClva2ZEJYlumonaYnwE9_WYC8",
+  authDomain: "erpnextvn-d0ec7.firebaseapp.com",
+  projectId: "erpnextvn-d0ec7",
+  storageBucket: "erpnextvn-d0ec7.firebasestorage.app",
+  messagingSenderId: "771489672323",
+  appId: "1:771489672323:web:04698dae5fd6db76af7fb6",
+  measurementId: "G-13L796L4FB"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+
+// Get messaging instance
+const messaging = firebase.messaging();
+
+// Handle background messages
+messaging.onBackgroundMessage(function(payload) {
+  console.log('[firebase-messaging-sw.js] Received background message:', payload);
+
+  const notificationTitle = payload.notification?.title || 'Raven Notification';
+  const notificationOptions = {
+    body: payload.notification?.body || 'Bạn có một tin nhắn mới',
+    icon: '/assets/raven/raven-logo.png',
+    badge: '/assets/raven/raven-logo.png',
+    image: payload.notification?.image,
+    data: payload.data,
+    tag: payload.data?.channel_id || 'raven-notification',
+    requireInteraction: true
+  };
+
+  // Show notification
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Handle notification click
+self.addEventListener('notificationclick', function(event) {
+  console.log('[firebase-messaging-sw.js] Notification click received:', event);
+
+  event.notification.close();
+
+  const clickAction = event.notification.data?.click_action || '/raven';
+
+  // Open or focus window
+  event.waitUntil(
+    clients.matchAll({
+      type: 'window'
+    }).then(function(clientList) {
+      // Check if there's already a window open
+      for (var i = 0; i < clientList.length; i++) {
+        var client = clientList[i];
+        if (client.url.includes('/raven') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      
+      // If no window is open, open a new one
+      if (clients.openWindow) {
+        return clients.openWindow(clickAction);
+      }
+    })
+  );
+});
+
+console.log('Firebase messaging service worker loaded successfully');""" 
