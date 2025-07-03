@@ -89,11 +89,11 @@ const CreatePollContent = ({ channelID, setIsOpen }: { channelID: string; setIsO
       channel_id: channelID
     })
       .then(() => {
-        toast.success('Poll created')
+        toast.success('Cuộc bình chọn đã được tạo')
         onClose()
       })
       .catch((err) => {
-        toast.error('There was an error.', {
+        toast.error('Có lỗi xảy ra.', {
           description: getErrorMessage(err)
         })
       })
@@ -107,21 +107,26 @@ const CreatePollContent = ({ channelID, setIsOpen }: { channelID: string; setIsO
 
           <Box>
             <Label htmlFor='question' isRequired>
-              Question
+              Câu hỏi
             </Label>
             <TextArea
               {...register('question', {
-                required: 'Question is required'
+                required: 'Câu hỏi là bắt buộc',
+                maxLength: {
+                  value: 255,
+                  message: 'Câu hỏi không được vượt quá 255 ký tự'
+                }
               })}
-              placeholder='Ask a question to gather responses'
+              placeholder='Đặt câu hỏi để thu thập ý kiến'
               required
+              maxLength={255}
             />
             {errors?.question && <ErrorText>{errors.question?.message}</ErrorText>}
           </Box>
 
           <Box>
             <Label htmlFor='options' isRequired>
-              Options
+              Lựa chọn
             </Label>
             <Flex direction={'column'} gap='2'>
               {fields &&
@@ -129,14 +134,19 @@ const CreatePollContent = ({ channelID, setIsOpen }: { channelID: string; setIsO
                   <Flex key={field.id} gap='2' align={'start'}>
                     <div className={'w-full'}>
                       <TextField.Root
-                        placeholder={`Option ${index + 1}`}
+                        placeholder={`Lựa chọn ${index + 1}`}
                         {...register(`options.${index}.option`, {
-                          required: 'Option is required',
+                          required: 'Lựa chọn là bắt buộc',
                           minLength: {
                             value: 1,
-                            message: 'Option cannot be empty'
+                            message: 'Lựa chọn không được để trống'
+                          },
+                          maxLength: {
+                            value: 255,
+                            message: 'Lựa chọn không được vượt quá 255 ký tự'
                           }
                         })}
+                        maxLength={255}
                       ></TextField.Root>
                       {errors?.options?.[index]?.option && (
                         <ErrorText>{errors.options?.[index]?.option?.message}</ErrorText>
@@ -149,7 +159,7 @@ const CreatePollContent = ({ channelID, setIsOpen }: { channelID: string; setIsO
                       aria-label='delete'
                       variant={'ghost'}
                       size={'1'}
-                      title='Remove Option'
+                      title='Xóa lựa chọn'
                       onClick={() => handleRemoveOption(index)}
                     >
                       <BiTrash size={'12'} />
@@ -167,17 +177,17 @@ const CreatePollContent = ({ channelID, setIsOpen }: { channelID: string; setIsO
                   onClick={handleAddOption}
                 >
                   <BiPlus size={'14'} />
-                  Add Option
+                  Thêm lựa chọn
                 </Button>
                 <Text size='1' className='text-gray-500'>
-                  Maximum of 10 options allowed
+                  Tối đa 10 lựa chọn
                 </Text>
               </Flex>
             </Flex>
           </Box>
 
           <Box>
-            <Label>Settings</Label>
+            <Label>Cài đặt</Label>
             <Flex direction={'column'} gap='2'>
               <Text as='label' size='2'>
                 <Flex gap='2' align='center'>
@@ -188,7 +198,7 @@ const CreatePollContent = ({ channelID, setIsOpen }: { channelID: string; setIsO
                       <Checkbox {...f} onCheckedChange={(v) => onChange(v ? 1 : 0)} />
                     )}
                   />
-                  Allow users to select multiple options
+                  Cho phép người dùng chọn nhiều lựa chọn
                 </Flex>
               </Text>
 
@@ -201,7 +211,7 @@ const CreatePollContent = ({ channelID, setIsOpen }: { channelID: string; setIsO
                       <Checkbox {...f} onCheckedChange={(v) => onChange(v ? 1 : 0)} />
                     )}
                   />
-                  Make this poll anonymous
+                  Cuộc bình chọn ẩn danh
                 </Flex>
               </Text>
             </Flex>
@@ -213,7 +223,7 @@ const CreatePollContent = ({ channelID, setIsOpen }: { channelID: string; setIsO
                 Hủy
               </Button>
             </Dialog.Close>
-            <Button type='submit'>Create</Button>
+            <Button type='submit'>Tạo cuộc bình chọn</Button>
           </Flex>
         </Flex>
       </form>
