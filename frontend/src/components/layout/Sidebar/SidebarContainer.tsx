@@ -54,7 +54,7 @@ export const useMentionUnreadCount = () => {
 export const filterItems = [
   { label: 'Trò chuyện', icon: HiOutlineChatAlt2 },
   { label: 'Chưa đọc', icon: HiOutlineInbox },
-  { label: 'Cuộc gọi nhỡ', icon: FiPhoneMissed },
+  // { label: 'Cuộc gọi nhỡ', icon: FiPhoneMissed },
   { label: 'Đã gắn cờ', icon: HiOutlineFlag },
   { label: 'Nhắc đến', icon: HiOutlineAtSymbol },
   { label: 'Nhãn', icon: HiOutlineTag },
