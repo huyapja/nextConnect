@@ -35,7 +35,8 @@ export const DoneChannelList = () => {
   return (
     <div className='flex flex-col gap-2'>
       {doneChannels?.length > 0 && (
-        <div className='ml-auto mr-2'>
+        <div className='ml-auto mr-2 flex items-center gap-2'>
+          <p className='text-xs'>Đánh dấu tất cả chưa xong</p>
           <Tooltip content={'Đánh dấu tất cả chưa xong'} side='top'>
             <button
               onClick={handleMarkAllDone}

@@ -81,6 +81,8 @@ type Props = {
 const PinnedChannelItem = ({ channel }: Props) => {
   const isDM = channel.is_direct_message === 1
   const userInfo = useGetUser(channel.peer_user_id)
+  const isBot = userInfo?.type === 'Bot'
+
   const displayName = isDM ? userInfo?.full_name : channel.channel_name
   const { workspaceID, channelID } = useParams()
   const navigate = useNavigate()
@@ -108,7 +110,7 @@ const PinnedChannelItem = ({ channel }: Props) => {
           {/* Avatar */}
           <div className='w-8 h-8'>
             {isDM ? (
-              <UserAvatar src={userInfo?.user_image} alt={userInfo?.full_name ?? channel.peer_user_id} />
+              <UserAvatar isBot={isBot} src={userInfo?.user_image} alt={userInfo?.full_name ?? channel.peer_user_id} />
             ) : (
               <ChannelIcon groupImage={channel.group_image} type={channel.type} />
             )}
