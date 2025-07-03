@@ -103,18 +103,22 @@ class RavenMessage(Document):
 
 	def extract_mentions(self, soup):
 		"""
-		Extract all user mentions from the HTML content
+		Extract all user mentions from the HTML content.
+		- Tự động tạo mention record
+		- Gửi realtime cho từng user được mention
+		- Nếu là thread -> tự động thêm user vào thread nếu chưa join
 		"""
 		self.mentions = []
 		unique_mentions = set()
 
+		is_thread = frappe.db.get_value("Raven Channel", self.channel_id, "is_thread")
+
 		for d in soup.find_all("span", attrs={"data-type": "userMention"}):
 			mention_id = d.get("data-id")
-
 			if not mention_id:
 				continue
 
-			# Handle @All Members
+			# === Handle @all
 			if mention_id == "all":
 				members = frappe.get_all(
 					"Raven Channel Member",
@@ -126,6 +130,19 @@ class RavenMessage(Document):
 					if user_id not in unique_mentions:
 						self.append("mentions", {"user": user_id})
 
+						# Nếu là thread → đảm bảo người dùng nằm trong thread
+						if is_thread:
+							exists = frappe.db.exists(
+								"Raven Channel Member",
+								{"channel_id": self.channel_id, "user_id": user_id}
+							)
+							if not exists:
+								frappe.get_doc({
+									"doctype": "Raven Channel Member",
+									"channel_id": self.channel_id,
+									"user_id": user_id
+								}).insert(ignore_if_duplicate=True)
+
 						frappe.publish_realtime(
 							"raven_mention",
 							{
@@ -136,20 +153,34 @@ class RavenMessage(Document):
 							after_commit=True,
 						)
 						unique_mentions.add(user_id)
-			# Handle normal user mentions
-			elif mention_id not in unique_mentions:
-					self.append("mentions", {"user": mention_id})
 
-					frappe.publish_realtime(
-						"raven_mention",
-						{
-							"channel_id": self.channel_id,
-							"user_id": mention_id,
-						},
-						user=mention_id,
-						after_commit=True,
+			# === Handle @user
+			elif mention_id not in unique_mentions:
+				self.append("mentions", {"user": mention_id})
+
+				# Nếu là thread → đảm bảo user được thêm vào thread
+				if is_thread:
+					exists = frappe.db.exists(
+						"Raven Channel Member",
+						{"channel_id": self.channel_id, "user_id": mention_id}
 					)
-					unique_mentions.add(mention_id)
+					if not exists:
+						frappe.get_doc({
+							"doctype": "Raven Channel Member",
+							"channel_id": self.channel_id,
+							"user_id": mention_id
+						}).insert(ignore_if_duplicate=True)
+
+				frappe.publish_realtime(
+					"raven_mention",
+					{
+						"channel_id": self.channel_id,
+						"user_id": mention_id,
+					},
+					user=mention_id,
+					after_commit=True,
+				)
+				unique_mentions.add(mention_id)
 
 	def remove_empty_trailing_paragraphs(self, soup):
 		"""
@@ -189,7 +220,7 @@ class RavenMessage(Document):
 		If the message is of type Poll, the poll_id should be set
 		"""
 		if self.message_type == "Poll" and not self.poll_id:
-			frappe.throw(_("Poll ID is mandatory for a poll message"))
+			frappe.throw(_("ID poll là bắt buộc cho tin nhắn poll"))
 
 	def before_insert(self):
 		"""
