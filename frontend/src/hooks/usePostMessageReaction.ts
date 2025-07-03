@@ -4,6 +4,7 @@ import { FrappeConfig, FrappeContext, useSWRConfig } from 'frappe-react-sdk'
 import { useCallback, useContext } from 'react'
 import { Message } from '../../../types/Messaging/Message'
 import { useUserData } from './useUserData'
+import eventBus from '@/utils/event-emitter'
 
 /**
  * This hook is used to post a reaction to a message optimistically
@@ -88,6 +89,14 @@ const usePostMessageReaction = () => {
               emoji_name
             })
             .then(() => {
+              // Phát ra event user:interacted để đánh dấu tin nhắn đã đọc khi thả reaction
+              eventBus.emit('user:interacted', {
+                source: 'reaction',
+                timestamp: Date.now(),
+                message_id: message.name,
+                channel_id: message.channel_id
+              })
+              
               return updateMessageWithReaction(data)
             })
         },
