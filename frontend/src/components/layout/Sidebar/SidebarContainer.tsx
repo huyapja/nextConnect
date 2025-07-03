@@ -132,7 +132,6 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
   const { title, setTitle, tempMode, setLabelID } = useSidebarMode()
   const isIconOnly = tempMode === 'show-only-icons'
   const { mentionUnreadCount, resetMentions } = useMentionUnreadCount()
-  // const { unreadMissedCallCount } = useMissedCallCount()
   const { data: unreadThreads } = useUnreadThreadsCount()
   const totalSaved = useSavedMessageCount()
 

@@ -37,6 +37,7 @@ import ThreadsCustom from '../threads/ThreadsCustom'
 import { MessageSaved } from './DirectMessageSaved'
 import { ScrollArea } from '@radix-ui/themes'
 
+
 import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
 
 type UnifiedChannel = ChannelWithUnreadCount | DMChannelWithUnreadCount | any
@@ -354,6 +355,15 @@ export const DirectMessageItemElement = ({
   const shouldShowBadge = channel.unread_count > 0 || isManuallyMarked
 
   const handleNavigate = () => {
+    // const lastRead = lastReadStorage.get(channel.name)
+
+    // const params = new URLSearchParams()
+
+    // if (lastRead) {
+    //   params.set('message_id', lastRead)
+    //   params.set('message_source', 'read') // 👈 phân biệt nguồn
+    // }
+
     navigate(`/${workspaceID}/${channel.name}`)
     clearManualMark(channel.name)
   }
