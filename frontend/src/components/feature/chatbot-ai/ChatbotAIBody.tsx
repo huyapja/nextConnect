@@ -3,8 +3,8 @@ import { ChatSession } from '@/components/feature/chatbot-ai/ChatbotAIContainer'
 import { useChatbotConversations, useChatbotMessages, useSendChatbotMessage } from '@/hooks/useChatbotAPI'
 import { Message } from '@/types/ChatBot/types'
 import { normalizeConversations, normalizeMessages } from '@/utils/chatBot-options'
-import { useFrappeEventListener } from 'frappe-react-sdk'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { FrappeConfig, FrappeContext, useFrappeEventListener } from 'frappe-react-sdk'
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import ChatStreamLoader from '../chat/ChatStream/ChatStreamLoader'
 import { CustomFile } from '../file-upload/FileDrop'
@@ -18,15 +18,16 @@ const ChatbotAIBody = ({ botID }: { botID?: string }) => {
   const { data: conversations } = useChatbotConversations()
   // Lấy messages từ backend
   const { data: messages, mutate: mutateMessages, isLoading: loadingMessages } = useChatbotMessages(botID || undefined)
+  const { call } = useContext(FrappeContext) as FrappeConfig
 
   const [socketConnected, setSocketConnected] = useState(true)
   const [localMessages, setLocalMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isThinking, setIsThinking] = useState(false)
   const [visibleCount, setVisibleCount] = useState(MESSAGES_PER_PAGE)
   const [fileError, setFileError] = useState<string | null>(null)
-  const { addFile, uploadFiles } = useUploadChatbotFile(botID as string, input)
+  const [pendingMessage, setPendingMessage] = useState<Message | null>(null) // Track pending message với files
+  const { files, addFile, addFiles, removeFile, uploadFiles, canAddMore, maxFiles, fileUploadProgress } = useUploadChatbotFile(botID as string, input)
 
   const { call: sendMessage, loading: sending } = useSendChatbotMessage()
 
@@ -59,28 +60,114 @@ const ChatbotAIBody = ({ botID }: { botID?: string }) => {
       if (error) {
         setFileError(error)
       } else {
-        setSelectedFile(file)
-        setFileError(null)
+        const success = addFile(file)
+        if (success) {
+          setFileError(null)
+        }
       }
     },
-    [validateFile]
+    [validateFile, addFile]
   )
 
-  const handleRemoveFile = useCallback(() => {
-    setSelectedFile(null)
+  // Multiple file handling
+  const handleFilesSelect = useCallback(
+    (fileList: File[]) => {
+      const validFiles: File[] = []
+      let hasError = false
+      
+      for (const file of fileList) {
+        const error = validateFile(file)
+        if (error) {
+          setFileError(error)
+          hasError = true
+          break
+        } else {
+          validFiles.push(file)
+        }
+      }
+      
+      if (!hasError && validFiles.length > 0) {
+        const success = addFiles(validFiles)
+        if (success) {
+          setFileError(null)
+        }
+      }
+    },
+    [validateFile, addFiles]
+  )
+
+  const handleRemoveFile = useCallback((fileId: string) => {
+    removeFile(fileId)
     setFileError(null)
+  }, [removeFile])
+
+  const handleClearAllFiles = useCallback(() => {
+    files.forEach(file => removeFile(file.fileID))
+    setFileError(null)
+  }, [files, removeFile])
+
+  // Function to group consecutive file messages from same user
+  const groupConsecutiveFileMessages = useCallback((messages: Message[]) => {
+    const grouped: Message[] = []
+    let i = 0
+
+    while (i < messages.length) {
+      const currentMsg = messages[i]
+      
+      if (currentMsg.role === 'user' && currentMsg.message_type === 'File') {
+        // Start of a file group - collect all consecutive file messages
+        const fileGroup: Message[] = [currentMsg]
+        let j = i + 1
+        
+        while (j < messages.length && 
+               messages[j].role === 'user' && 
+               messages[j].message_type === 'File') {
+          fileGroup.push(messages[j])
+          j++
+        }
+        
+        if (fileGroup.length > 1) {
+          // Group multiple file messages into one
+          const firstMsg = fileGroup[0]
+          const fileTexts = fileGroup.map(msg => msg.content).filter(Boolean)
+          const combinedContent = fileTexts.length > 0 
+            ? fileTexts.join('\n') 
+            : `${fileGroup.length} files uploaded`
+            
+          grouped.push({
+            ...firstMsg,
+            content: combinedContent,
+            id: `grouped-${firstMsg.id}`,
+            // Store original messages for rendering multiple files
+            groupedFiles: fileGroup
+          } as Message & { groupedFiles: Message[] })
+        } else {
+          // Single file message
+          grouped.push(currentMsg)
+        }
+        
+        i = j
+      } else {
+        // Regular message
+        grouped.push(currentMsg)
+        i++
+      }
+    }
+    
+    return grouped
   }, [])
 
-  // Message pagination logic
+  // Message pagination logic with grouping
   const { visibleMessages, hasMore, startIdx } = useMemo(() => {
-    const totalMessages = localMessages?.length
+    const groupedMessages = groupConsecutiveFileMessages(localMessages)
+    const totalMessages = groupedMessages?.length
     const startIdx = Math.max(0, totalMessages - visibleCount)
     return {
-      visibleMessages: localMessages.slice(startIdx),
+      visibleMessages: groupedMessages.slice(startIdx),
       hasMore: startIdx > 0,
       startIdx
     }
-  }, [localMessages, visibleCount])
+  }, [localMessages, visibleCount, groupConsecutiveFileMessages])
 
   const handleShowMore = useCallback(() => {
     setVisibleCount((prev) => prev + MESSAGES_PER_PAGE)
@@ -89,13 +176,14 @@ const ChatbotAIBody = ({ botID }: { botID?: string }) => {
   // Reset visible count when session changes
   useEffect(() => {
     setVisibleCount(MESSAGES_PER_PAGE)
+    setPendingMessage(null) // Clear pending message when switching sessions
   }, [botID])
 
   // Hàm gửi tin nhắn Chatbot AI
   const handleSendMessage = useCallback(async () => {
     const trimmedInput = input.trim()
     const hasText = trimmedInput !== ''
-    const hasFile = !!selectedFile
+    const hasFile = files.length > 0
 
     if ((!hasText && !hasFile) || sending || loadingMessages) return
 
@@ -110,17 +198,21 @@ const ChatbotAIBody = ({ botID }: { botID?: string }) => {
         content: msg.content
       })) || []
 
-    const tempMessage: Message | null = hasText
+    // Tạo pending message với cả text và files
+    const newPendingMessage: Message | null = (hasText || hasFile)
       ? {
           id: `temp-${Date.now()}`,
           role: 'user',
-          content: trimmedInput,
-          pending: true
+          content: hasText 
+            ? (hasFile ? `${trimmedInput}\n\n[Đang tải ${files.length} file...]` : trimmedInput)
+            : `[Đang tải ${files.length} file...]`,
+          pending: true,
+          message_type: hasFile ? 'File' : 'Text'
         }
       : null
 
-    if (tempMessage) {
-      setLocalMessages((prev) => [...prev, tempMessage])
+    if (newPendingMessage) {
+      setPendingMessage(newPendingMessage)
     }
 
     setInput('')
@@ -130,13 +222,8 @@ const ChatbotAIBody = ({ botID }: { botID?: string }) => {
     try {
       const context = createContext()
 
-      if (hasFile) {
-        const fileWrapper = selectedFile as CustomFile
-        fileWrapper.fileID = `${fileWrapper.name}-${Date.now()}`
-
-        await addFile(fileWrapper)
-        await uploadFiles()
-      } else if (hasText) {
+      // STEP 1: Gửi text message trước (nếu có)
+      if (hasText) {
         await sendMessage({
           conversation_id: botID!,
           message: trimmedInput,
@@ -144,29 +231,45 @@ const ChatbotAIBody = ({ botID }: { botID?: string }) => {
         })
       }
 
+      // STEP 2: Upload files sau (nếu có)
+      if (hasFile) {
+        await uploadFiles()
+      }
+
+      // STEP 3: Trigger AI reply để xử lý toàn bộ conversation
+      if (hasText || hasFile) {
+        try {
+          await call.post('raven.api.chatbot.trigger_ai_reply', {
+            conversation_id: botID!,
+            message_text: null // Không cần message text vì đã gửi rồi
+          })
+        } catch (error) {
+          console.error('Error triggering AI reply:', error)
+        }
+      }
+
       await mutateMessages()
     } catch (error) {
       console.error('Error sending message:', error)
       toast.error('Đã xảy ra lỗi khi gửi tin nhắn. Vui lòng thử lại.')
 
-      if (tempMessage) {
-        setLocalMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id))
-      }
+      // Clear pending message on error
+      setPendingMessage(null)
+      setIsThinking(false)
     } finally {
-      setSelectedFile(null)
       clearFileInput()
     }
   }, [
     input,
-    selectedFile,
+    files,
     sending,
     loadingMessages,
     localMessages,
     botID,
     sendMessage,
     mutateMessages,
-    addFile,
-    uploadFiles
+    uploadFiles,
+    call
   ])
 
   // Input handlers
@@ -195,8 +298,31 @@ const ChatbotAIBody = ({ botID }: { botID?: string }) => {
   // Update local messages when backend messages change
   useEffect(() => {
     const normalizedMessages = normalizeMessages(messages)
-    setLocalMessages(normalizedMessages)
-  }, [messages])
+    
+    // Merge pending message if exists
+    const allMessages = [...normalizedMessages]
+    
+    if (pendingMessage) {
+      // Simple check: if we have any recent user messages from backend, clear pending
+      const latestUserMessage = normalizedMessages
+        .filter(msg => msg.role === 'user')
+        .slice(-1)[0]
+      
+      if (latestUserMessage && 
+          normalizedMessages.length > 0 && 
+          pendingMessage.content &&
+          (latestUserMessage.content?.includes(pendingMessage.content.split('\n\n[Đang tải')[0]) ||
+           latestUserMessage.message_type === 'File')) {
+        // Clear pending message if we found a matching backend message
+        setPendingMessage(null)
+      } else {
+        // Add pending message if no match found
+        allMessages.push(pendingMessage)
+      }
+    }
+    
+    setLocalMessages(allMessages)
+  }, [messages, pendingMessage])
 
   // Thêm xử lý realtime cho tin nhắn AI
   useFrappeEventListener('raven:new_ai_message', (data) => {
@@ -216,6 +342,8 @@ const ChatbotAIBody = ({ botID }: { botID?: string }) => {
       ]
     })
     setIsThinking(false)
+    // Clear pending message when AI replies
+    setPendingMessage(null)
   })
 
   useFrappeEventListener('raven:error', (error) => {
@@ -263,10 +391,12 @@ const ChatbotAIBody = ({ botID }: { botID?: string }) => {
       onKeyDown={handleKeyDown}
       onSubmit={handleSubmit}
       // File states
-      selectedFile={selectedFile}
+      files={files}
       fileError={fileError}
       onFileSelect={handleFileSelect}
+      onFilesSelect={handleFilesSelect}
       onRemoveFile={handleRemoveFile}
+      onClearAllFiles={handleClearAllFiles}
       allowedFileTypes={ALLOWED_FILE_TYPES}
       maxFileSize={MAX_FILE_SIZE}
       // Message states
