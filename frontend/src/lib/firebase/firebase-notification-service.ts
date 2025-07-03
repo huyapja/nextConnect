@@ -157,7 +157,8 @@ class FirebaseNotificationService {
           firebase_token: token,
           environment: 'Web',
           device_information: navigator.userAgent
-        })
+        }),
+        credentials: 'include'
       });
       const result = await response.json();
       if (result.message?.success) {
