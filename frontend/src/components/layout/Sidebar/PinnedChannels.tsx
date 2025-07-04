@@ -1,7 +1,7 @@
 import { closestCenter, DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import * as ContextMenu from '@radix-ui/react-context-menu'
+import { ContextMenu, Portal } from '@radix-ui/themes'
 import clsx from 'clsx'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useMemo, useState } from 'react'
@@ -54,13 +54,13 @@ const SortablePinnedItem = ({ channel }: { channel: any }) => {
 
   return (
     <ContextMenu.Root>
-      <ContextMenu.Trigger asChild>
+      <ContextMenu.Trigger>
         <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
           <PinnedChannelItem channel={channel} />
         </div>
       </ContextMenu.Trigger>
 
-      <ContextMenu.Portal>
+      <Portal>
         <ContextMenu.Content className='z-20 w-30 bg-white dark:bg-gray-800 text-black dark:text-white rounded shadow-md p-1'>
           <ContextMenu.Item
             className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer p-1'
@@ -69,7 +69,7 @@ const SortablePinnedItem = ({ channel }: { channel: any }) => {
             <span>Bỏ ghim khỏi danh sách</span>
           </ContextMenu.Item>
         </ContextMenu.Content>
-      </ContextMenu.Portal>
+      </Portal>
     </ContextMenu.Root>
   )
 }

@@ -5,10 +5,10 @@ import { BoxProps } from '@radix-ui/themes/dist/cjs/components/box'
 import { clsx } from 'clsx'
 import { generateAvatarColor } from '../feature/selectDropdowns/GenerateAvatarColor'
 import { RiRobot2Fill } from 'react-icons/ri'
-import { Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { AvailabilityStatus } from '../feature/userSettings/AvailabilityStatus/SetUserAvailabilityMenu'
 import { BiX } from 'react-icons/bi'
-import ImageViewer from './ImageViewer'
+const ImageViewer = lazy(() => import('@/components/common/ImageViewer'))
 
 interface UserAvatarProps extends Partial<AvatarProps> {
   alt?: string
