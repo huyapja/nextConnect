@@ -25,7 +25,6 @@ export function settingCallEvents(
 
     const container = document.getElementById('audio_container') || document.body
     container.appendChild(audioEl)
-
     console.log('[🎧] Remote audio element attached')
   })
 
@@ -60,10 +59,9 @@ export function settingCallEvents(
   })
 
   call.on('hangup', (res: any) => {
-    console.log('[📴] Call ended')
-    onCallEnded?.()
+    console.log('[📴] Call ended (event)', res)
+    onCallEnded?.() // hàm này gọi reset + clear audio
   })
-
   call.on('info', (info: any) => {
     console.log('[ℹ️] Info event:', info)
   })
