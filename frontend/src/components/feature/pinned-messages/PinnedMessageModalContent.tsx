@@ -55,7 +55,7 @@ export const PinnedMessageModalContent = ({ onClose }: { onClose: () => void }) 
         <Dialog.Description>Tin nhắn đã ghim</Dialog.Description>
       </VisuallyHidden>
       <ErrorBanner error={error} />
-      <Flex direction='column' gap='3' justify='start'>
+      <Flex direction='column' gap='3' justify='start' className='max-h-[65vh] overflow-y-auto pr-2'>
         {data?.message?.map((message) => {
           return <MessageBox key={message.name} message={message} handleScrollToMessage={handleScrollToMessage} />
         })}

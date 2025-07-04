@@ -137,3 +137,21 @@ def mark_mention_as_read():
         "mention_id": mention_id,
         "is_read": 1
     }
+
+@frappe.whitelist(methods=["POST"])
+def hide_all_mentions():
+    """Ẩn nhanh toàn bộ lượt nhắc của người dùng hiện tại."""
+    # Update tất cả mention chưa ẩn thành ẩn
+    frappe.db.sql(
+        """
+        UPDATE `tabRaven Mention`
+        SET is_hidden = 1
+        WHERE `user` = %s AND IFNULL(is_hidden, 0) != 1
+        """,
+        (frappe.session.user,),
+    )
+
+    # Reset bộ đếm cache (nếu có) – tuỳ triển khai cụ thể
+    return {
+        "status": "success",
+    }

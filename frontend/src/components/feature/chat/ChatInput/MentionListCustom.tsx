@@ -124,6 +124,23 @@ const MentionsList: React.FC = () => {
     })
   }, [])
 
+  // === Ẩn tất cả lượt nhắc
+  const { call: hideAllMentions, loading: isHidingAll } = useFrappePostCall(
+    'raven.api.mentions.hide_all_mentions'
+  )
+
+  const handleHideAll = async () => {
+    try {
+      await hideAllMentions({})
+      // Ẩn toàn bộ trong UI
+      setHiddenMentionIds(new Set(mentions.map((m) => m.name)))
+      mutateUnreadCount({ message: 0 }, false)
+      toast.success('Đã ẩn toàn bộ lượt nhắc')
+    } catch (err: any) {
+      toast.error(err.message || 'Không thể ẩn lượt nhắc')
+    }
+  }
+
   const handleMentionRead = () => {
     mutateUnreadCount((prev: { message: number }) => {
       const count = prev?.message ?? 0
@@ -147,6 +164,17 @@ const MentionsList: React.FC = () => {
 
   return (
     <ul role='list' className='list-none h-full overflow-y-auto scrollbar-hide'>
+      {/* Button ẩn tất cả */}
+      <li className='sticky top-0 z-10 bg-white dark:bg-gray-900 px-4 py-2 flex justify-end border-b border-gray-4'>
+        <button
+          onClick={handleHideAll}
+          disabled={isHidingAll}
+          className='p-1.5 rounded-md bg-gray-2 dark:bg-gray-3 text-gray-500 dark:text-white/70 flex items-center gap-1 hover:bg-gray-200 dark:hover:bg-white/10 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50'
+        >
+          <BiHide size={14} />
+          <span className='text-sm'>Ẩn tất cả</span>
+        </button>
+      </li>
       {mentions
         ?.filter((m) => !hiddenMentionIds.has(m.name))
         .map((mention) => (
