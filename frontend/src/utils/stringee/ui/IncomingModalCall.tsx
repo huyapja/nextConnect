@@ -23,35 +23,60 @@ const IncomingCallModal = () => {
   const handleAnswer = () => {
     currentCall.answer((res: any) => {
       console.log('[✅] Answered', res)
+
+      const remoteTracks = currentCall.getRemoteTracks?.() || []
+
+      remoteTracks.forEach((track: any) => {
+        const audioEl = track.attach()
+        audioEl.autoplay = true
+        audioEl.controls = false
+        audioEl.style.display = 'none'
+
+        const container = document.getElementById('audio_container') || document.body
+        container.appendChild(audioEl)
+
+        audioEl
+          .play()
+          .then(() => console.log('[🔊] Remote audio started playing from handleAnswer'))
+          .catch((err: any) => console.warn('[⚠️] Remote audio play blocked in handleAnswer:', err))
+      })
+
       setOpen(false)
     })
   }
 
   const handleReject = () => {
-    rejectCall() // 👈 Sử dụng hàm từ context
+    rejectCall()
     setOpen(false)
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    <Dialog.Root open={open}>
       <Dialog.Content className='rounded-xl p-6 text-center space-y-4'>
-        <div className='text-lg font-semibold'>📞 Cuộc gọi đến</div>
-        <div>
-          <p className='mb-3'>
-            Từ: <strong>{user?.full_name}</strong>
-          </p>
-          <UserAvatar
-            src={user?.user_image ?? ''}
-            alt={user?.full_name}
-            size='7'
-            availabilityStatus={user?.availability_status}
-          />
-        </div>
+        <Dialog.Title className='text-lg font-semibold'>📞 Cuộc gọi đến</Dialog.Title>
+
+        <Dialog.Description>
+          Từ: <strong>{user?.full_name}</strong>
+        </Dialog.Description>
+
+        <UserAvatar
+          src={user?.user_image ?? ''}
+          alt={user?.full_name}
+          size='7'
+          availabilityStatus={user?.availability_status}
+        />
+
         <div className='flex justify-center gap-4 mt-4'>
-          <button onClick={handleAnswer} className='px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg'>
+          <button
+            onClick={handleAnswer}
+            className='px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg cursor-pointer'
+          >
             Trả lời
           </button>
-          <button onClick={handleReject} className='px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg'>
+          <button
+            onClick={handleReject}
+            className='px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg cursor-pointer'
+          >
             Từ chối
           </button>
         </div>

@@ -19,8 +19,9 @@ import ChannelHeaderMenu from './ChannelHeaderMenu'
 // import { useGlobalStringee } from '../call-stringee/GlobalStringeeProvider'
 import clsx from 'clsx'
 import { useStringee } from '@/utils/StringeeProvider'
-import IncomingCallModal from '@/utils/stringee/ui/IncomingModalCall'
 import { useStringeeToken } from '@/hooks/useStringeeToken'
+import { FaPhoneFlip } from 'react-icons/fa6'
+import { toast } from 'sonner'
 
 interface DMChannelHeaderProps {
   channelData: DMChannelListItem
@@ -52,7 +53,7 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
 
   const userLabels = enrichedChannel?.user_labels || []
 
-  const { makeCall } = useStringee()
+  const { makeCall, hasMicrophone } = useStringee()
 
   const { userId } = useStringeeToken()
 
@@ -142,10 +143,13 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
         {peerUserId && (
           <div>
             <button
+              title={`Gọi cho ${userName}`}
+              className='cursor-pointer bg-transparent'
               onClick={() => {
-                console.log('👤 userId:', userId)
-                console.log('🎯 peerUserId:', peerUserId)
-
+                if (!hasMicrophone) {
+                  toast.error('Không thể tạo được cuộc gọi, hãy kiểm tra lại mic và audio hoặc F5 lại trang')
+                  return
+                }
                 if (!peerUserId || peerUserId === userId) {
                   console.warn('❌ Không thể gọi cho chính mình hoặc peerUserId không hợp lệ')
                   return
@@ -158,9 +162,8 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
                 }
               }}
             >
-              📞 Gọi
+              <FaPhoneFlip />
             </button>
-            {/* <button onClick={endCall}>🔚 Kết thúc</button> */}
           </div>
         )}
         <ChannelHeaderMenu channelData={channelData} />
