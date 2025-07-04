@@ -24,7 +24,7 @@ export const useScrollBehavior = (virtuosoRef: MutableRefObject<VirtuosoHandle |
 
   const scrollToMessage = useCallback(
     (messageID: string, messages: any[]) => {
-      if (!virtuosoRef.current || !messages) return
+      if (!virtuosoRef.current || !messages) return false
 
       const messageIndex = messages.findIndex((message) => message.name === messageID)
 
@@ -34,7 +34,9 @@ export const useScrollBehavior = (virtuosoRef: MutableRefObject<VirtuosoHandle |
           behavior: 'smooth',
           align: 'center'
         })
+        return true
       }
+      return false
     },
     [virtuosoRef]
   )

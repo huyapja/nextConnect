@@ -301,14 +301,6 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
             return
           }
 
-          // Preload sớm tin nhắn cũ nếu gần đầu
-          if (range.startIndex <= 15 && hasOlderMessages && !chatState.isLoadingMessages) {
-            dispatch({ type: 'SET_LOADING_MESSAGES', payload: true })
-            loadOlderMessages().finally(() => {
-              safeSetTimeout(() => dispatch({ type: 'SET_LOADING_MESSAGES', payload: false }), 300)
-            })
-          }
-
           const shouldLoadNewer =
             hasNewMessages &&
             range.endIndex >= messages.length - 5 &&
