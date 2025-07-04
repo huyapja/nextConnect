@@ -126,12 +126,12 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
     dispatch({ type: 'SET_IS_INCOMING', payload: false })
     dispatch({ type: 'SET_IS_CONNECTING', payload: true })
 
-    playRingtone() // ⏺️ Bắt đầu phát nhạc chờ
+    playRingtone() // Bắt đầu phát nhạc chờ
 
     settingCallEvents(
       call,
       () => {
-        stopRingtone() // ⛔ Tắt nhạc khi call kết thúc
+        stopRingtone() // Tắt nhạc khi call kết thúc
         resetCallState()
       },
       (val) => {
@@ -161,6 +161,7 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
       if (res?.r === 0) {
         resetCallState()
         clearAudioElements()
+        stopRingtone()
       } else {
         console.warn('[⚠️] Call hangup failed:', res)
       }
@@ -176,6 +177,7 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
       console.log('[❌] Call rejected', res)
       resetCallState()
       clearAudioElements()
+      stopRingtone()
     })
   }
 
