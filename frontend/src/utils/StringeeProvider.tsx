@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { settingCallEvents } from './stringee/callEventHandlers'
 import { initStringeeClient } from './stringee/initClient'
 import { useOutgoingCallAudio } from './stringee/sound/useOutgoingCallAudio'
+import { useIncomingCallAudio } from './stringee/sound/useInComingCallAudio'
 
 const initialCallState = {
   currentCall: null,
@@ -46,6 +47,7 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
   const [state, dispatch] = useReducer(callReducer, initialCallState)
 
   const { play: playRingtone, stop: stopRingtone } = useOutgoingCallAudio()
+  const { play: playIncomingRingtone, stop: stopIncomingRingtone } = useIncomingCallAudio()
 
   const clearAudioElements = () => {
     const container = document.getElementById('audio_container')
@@ -60,13 +62,19 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
   // 📲 Xử lý cuộc gọi đến
   const handleIncomingCall = (incomingCall: any) => {
     console.log('[📲] Incoming call received')
+
     dispatch({ type: 'SET_CURRENT_CALL', payload: incomingCall })
     dispatch({ type: 'SET_IS_INCOMING', payload: true })
     dispatch({ type: 'SET_IS_CONNECTING', payload: true })
 
+    playIncomingRingtone() // 🔔 Play ngay khi có cuộc gọi
+
     settingCallEvents(
       incomingCall,
-      resetCallState,
+      () => {
+        stopIncomingRingtone() // 🛑 Tắt khi kết thúc
+        resetCallState()
+      },
       (val) => dispatch({ type: 'SET_IS_IN_CALL', payload: val }),
       (val) => dispatch({ type: 'SET_IS_CONNECTING', payload: val })
     )
