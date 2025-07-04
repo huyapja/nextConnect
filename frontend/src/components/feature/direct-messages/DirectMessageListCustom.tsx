@@ -127,6 +127,9 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
   const togglePin = useSetAtom(togglePinnedChannelAtom)
   const isPinned = pinnedIDs.includes(channelID)
 
+  // Actions đánh dấu đọc/chưa đọc
+  const { markAsUnread, markAsRead, isManuallyMarked } = useChannelActions()
+
   const handleToggleLabel = async (label: LabelType, isAssigned: boolean) => {
     const labelID = label.label_id
     try {
@@ -244,10 +247,14 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
       <ContextMenu.Content className='z-50 bg-white dark:bg-gray-800 border dark:border-gray-600 shadow rounded p-1 text-black dark:text-white'>
         {/* Đánh dấu đã đọc / chưa đọc */}
         <ContextMenu.Item
-          onClick={() => console.log('TODO: implement markAsUnread')}
+          onClick={() => {
+            // Nếu đang có unread → đánh dấu đã đọc, ngược lại đánh dấu chưa đọc
+            const hasUnread = dm_channel.unread_count > 0 || isManuallyMarked(dm_channel.name)
+            hasUnread ? markAsRead(dm_channel) : markAsUnread(dm_channel)
+          }}
           className='dark:hover:bg-gray-700 px-2 py-1 rounded cursor-pointer'
         >
-          Đánh dấu đã đọc {/* hoặc "chưa đọc" nếu bạn xử lý được */}
+          {dm_channel.unread_count > 0 || isManuallyMarked(dm_channel.name) ? 'Đánh dấu đã đọc' : 'Đánh dấu chưa đọc'}
         </ContextMenu.Item>
 
         {/* Ghim / Bỏ ghim */}

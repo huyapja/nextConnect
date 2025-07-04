@@ -136,24 +136,28 @@ def mark_channel_as_unread(channel_id):
 
     return {"message": "Channel marked as unread successfully"}
 
-# @frappe.whitelist()
-# def mark_channel_as_read(channel_id):
-#     """
-#     Đánh dấu channel là đã đọc bằng cách cập nhật last_visit = now()
-#     cho Raven Channel Member của người dùng hiện tại.
-#     """
-#     user = frappe.session.user
+@frappe.whitelist(methods=["POST"])
+def mark_channel_as_read(channel_id):
+    """Đánh dấu channel là đã đọc bằng cách cập nhật last_visit = now() cho Raven Channel Member của người dùng hiện tại."""
+    user = frappe.session.user
 
-#     # Kiểm tra người dùng có phải là thành viên của kênh không
-#     channel_member = frappe.get_doc(
-#         "Raven Channel Member",
-#         {"channel_id": channel_id, "user_id": user},
-#     )
+    # Kiểm tra người dùng có phải là thành viên của kênh không
+    channel_member = frappe.get_doc(
+        "Raven Channel Member",
+        {"channel_id": channel_id, "user_id": user},
+    )
 
-#     # Cập nhật thời điểm xem gần nhất là thời điểm hiện tại
-#     channel_member.last_visit = frappe.utils.now_datetime()
-#     channel_member.save()
-#     frappe.db.commit()
+    # Cập nhật thời điểm xem gần nhất là thời điểm hiện tại
+    channel_member.last_visit = frappe.utils.now_datetime()
+    channel_member.save()
+    frappe.db.commit()
 
-#     return {"message": "Channel marked as read successfully"}
+    # Gửi realtime event tới client để xoá đánh dấu thủ công nếu có
+    frappe.publish_realtime(
+        event="raven:manually_marked_updated",
+        message={"channel_id": channel_id, "action": "remove"},
+        user=user,
+    )
+
+    return {"message": "Channel marked as read successfully"}
 

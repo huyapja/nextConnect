@@ -155,3 +155,28 @@ def hide_all_mentions():
     return {
         "status": "success",
     }
+
+@frappe.whitelist(methods=["POST"])
+def mark_channel_mentions_as_read():
+    """Đánh dấu toàn bộ lượt nhắc của người dùng hiện tại trong 1 kênh là đã đọc."""
+    data = frappe.request.json or {}
+    channel_id = data.get("channel_id")
+
+    if not channel_id:
+        frappe.throw("Missing channel_id")
+
+    # Cập nhật tất cả mention thuộc channel và user chưa đọc => đã đọc
+    frappe.db.sql(
+        """
+        UPDATE `tabRaven Mention` rm
+        JOIN `tabRaven Message` msg ON rm.parent = msg.name
+        SET rm.is_read = 1
+        WHERE rm.user = %s
+          AND msg.channel_id = %s
+          AND IFNULL(rm.is_read, 0) != 1
+          AND IFNULL(rm.is_hidden, 0) != 1
+        """,
+        (frappe.session.user, channel_id),
+    )
+
+    return {"status": "success"}
