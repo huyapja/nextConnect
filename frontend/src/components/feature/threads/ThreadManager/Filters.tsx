@@ -1,8 +1,7 @@
-import { IconButton, Tooltip } from '@radix-ui/themes'
+import { IconButton, Tooltip, Select, Text, TextField } from '@radix-ui/themes'
 
 import { useChannelList } from '@/utils/channel/ChannelListProvider'
 import { ChannelIcon } from '@/utils/layout/channelIcon'
-import { Select, Text, TextField } from '@radix-ui/themes'
 import { BiFilter, BiSearch } from 'react-icons/bi'
 import { toast } from 'sonner'
 import { useParams } from 'react-router-dom'
@@ -106,30 +105,16 @@ export const UnreadFilter = ({
   onlyShowUnread: boolean
   setOnlyShowUnread: (onlyShowUnread: boolean) => void
 }) => {
-  const onToggle = () => {
-    const currentValue = onlyShowUnread
-    setOnlyShowUnread(!onlyShowUnread)
-
-    if (currentValue) {
-      toast.info('Viewing all threads', {
-        position: 'bottom-center',
-        duration: 800
-      })
-    } else {
-      toast.info('Viewing only unread threads', {
-        position: 'bottom-center',
-        duration: 800
-      })
-    }
-  }
-
-  const text = onlyShowUnread ? 'Showing only unread threads' : 'Showing all threads'
-
   return (
-    <Tooltip content={'Filter unread threads'}>
-      <IconButton variant={onlyShowUnread ? 'solid' : 'soft'} aria-label={text} title={text} onClick={onToggle}>
-        <BiFilter size={16} />
-      </IconButton>
-    </Tooltip>
+    <Select.Root
+      value={onlyShowUnread ? 'unread' : 'all'}
+      onValueChange={(val) => setOnlyShowUnread(val === 'unread')}
+    >
+      <Select.Trigger className='w-32' aria-label='Lọc chủ đề' placeholder='Lọc' />
+      <Select.Content className='z-50'>
+        <Select.Item value='all'>Tất cả chủ đề</Select.Item>
+        <Select.Item value='unread'>Chưa đọc</Select.Item>
+      </Select.Content>
+    </Select.Root>
   )
 }

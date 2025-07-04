@@ -88,7 +88,7 @@ const ThreadsList = ({
         channel_id: swrKey[1].channel_id,
         start_after: swrKey[1].startAfter,
         limit: PAGE_SIZE,
-        only_show_unread: false
+        only_show_unread: swrKey[1].onlyShowUnread
       })
     },
     {
