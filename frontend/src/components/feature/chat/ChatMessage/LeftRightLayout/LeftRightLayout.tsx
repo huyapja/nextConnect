@@ -283,7 +283,7 @@ export const LeftRightLayout = ({
           </ContextMenu.Root>
         </Stack>
         {!isPending && (
-          <div className='absolute bottom-0 -right-2'>
+          <div className='absolute bottom-0 right-2 translate-x-full'>
             <MessageSeenStatus
               hasBeenSeen={hasBeenSeen}
               channelType={channel?.type}
