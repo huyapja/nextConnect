@@ -9,8 +9,10 @@ const OutgoingCallModal = lazy(() => import('./OutgoingCallModal'))
 const IncomingCallModal = lazy(() => import('./IncomingModalCall'))
 
 const StringeeModal = () => {
-  const { isConnecting, isIncoming, isCalling, isInCall } = useStringee()
+  const context = useStringee()
+  if (!context) return null
 
+  const { isConnecting, isIncoming, isCalling, isInCall } = context
   return (
     <Suspense fallback={null}>
       {(isConnecting || isInCall) && <InCallModal />}

@@ -1,114 +1,70 @@
-export const settingCallEvents = (call: any, onCallEnded?: () => void, setIsInCall?: (value: boolean) => void) => {
-  // 🟢 Track âm thanh local
-  call.on('addlocaltrack', (localTrack: any) => {
-    localTrack.on('ready', () => {
-      console.log('[📶] Local audio track ready')
-    })
-
-    const audioEl = localTrack.attach()
-    audioEl.autoplay = true
-    audioEl.muted = true // tránh nghe chính mình
-    audioEl.style.display = 'none'
-
-    const container = document.getElementById('audio_container')
-    container?.appendChild(audioEl)
-    console.log('[🎧] Local audio element attached (hidden)')
+export function settingCallEvents(
+  call: any,
+  onCallEnded?: () => void,
+  setIsInCall?: (value: boolean) => void,
+  setIsConnecting?: (value: boolean) => void
+) {
+  call.on('addlocalstream', (stream: MediaStream) => {
+    console.log('[🎤] Local stream added')
+    const localVideo = document.getElementById('localVideo') as HTMLVideoElement
+    if (localVideo) {
+      localVideo.srcObject = null
+      localVideo.srcObject = stream
+    }
   })
 
-  // 🔵 Track âm thanh remote
-  call.on('addremotetrack', (remoteTrack: any) => {
-    console.log('[🔵] Remote track added:', remoteTrack)
+  call.on('addremotestream', (stream: MediaStream) => {
+    console.log('[🔊] Remote stream added')
 
-    // ✅ Bổ sung sự kiện track-level để tránh warning
-    if (remoteTrack.on) {
-      remoteTrack.on('mediastate', (state: any) => {
-        console.log('[🎙️][track] Remote track media state:', state)
-      })
-    }
-
-    remoteTrack.on('ready', () => {
-      console.log('[📶] Remote audio track ready')
-    })
-
-    const audioEl = remoteTrack.attach()
+    const audioEl = document.createElement('audio')
+    audioEl.srcObject = stream
     audioEl.autoplay = true
+    audioEl.muted = false
     audioEl.controls = false
     audioEl.style.display = 'none'
 
-    // Log thêm khi audio thực sự chạy
-    audioEl.onplaying = () => {
-      console.log('[🔊] Remote audio is playing')
-    }
+    const container = document.getElementById('audio_container') || document.body
+    container.appendChild(audioEl)
 
-    audioEl.oncanplay = () => {
-      console.log('[🟢] Remote audio can play')
-    }
-
-    // Tránh bị block autoplay
-    setTimeout(() => {
-      audioEl
-        .play()
-        .then(() => {
-          console.log('[🔊] Remote audio started playing')
-        })
-        .catch((err: any) => {
-          console.warn('[⚠️] Remote audio play blocked:', err)
-        })
-    }, 100)
-
-    const container = document.getElementById('audio_container')
-    container?.appendChild(audioEl)
-    console.log('[🎧] Remote audio element attached (hidden)')
+    console.log('[🎧] Remote audio element attached')
   })
 
-  // ⛔ Khi mất track
-  call.on('removelocaltrack', (track: any) => {
-    console.log('[⛔] Remove local track')
-    track.detachAndRemove()
-  })
-
-  call.on('removeremotetrack', (track: any) => {
-    console.log('[⛔] Remove remote track')
-    track.detachAndRemove()
-  })
-
-  // ❌ Không dùng stream-level
-  call.on('addlocalstream', () => {
-    console.log('[ℹ️] Ignored event: addlocalstream')
-  })
-
-  call.on('addremotestream', () => {
-    console.log('[ℹ️] Ignored event: addremotestream')
-  })
-
-  // 📞 Khi bên kia nhấc máy
-  call.on('answer', (res: any) => {
-    console.log('[📞] Answered', res)
-  })
-
-  // 🔁 Trạng thái signaling
   call.on('signalingstate', (state: any) => {
     console.log('[🔁] Signaling state:', state)
-
     if ([5, 6].includes(state.code)) {
-      console.log('[🔚] Call ended via signaling state')
+      console.log('[🔚] Call ended via signaling')
       onCallEnded?.()
     }
   })
 
-  // 🎙️ Khi media connected
   call.on('mediastate', (state: any) => {
     console.log('[🎙️] Media state:', state)
-
-    if (state?.isConnected) {
-      console.log('[🟢] mediaState isConnected = true → setting isInCall = true')
+    if (state?.code === 1 || state?.reason === 'Connected') {
+      console.log('[✅] Media connected → gọi setInCall + tắt connecting')
       setIsInCall?.(true)
+      setIsConnecting?.(false)
     }
   })
 
-  // 📴 Khi kết thúc
-  call.on('hangup', () => {
-    console.log('[📴] Hangup triggered')
+  call.on('answer', (res: any) => {
+    console.log('[📞] Answered', res)
+    if (res.r === 0) {
+      setIsInCall?.(true)
+      setIsConnecting?.(false) //
+    }
+  })
+
+  call.on('reject', (res: any) => {
+    console.log('[❌] Call rejected')
     onCallEnded?.()
+  })
+
+  call.on('hangup', (res: any) => {
+    console.log('[📴] Call ended')
+    onCallEnded?.()
+  })
+
+  call.on('info', (info: any) => {
+    console.log('[ℹ️] Info event:', info)
   })
 }

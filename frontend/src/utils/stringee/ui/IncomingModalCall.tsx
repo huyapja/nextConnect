@@ -20,27 +20,34 @@ const IncomingCallModal = () => {
 
   if (!currentCall || !isIncoming) return null
 
+  // const handleAnswer = () => {
+  //   currentCall.answer((res: any) => {
+  //     console.log('[✅] Answered', res)
+
+  //     const remoteTracks = currentCall.getRemoteTracks?.() || []
+
+  //     remoteTracks.forEach((track: any) => {
+  //       const audioEl = track.attach()
+  //       audioEl.autoplay = true
+  //       audioEl.controls = false
+  //       audioEl.style.display = 'none'
+
+  //       const container = document.getElementById('audio_container') || document.body
+  //       container.appendChild(audioEl)
+
+  //       audioEl
+  //         .play()
+  //         .then(() => console.log('[🔊] Remote audio started playing from handleAnswer'))
+  //         .catch((err: any) => console.warn('[⚠️] Remote audio play blocked in handleAnswer:', err))
+  //     })
+
+  //     setOpen(false)
+  //   })
+  // }
+
   const handleAnswer = () => {
     currentCall.answer((res: any) => {
       console.log('[✅] Answered', res)
-
-      const remoteTracks = currentCall.getRemoteTracks?.() || []
-
-      remoteTracks.forEach((track: any) => {
-        const audioEl = track.attach()
-        audioEl.autoplay = true
-        audioEl.controls = false
-        audioEl.style.display = 'none'
-
-        const container = document.getElementById('audio_container') || document.body
-        container.appendChild(audioEl)
-
-        audioEl
-          .play()
-          .then(() => console.log('[🔊] Remote audio started playing from handleAnswer'))
-          .catch((err: any) => console.warn('[⚠️] Remote audio play blocked in handleAnswer:', err))
-      })
-
       setOpen(false)
     })
   }

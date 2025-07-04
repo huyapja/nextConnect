@@ -10,17 +10,16 @@ const InCallModal = () => {
     let interval: any
     if (isInCall) {
       setSeconds(0)
-      interval = setInterval(() => {
-        setSeconds((s) => s + 1)
-      }, 1000)
+      interval = setInterval(() => setSeconds((s) => s + 1), 1000)
     }
     return () => clearInterval(interval)
   }, [isInCall])
 
-  if (!isInCall && !isConnecting) return null
+  const showModal = isInCall || isConnecting
+  if (!showModal) return null
 
   return (
-    <Dialog.Root open>
+    <Dialog.Root open={showModal}>
       <Dialog.Content className='p-6 text-center space-y-4 rounded-xl bg-white shadow-lg'>
         <Dialog.Title>{isInCall ? '🟢 Đang trong cuộc gọi' : '⏳ Đang kết nối...'}</Dialog.Title>
 

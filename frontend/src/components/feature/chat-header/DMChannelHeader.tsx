@@ -155,11 +155,7 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
                   return
                 }
 
-                if (makeCall) {
-                  makeCall(peerUserId)
-                } else {
-                  console.warn('makeCall not ready')
-                }
+                makeCall(peerUserId, false)
               }}
             >
               <FaPhoneFlip />

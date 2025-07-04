@@ -265,7 +265,6 @@ const MainPageContent = () => {
             </PanelGroup>
           )}
           <StringeeModal />
-          <div id='audio_container' />
         </HStack>
 
         <CommandMenu />
