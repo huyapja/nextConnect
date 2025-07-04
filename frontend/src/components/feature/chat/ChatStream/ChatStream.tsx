@@ -301,6 +301,14 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
             return
           }
 
+          // Preload sớm tin nhắn cũ nếu gần đầu
+          if (range.startIndex <= 15 && hasOlderMessages && !chatState.isLoadingMessages) {
+            dispatch({ type: 'SET_LOADING_MESSAGES', payload: true })
+            loadOlderMessages().finally(() => {
+              safeSetTimeout(() => dispatch({ type: 'SET_LOADING_MESSAGES', payload: false }), 300)
+            })
+          }
+
           const shouldLoadNewer =
             hasNewMessages &&
             range.endIndex >= messages.length - 5 &&
@@ -340,6 +348,8 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
           chatState.isScrolling,
           chatState.isLoadingMessages,
           chatState.hasInitialLoadedWithMessageId,
+          hasOlderMessages,
+          loadOlderMessages,
           newMessageIds,
           markMessageAsSeen,
           safeSetTimeout
@@ -590,16 +600,33 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
     )
 
     const scrollActionToBottom = useCallback(() => {
-      if (virtuosoRef.current && messages?.length) {
-        scheduleFrame(() => {
-          virtuosoRef.current?.scrollToIndex({
-            index: messages.length - 1,
-            behavior: 'auto',
-            align: 'end'
-          })
-        })
-      }
-    }, [messages?.length, scheduleFrame])
+      if (!virtuosoRef.current || !combinedMessages?.length) return;
+      const tryScroll = () => {
+        const totalMessages = Array.isArray(messages) ? messages.length : 0;
+        if (combinedMessages.length < totalMessages && hasOlderMessages) {
+          loadOlderMessages().finally(() => {
+            setTimeout(tryScroll, 100);
+          });
+        } else {
+          scheduleFrame(() => {
+            virtuosoRef.current?.scrollToIndex({
+              index: combinedMessages.length - 1,
+              behavior: 'smooth',
+              align: 'end'
+            });
+            // Sau khi scroll, scrollToIndex lại lần nữa để đảm bảo luôn ở đáy
+            setTimeout(() => {
+              virtuosoRef.current?.scrollToIndex({
+                index: combinedMessages.length - 1,
+                behavior: 'smooth',
+                align: 'end'
+              });
+            }, 150);
+          });
+        }
+      };
+      tryScroll();
+    }, [combinedMessages?.length, messages, hasOlderMessages, loadOlderMessages, scheduleFrame]);
 
     const computeItemKey = useCallback((index: number, item: any) => {
       // Ensure we have valid index and item

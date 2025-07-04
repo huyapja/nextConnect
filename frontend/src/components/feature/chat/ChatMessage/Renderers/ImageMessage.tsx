@@ -5,7 +5,7 @@ import { getFileName } from '@/utils/operations'
 import { UserFields } from '@/utils/users/UserListProvider'
 import { Box, Button, Dialog, Flex, IconButton, Link } from '@radix-ui/themes'
 import { clsx } from 'clsx'
-import { Suspense, lazy, memo, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, memo, useMemo, useRef, useState, useEffect } from 'react'
 import { Blurhash } from 'react-blurhash'
 import { BiChevronDown, BiChevronRight, BiDownload, BiX } from 'react-icons/bi'
 import { ImageMessage } from '../../../../../../../types/Messaging/Message'
@@ -13,6 +13,21 @@ import { RetryActionButtons } from '@/components/common/RetryActionButton'
 import { RetryStatusIcon } from '@/components/common/RetryStatusIcon'
 
 const ImageViewer = lazy(() => import('@/components/common/ImageViewer'))
+
+// Custom hook dùng IntersectionObserver
+function useInViewport(ref: React.RefObject<HTMLElement>, rootMargin = '100px') {
+  const [isInView, setIsInView] = useState(false)
+  useEffect(() => {
+    if (!ref.current) return
+    const observer = new window.IntersectionObserver(
+      ([entry]) => setIsInView(entry.isIntersecting),
+      { rootMargin }
+    )
+    observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [ref, rootMargin])
+  return isInView
+}
 
 interface ImageMessageProps {
   message: ImageMessage
@@ -274,6 +289,9 @@ export const ImageMessageBlock = memo(
       }, 200)
     }
 
+    // Sử dụng IntersectionObserver để lazy render ảnh
+    const isInView = useInViewport(contentRef, '200px')
+
     return (
       <Box className='relative flex items-center gap-2'>
         {showRetryButton && <RetryStatusIcon chatStyle={CHAT_STYLE} />}
@@ -317,22 +335,25 @@ export const ImageMessageBlock = memo(
                 )}
               </Box>
 
-              <img
-                src={imageSrc}
-                loading='lazy'
-                onLoad={onLoad}
-                className='z-50 absolute top-0 left-0 rounded-md shadow-md object-cover'
-                height={height}
-                width={width}
-                alt={`Image file sent by ${message.owner}`}
-                style={{
-                  maxHeight: height + 'px',
-                  maxWidth: width + 'px',
-                  minHeight: height + 'px',
-                  minWidth: width + 'px'
-                }}
-                onContextMenu={(e) => e.stopPropagation()}
-              />
+              {/* Lazy render ảnh chỉ khi in viewport */}
+              {isInView && (
+                <img
+                  src={imageSrc}
+                  loading='lazy'
+                  onLoad={onLoad}
+                  className='z-50 absolute top-0 left-0 rounded-md shadow-md object-cover'
+                  height={height}
+                  width={width}
+                  alt={`Image file sent by ${message.owner}`}
+                  style={{
+                    maxHeight: height + 'px',
+                    maxWidth: width + 'px',
+                    minHeight: height + 'px',
+                    minWidth: width + 'px'
+                  }}
+                  onContextMenu={(e) => e.stopPropagation()}
+                />
+              )}
             </Box>
           )}
 
