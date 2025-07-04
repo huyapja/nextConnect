@@ -185,7 +185,9 @@ const Tiptap = forwardRef(
     const [enterKeyBehaviour] = useAtom(EnterKeyBehaviourAtom)
 
     const handleMessageSendAction = (editor: any) => {
-      const hasContent = editor.getText().trim()?.length > 0
+      // Một số trường hợp (ví dụ chỉ dán link) getText() trả về chuỗi rỗng
+      // nhưng editor vẫn có nội dung (node Link). Sử dụng !editor.isEmpty để kiểm tra.
+      const hasContent = !editor.isEmpty
       let html = ''
       let json = {}
       if (hasContent) {
@@ -217,6 +219,7 @@ const Tiptap = forwardRef(
     }
     // this is a dummy extension only to create custom keydown behavior
     const KeyboardHandler = Extension.create({
+      priority: 1000, // Ưu tiên cao để không bị extension khác (ví dụ Link) override
       name: 'keyboardHandler',
       addKeyboardShortcuts() {
         return {

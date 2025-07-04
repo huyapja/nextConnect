@@ -234,6 +234,10 @@ const MentionItem: React.FC<{
     call({ mention_id: mention.mention_id })
       .then(() => {
         onHide(mention.name)
+        if (!isRead) {
+          setIsRead(true)
+          onMarkReadSuccess?.()
+        }
       })
       .catch((err) => {
         toast.error(err.message)
