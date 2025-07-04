@@ -31,7 +31,7 @@ export const ChannelDetails = ({ channelData, channelMembers, onClose }: Channel
   }, [channelMembers, currentUser])
 
   return (
-    <Flex direction='column' gap='4' className={'h-[66vh] pb-2 sm:h-96'}>
+    <Flex direction='column' gap='2' className={'h-[66vh] pb-2 sm:h-96'}>
       <Box className={'p-4 rounded-md border border-gray-6'}>
         <Flex justify={'between'}>
           <Flex direction={'column'}>
@@ -52,7 +52,8 @@ export const ChannelDetails = ({ channelData, channelMembers, onClose }: Channel
           />
         </Flex>
       </Box>
-      <ChannelPushNotificationToggle channelID={channelData.name} channelMember={channelMember} />
+      {/* Commented out to hide Push Notifications */}
+      {/* <ChannelPushNotificationToggle channelID={channelData.name} channelMember={channelMember} /> */}
 
       <Box className={'p-4 rounded-md border border-gray-6'}>
         <Flex direction='column' gap='4'>

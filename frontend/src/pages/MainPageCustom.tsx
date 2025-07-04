@@ -146,7 +146,8 @@ const MainPageContent = () => {
       <CircleUserListProvider>
         <HStack gap='0' className={`flex h-screen ${mode}`}>
           {/* Sidebar cố định chỉ hiện khi desktop */}
-          {!isMobile && !isTablet && <WorkspacesSidebar />}
+          {/* Hidden WorkspacesSidebar - moved to SidebarContainer */}
+        {/* {!isMobile && !isTablet && <WorkspacesSidebar />} */}
 
           {isMobile ? (
             // ==============================
