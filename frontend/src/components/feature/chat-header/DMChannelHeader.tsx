@@ -28,6 +28,7 @@ interface DMChannelHeaderProps {
 }
 
 export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
+  
   const { currentUser } = useContext(UserContext)
   // const { client: globalClient } = useGlobalStringee()
 
@@ -56,6 +57,9 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
   const { makeCall, hasMicrophone } = useStringee()
 
   const { userId } = useStringeeToken()
+
+  // console.log(peerUser, userId);
+  
 
   return (
     <PageHeader>
@@ -146,10 +150,10 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
               title={`Gọi cho ${userName}`}
               className='cursor-pointer bg-transparent'
               onClick={() => {
-                if (!hasMicrophone) {
-                  toast.error('Không thể tạo được cuộc gọi, hãy kiểm tra lại mic và audio hoặc F5 lại trang')
-                  return
-                }
+                // if (!hasMicrophone) {
+                //   toast.error('Không thể tạo được cuộc gọi, hãy kiểm tra lại mic và audio hoặc F5 lại trang')
+                //   return
+                // }
                 if (!peerUserId || peerUserId === userId) {
                   console.warn('❌ Không thể gọi cho chính mình hoặc peerUserId không hợp lệ')
                   return
