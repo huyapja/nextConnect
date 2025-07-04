@@ -3,13 +3,16 @@ import { Dialog } from '@radix-ui/themes'
 import { useStringee } from '@/utils/StringeeProvider'
 import { useGetUser } from '@/hooks/useGetUser'
 import { UserAvatar } from '@/components/common/UserAvatar'
+import { useIncomingCallAudio } from '../sound/useInComingCallAudio'
 
 const IncomingCallModal = () => {
   const { currentCall, isIncoming, rejectCall } = useStringee()
   const [open, setOpen] = useState(false)
 
+  const { play: playIncomingSound, stop: stopIncomingSound } = useIncomingCallAudio()
   const user = useGetUser(currentCall?.fromNumber)
 
+  // Điều khiển mở modal
   useEffect(() => {
     if (currentCall && isIncoming) {
       setOpen(true)
@@ -18,32 +21,18 @@ const IncomingCallModal = () => {
     }
   }, [currentCall, isIncoming])
 
+  // Chỉ play âm thanh khi modal hiển thị
+  useEffect(() => {
+    if (open) {
+      playIncomingSound()
+    } else {
+      stopIncomingSound()
+    }
+
+    return () => stopIncomingSound()
+  }, [open])
+
   if (!currentCall || !isIncoming) return null
-
-  // const handleAnswer = () => {
-  //   currentCall.answer((res: any) => {
-  //     console.log('[✅] Answered', res)
-
-  //     const remoteTracks = currentCall.getRemoteTracks?.() || []
-
-  //     remoteTracks.forEach((track: any) => {
-  //       const audioEl = track.attach()
-  //       audioEl.autoplay = true
-  //       audioEl.controls = false
-  //       audioEl.style.display = 'none'
-
-  //       const container = document.getElementById('audio_container') || document.body
-  //       container.appendChild(audioEl)
-
-  //       audioEl
-  //         .play()
-  //         .then(() => console.log('[🔊] Remote audio started playing from handleAnswer'))
-  //         .catch((err: any) => console.warn('[⚠️] Remote audio play blocked in handleAnswer:', err))
-  //     })
-
-  //     setOpen(false)
-  //   })
-  // }
 
   const handleAnswer = () => {
     currentCall.answer((res: any) => {
