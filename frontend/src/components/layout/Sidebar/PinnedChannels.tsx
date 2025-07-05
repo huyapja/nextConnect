@@ -63,7 +63,7 @@ const SortablePinnedItem = ({ channel }: { channel: any }) => {
       <Portal>
         <ContextMenu.Content className='z-20 w-30 bg-white dark:bg-gray-800 text-dark dark:text-white rounded shadow-md p-1'>
           <ContextMenu.Item
-            className='px-3 py-2 text-sm text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-white dark:hover:text-white rounded cursor-pointer hover:bg-[#5b5bd6]'
+            className='px-3 py-2 text-sm text-black dark:text-white hover:text-white dark:hover:text-white rounded cursor-pointer hover:bg-[#5b5bd6]'
             onClick={() => togglePin(channel.name)}
           >
             <span>Bỏ ghim khỏi danh sách</span>
