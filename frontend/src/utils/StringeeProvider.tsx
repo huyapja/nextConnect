@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { settingCallEvents } from './stringee/callEventHandlers'
 import { initStringeeClient } from './stringee/initClient'
 import { useOutgoingCallAudio } from './stringee/sound/useOutgoingCallAudio'
+import { useSetUserBusy } from '@/hooks/useSetUserBusy'
 
 const initialCallState = {
   currentCall: null,
@@ -37,8 +38,13 @@ function callReducer(state: any, action: any) {
 
 // Context
 const StringeeContext = createContext<any>(null)
-export const useStringee = () => useContext(StringeeContext)
-
+export const useStringee = () => {
+  const context = useContext(StringeeContext)
+  if (!context) {
+    throw new Error('useStringee must be used within a <StringeeProvider>')
+  }
+  return context
+}
 // Hàm kiểm tra mic tái sử dụng
 export const StringeeProvider = ({ children }: { children: React.ReactNode }) => {
   const { token, userId } = useStringeeToken()
@@ -46,6 +52,7 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
   const [state, dispatch] = useReducer(callReducer, initialCallState)
 
   const { play: playRingtone, stop: stopRingtone } = useOutgoingCallAudio()
+  const { markUserBusy, markUserIdle } = useSetUserBusy()
 
   const clearAudioElements = () => {
     const container = document.getElementById('audio_container')
@@ -53,6 +60,12 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
   }
 
   const resetCallState = () => {
+    const call = state.currentCall
+    const peerId = call?.toNumber || call?.fromNumber
+
+    if (userId) markUserIdle(userId)
+    if (peerId) markUserIdle(peerId)
+
     dispatch({ type: 'RESET' })
     clearAudioElements()
     stopRingtone()
@@ -60,7 +73,7 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
 
   // 📲 Xử lý cuộc gọi đến
   const handleIncomingCall = (incomingCall: any) => {
-    console.log('[📲] Incoming call received')
+    console.log('[📲] Incoming call received', incomingCall)
 
     dispatch({ type: 'SET_CURRENT_CALL', payload: incomingCall })
     dispatch({ type: 'SET_IS_INCOMING', payload: true })
@@ -68,9 +81,7 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
 
     settingCallEvents(
       incomingCall,
-      () => {
-        resetCallState()
-      },
+      resetCallState, // 👈 Gọi resetCallState khi kết thúc
       (val) => dispatch({ type: 'SET_IS_IN_CALL', payload: val }),
       (val) => dispatch({ type: 'SET_IS_CONNECTING', payload: val })
     )
@@ -110,9 +121,7 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
 
     settingCallEvents(
       call,
-      () => {
-        resetCallState()
-      },
+      resetCallState,
       (val) => {
         dispatch({ type: 'SET_IS_IN_CALL', payload: val })
         if (val) stopRingtone()
@@ -121,8 +130,10 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
     )
 
     call.makeCall((res: any) => {
-      console.log('[📞] Make call result', res)
-      if (res.r !== 0) {
+      if (res.r === 0) {
+        markUserBusy(userId)
+        markUserBusy(to)
+      } else {
         resetCallState()
       }
     })
@@ -134,11 +145,7 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
 
     call.hangup((res: any) => {
       console.log('[🔚] Call ended by user', res)
-      if (res?.r === 0) {
-        resetCallState()
-      } else {
-        console.warn('[⚠️] Call hangup failed:', res)
-      }
+      resetCallState()
     })
   }
 
@@ -149,7 +156,6 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
     call.reject((res: any) => {
       console.log('[❌] Call rejected', res)
       resetCallState()
-      stopRingtone()
     })
   }
 

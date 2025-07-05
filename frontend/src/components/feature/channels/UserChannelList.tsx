@@ -85,7 +85,7 @@ const UserChannelList = () => {
         <br />
         {/* Hiển thị tất cả users chưa từng nhắn tin */}
         {allUsersWithoutMessages.length > 0 && <h5 className='text-sm mt-0 font-medium'>Những người chưa từng nhắn</h5>}
-        {allUsersWithoutMessages.map((user) => user && <UserWithoutDMItem key={user.name} userID={user.name} />)}
+        {allUsersWithoutMessages.map((user, index) => user && <UserWithoutDMItem key={index} userID={user.name} />)}
 
         {bots.length > 0 && (
           <>
