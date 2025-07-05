@@ -283,6 +283,7 @@ export const DirectMessageItem = ({ dm_channel }: { dm_channel: DMChannelWithUnr
           onClick={() => {
             // Nếu đang có unread → đánh dấu đã đọc, ngược lại đánh dấu chưa đọc
             const hasUnread = dm_channel.unread_count > 0 || isManuallyMarked(dm_channel.name)
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
             hasUnread ? markAsRead(dm_channel) : markAsUnread(dm_channel)
           }}
           className='dark:hover:bg-gray-700 px-2 py-1 rounded cursor-pointer'
