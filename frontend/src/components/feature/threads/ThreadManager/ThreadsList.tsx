@@ -293,8 +293,8 @@ const EmptyStateForThreads = ({ isFiltered = false }: { isFiltered?: boolean }) 
     () =>
       isFiltered
         ? {
-            title: "You're all caught up",
-            description: 'There are no unread threads to show. Clear the filter to see all threads.'
+            title: 'Bạn đã xem hết',
+            description: 'Không còn chủ đề nào.'
           }
         : {
             title: 'Chưa có chủ đề nào',

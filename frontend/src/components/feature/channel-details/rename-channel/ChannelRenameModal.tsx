@@ -42,11 +42,38 @@ export const RenameChannelModalContent = ({
   } = methods
   const { updateDoc, loading: updatingDoc, error } = useFrappeUpdateDoc()
 
+  const { mutate } = useSWRConfig()
+
   const onSubmit = async (data: RenameChannelForm) => {
     return updateDoc('Raven Channel', channelID ?? null, {
       channel_name: data.channel_name
     }).then(() => {
-      toast.success('Channel name updated')
+      toast.success('Tên kênh đã được cập nhật')
+      mutate(
+        'channel_list',
+        (prev: { message: any } | undefined) => {
+          if (!prev) return prev
+
+          const { channels, dm_channels } = prev.message
+
+          const newChannels = channels.map((c: any) =>
+            c.name === channelID ? { ...c, channel_name: data.channel_name } : c
+          )
+
+          const newDMChannels = dm_channels.map((c: any) =>
+            c.name === channelID ? { ...c, channel_name: data.channel_name } : c
+          )
+
+          return {
+            message: {
+              channels: newChannels,
+              dm_channels: newDMChannels
+            }
+          }
+        },
+        { revalidate: false }
+      )
+
       onClose()
     })
   }
@@ -96,7 +123,9 @@ export const RenameChannelModalContent = ({
                   aria-invalid={error ? 'true' : 'false'}
                   onChange={handleChange}
                 >
-                  <TextField.Slot side='left'>{<ChannelIcon groupImage={groupImage} type={type} />}</TextField.Slot>
+                  <TextField.Slot side='left'>
+                    {<ChannelIcon groupImage={groupImage} type={'Private'} />}
+                  </TextField.Slot>
                   <TextField.Slot side='right'>
                     <Text size='2' weight='light' color='gray'>
                       {50 - field.value?.length}
