@@ -9,8 +9,8 @@ import { UserContext } from '@/utils/auth/UserProvider'
 import { ChannelListItem, DMChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { Box, Checkbox, Flex, IconButton } from '@radix-ui/themes'
 import clsx from 'clsx'
-import { useSWRConfig } from 'frappe-react-sdk'
-import { MutableRefObject, useCallback, useContext, useMemo, useRef, useState } from 'react'
+import { useSWRConfig, useFrappeGetCall, useFrappePostCall } from 'frappe-react-sdk'
+import { MutableRefObject, useCallback, useContext, useMemo, useRef, useState, useEffect } from 'react'
 import { BiX } from 'react-icons/bi'
 import { useParams } from 'react-router-dom'
 import { VirtuosoHandle } from 'react-virtuoso'
@@ -41,6 +41,20 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
   const { currentUser } = useContext(UserContext)
 
   const virtuosoRef = useRef<VirtuosoHandle>(null)
+
+  // === Xử lý lượt nhắc đã đọc khi mở kênh
+  const { mutate: mutateUnreadMentions } = useFrappeGetCall('raven.api.mentions.get_unread_mention_count')
+  const { call: markChannelMentionsRead } = useFrappePostCall('raven.api.mentions.mark_channel_mentions_as_read')
+
+  useEffect(() => {
+    // Gọi API mỗi khi chuyển kênh
+    if (channelData?.name) {
+      markChannelMentionsRead({ channel_id: channelData.name })
+        .then(() => mutateUnreadMentions())
+        .catch((err) => console.warn('markChannelMentionsRead failed', err))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelData.name])
 
   // Fetch danh sách thành viên của channel hiện tại, cũng như trạng thái loading
   const { channelMembers, isLoading } = useFetchChannelMembers(channelData.name)
@@ -171,8 +185,8 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
   const { sendMessage, loading, pendingMessages, sendOnePendingMessage, removePendingMessage } = useSendMessage(
     channelData.name,
     uploadFiles,
-    uploadOneFile, //
-    onMessageSendCompleted,
+    uploadOneFile, // 
+    onMessageSendCompleted, 
     selectedMessage
   )
 

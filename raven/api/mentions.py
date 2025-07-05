@@ -1,8 +1,35 @@
-import frappe
-from frappe import _
-from frappe.query_builder import Order
-from frappe.query_builder.functions import Count
+"""Frappe server-side utilities.
 
+The additional try/except below is ONLY for static-analysis / type-checking
+in environments where the `frappe` package isn't available (e.g. CI, IDE).
+It has **zero** effect at runtime on a real Frappe bench.
+"""
+
+# pyright: reportMissingImports=false, reportMissingModuleSource=false, reportAttributeAccessIssue=false
+
+from typing import Any
+
+try:
+    import frappe  # type: ignore
+    from frappe import _  # type: ignore
+    from frappe.query_builder import Order  # type: ignore
+    from frappe.query_builder.functions import Count  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover – stub fallback for static analysis
+    class _FrappeStub:  # noqa: D401 – simple stub
+        def __getattr__(self, name: str) -> Any:  # type: ignore
+            return self
+
+        def __call__(self, *args: Any, **kwargs: Any) -> Any:  # type: ignore
+            return self
+
+    frappe = _FrappeStub()  # type: ignore
+
+    def _(txt: str) -> str:  # type: ignore
+        return txt
+
+    # Lightweight stubs
+    Order: Any = object()
+    Count: Any = object()
 
 @frappe.whitelist(methods=["POST"])
 def get_mentions(limit: int = 10, start: int = 0):
@@ -143,40 +170,43 @@ def mark_mention_as_read():
 
 @frappe.whitelist(methods=["POST"])
 def hide_all_mentions():
-    """
-    Ẩn tất cả các lượt nhắc (mentions) chưa bị ẩn của user hiện tại.
-    Trả về danh sách mention.name để frontend dùng filter local.
-    """
-    user = frappe.session.user
-
-    # Lấy tất cả mentions chưa bị ẩn
-    mentions = frappe.get_all(
-        "Raven Mention",
-        filters={
-            "user": user,
-            "is_hidden": 0,
-        },
-        fields=["name"]  # chỉ cần name
+    """Ẩn nhanh toàn bộ lượt nhắc của người dùng hiện tại."""
+    # Update tất cả mention chưa ẩn thành ẩn
+    frappe.db.sql(
+        """
+        UPDATE `tabRaven Mention`
+        SET is_hidden = 1
+        WHERE `user` = %s AND IFNULL(is_hidden, 0) != 1
+        """,
+        (frappe.session.user,),
     )
 
-    if not mentions:
-        return {
-            "message": _("Không có lượt nhắc nào để ẩn."),
-            "hidden_ids": []
-        }
-
-    mention_names = [m.name for m in mentions]
-
-    # Cập nhật is_hidden = 1 theo name (là mention_id thực tế)
-    frappe.db.set_value(
-        "Raven Mention",
-        {"name": ["in", mention_names]},
-        "is_hidden",
-        1,
-        update_modified=False
-    )
-
+    # Reset bộ đếm cache (nếu có) – tuỳ triển khai cụ thể
     return {
-        "message": _("Đã ẩn {0} lượt nhắc.").format(len(mention_names)),
-        "hidden_ids": mention_names  # frontend filter theo mention.name
+        "status": "success",
     }
+
+@frappe.whitelist(methods=["POST"])
+def mark_channel_mentions_as_read():
+    """Đánh dấu toàn bộ lượt nhắc của người dùng hiện tại trong 1 kênh là đã đọc."""
+    data = frappe.request.json or {}
+    channel_id = data.get("channel_id")
+
+    if not channel_id:
+        frappe.throw("Missing channel_id")
+
+    # Cập nhật tất cả mention thuộc channel và user chưa đọc => đã đọc
+    frappe.db.sql(
+        """
+        UPDATE `tabRaven Mention` rm
+        JOIN `tabRaven Message` msg ON rm.parent = msg.name
+        SET rm.is_read = 1
+        WHERE rm.user = %s
+          AND msg.channel_id = %s
+          AND IFNULL(rm.is_read, 0) != 1
+          AND IFNULL(rm.is_hidden, 0) != 1
+        """,
+        (frappe.session.user, channel_id),
+    )
+
+    return {"status": "success"}

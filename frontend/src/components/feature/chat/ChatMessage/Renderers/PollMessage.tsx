@@ -10,6 +10,7 @@ import { UserFields } from '../../../../../utils/users/UserListProvider'
 
 import { ViewPollVotes } from '@/components/feature/polls/ViewPollVotes'
 import { toast } from 'sonner'
+import ErrorBoundary from '@/components/common/ErrorBoundary'
 
 type PollMessageBlockProps = BoxProps & {
   message: PollMessage
@@ -22,6 +23,17 @@ export interface Poll {
 }
 
 export const PollMessageBlock = ({ message, user, ...props }: PollMessageBlockProps) => {
+  // Safety check for message data
+  if (!message || !message.name || !message.poll_id) {
+    return (
+      <Box {...props} pt='1'>
+        <div className='text-red-500 text-sm p-2'>
+          Poll message corrupted - missing required data
+        </div>
+      </Box>
+    )
+  }
+
   // fetch poll data using message_id
   const { data, error, mutate } = useFrappeGetCall<{ message: Poll }>(
     'raven.api.raven_poll.get_poll',
@@ -40,14 +52,46 @@ export const PollMessageBlock = ({ message, user, ...props }: PollMessageBlockPr
   })
 
   return (
-    <Box {...props} pt='1'>
-      <ErrorBanner error={error} />
-      {data && <PollMessageBox data={data.message} messageID={message.name} />}
-    </Box>
+    <ErrorBoundary fallback={
+      <Box {...props} pt='1'>
+        <div className='text-red-500 text-sm p-2'>
+          Lỗi hiển thị poll
+        </div>
+      </Box>
+    }>
+      <Box {...props} pt='1'>
+        <ErrorBanner error={error} />
+        {data && data.message && <PollMessageBox data={data.message} messageID={message.name} />}
+        {data && !data.message && (
+          <div className='text-gray-500 text-sm p-2'>
+            Poll data not available
+          </div>
+        )}
+      </Box>
+    </ErrorBoundary>
   )
 }
 
 const PollMessageBox = ({ data, messageID }: { data: Poll; messageID: string }) => {
+  // Safety checks for poll data
+  if (!data || !data.poll || !data.poll.question) {
+    return (
+      <div className='text-gray-500 text-sm p-2'>
+        Invalid poll data
+      </div>
+    )
+  }
+
+  // Ensure options array exists and is valid
+  const options = Array.isArray(data.poll.options) ? data.poll.options : []
+  if (options.length === 0) {
+    return (
+      <div className='text-gray-500 text-sm p-2'>
+        Poll has no options
+      </div>
+    )
+  }
+
   return (
     <Flex
       align='center'
@@ -76,7 +120,7 @@ const PollMessageBox = ({ data, messageID }: { data: Poll; messageID: string }) 
             </Badge>
           ) : null}
         </Flex>
-        {data.current_user_votes?.length > 0 ? (
+        {Array.isArray(data.current_user_votes) && data.current_user_votes.length > 0 ? (
           <PollResults data={data} />
         ) : (
           <>
@@ -95,7 +139,7 @@ const PollMessageBox = ({ data, messageID }: { data: Poll; messageID: string }) 
         {data.poll.is_anonymous ? null : (
           <Flex gap='2' align='center' className='w-full'>
             <ViewPollVotes poll={data} />
-            {data.current_user_votes?.length > 0 && !data.poll.is_disabled && (
+            {Array.isArray(data.current_user_votes) && data.current_user_votes.length > 0 && !data.poll.is_disabled && (
               <RetractVoteButton pollId={data.poll.name} />
             )}
           </Flex>
@@ -106,13 +150,17 @@ const PollMessageBox = ({ data, messageID }: { data: Poll; messageID: string }) 
 }
 
 const PollResults = ({ data }: { data: Poll }) => {
+  // Safety check for poll options
+  const options = Array.isArray(data.poll.options) ? data.poll.options : []
+  
   return (
     <Flex direction='column' gap='2' className='w-full'>
-      {data.poll.options?.map((option) => {
+      {options.map((option) => {
+        if (!option || !option.name) return null
         return <PollOption key={option.name} data={data} option={option} />
       })}
       <Text as='span' size='1' color='gray' className='px-2'>
-        {data.poll.total_votes} phiếu bầu
+        {data.poll.total_votes || 0} phiếu bầu
       </Text>
     </Flex>
   )
@@ -196,25 +244,31 @@ const SingleChoicePoll = ({ data, messageID }: { data: Poll; messageID: string }
       })
   }
 
+  // Safety check for poll options
+  const options = Array.isArray(data.poll.options) ? data.poll.options : []
+
   return (
     <RadioGroup.Root>
-      {data.poll.options?.map((option) => (
-        <div key={option.name}>
-          <Text as='label' size='2' className='block w-full'>
-            <Flex gap='2' p='2' className='rounded-sm hover:bg-accent-a2 dark:hover:bg-gray-5 w-full'>
-              <RadioGroup.Item
-                disabled={data.poll.is_disabled ? true : false}
-                value={option.name}
-                onClick={() => onVoteSubmit(option)}
-                className='shrink-0'
-              />
-              <div className='min-w-0 flex-1'>
-                <span className='break-words overflow-hidden block'>{option.option}</span>
-              </div>
-            </Flex>
-          </Text>
-        </div>
-      ))}
+      {options.map((option) => {
+        if (!option || !option.name || !option.option) return null
+        return (
+          <div key={option.name}>
+            <Text as='label' size='2' className='block w-full'>
+              <Flex gap='2' p='2' className='rounded-sm hover:bg-accent-a2 dark:hover:bg-gray-5 w-full'>
+                <RadioGroup.Item
+                  disabled={data.poll.is_disabled ? true : false}
+                  value={option.name}
+                  onClick={() => onVoteSubmit(option)}
+                  className='shrink-0'
+                />
+                <div className='min-w-0 flex-1'>
+                  <span className='break-words overflow-hidden block'>{option.option}</span>
+                </div>
+              </Flex>
+            </Text>
+          </div>
+        )
+      })}
     </RadioGroup.Root>
   )
 }
@@ -250,25 +304,31 @@ const MultiChoicePoll = ({ data, messageID }: { data: Poll; messageID: string })
       })
   }
 
+  // Safety check for poll options
+  const options = Array.isArray(data.poll.options) ? data.poll.options : []
+
   return (
     <div>
-      {data.poll.options?.map((option) => (
-        <div key={option.name}>
-          <Text as='label' size='2' className='block w-full'>
-            <Flex gap='2' p='2' className='rounded-sm hover:bg-accent-a2 dark:hover:bg-gray-5 w-full'>
-              <Checkbox
-                disabled={data.poll.is_disabled ? true : false}
-                value={option.name}
-                onCheckedChange={(v) => handleCheckboxChange(option.name, v)}
-                className='shrink-0'
-              />
-              <div className='min-w-0 flex-1'>
-                <span className='break-words overflow-hidden block'>{option.option}</span>
-              </div>
-            </Flex>
-          </Text>
-        </div>
-      ))}
+      {options.map((option) => {
+        if (!option || !option.name || !option.option) return null
+        return (
+          <div key={option.name}>
+            <Text as='label' size='2' className='block w-full'>
+              <Flex gap='2' p='2' className='rounded-sm hover:bg-accent-a2 dark:hover:bg-gray-5 w-full'>
+                <Checkbox
+                  disabled={data.poll.is_disabled ? true : false}
+                  value={option.name}
+                  onCheckedChange={(v) => handleCheckboxChange(option.name, v)}
+                  className='shrink-0'
+                />
+                <div className='min-w-0 flex-1'>
+                  <span className='break-words overflow-hidden block'>{option.option}</span>
+                </div>
+              </Flex>
+            </Text>
+          </div>
+        )
+      })}
       <Flex justify={'between'} align={'center'} gap={'2'}>
         <Text size='1' className='text-gray-500'>
           Để xem kết quả poll, vui lòng gửi lựa chọn của bạn
@@ -289,7 +349,7 @@ const MultiChoicePoll = ({ data, messageID }: { data: Poll; messageID: string })
 
 const RetractVoteButton = ({ pollId }: { pollId: string }) => {
   const { call, loading } = useFrappePostCall('raven.api.raven_poll.retract_vote')
-
+  
   const onRetractVote = () => {
     return call({
       poll_id: pollId
@@ -305,7 +365,13 @@ const RetractVoteButton = ({ pollId }: { pollId: string }) => {
   }
 
   return (
-    <Button variant='outline' size='1' onClick={onRetractVote} disabled={loading} className='shrink-0'>
+    <Button 
+      variant='outline' 
+      size='1' 
+      onClick={onRetractVote}
+      disabled={loading}
+      className='shrink-0'
+    >
       <TiArrowBackOutline size={14} />
       Vote lại
     </Button>
