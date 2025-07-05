@@ -5,7 +5,7 @@ import { ContextMenu, Portal } from '@radix-ui/themes'
 import clsx from 'clsx'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useMemo, useState } from 'react'
-import { FaAngleDown, FaAngleUp, FaUsers } from 'react-icons/fa6'
+import { FaAngleDown, FaAngleUp } from 'react-icons/fa6'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { UserAvatar } from '@/components/common/UserAvatar'
@@ -168,7 +168,9 @@ export const PinnedChannels = () => {
           <div
             className={`grid ${pinnedChannels.length > 5 ? 'grid-cols-6' : 'grid-cols-5'} gap-3 px-2 justify-items-center`}
           >
-            {topRowChannels?.map((channel) => <SortablePinnedItem key={channel.name} channel={channel} />)}
+            {topRowChannels?.map((channel) =>
+              channel ? <SortablePinnedItem key={channel.name} channel={channel} /> : null
+            )}
 
             {pinnedChannels.length > 5 && (
               <div
@@ -185,7 +187,9 @@ export const PinnedChannels = () => {
           {/* Hàng thứ 2 nếu showAll */}
           {showAll && extraChannels.length > 0 && (
             <div className='grid grid-cols-6 gap-3 px-2 mt-2 justify-items-center'>
-              {extraChannels?.map((channel) => <SortablePinnedItem key={channel.name} channel={channel} />)}
+              {extraChannels?.map((channel) =>
+                channel ? <SortablePinnedItem key={channel.name} channel={channel} /> : null
+              )}
             </div>
           )}
         </SortableContext>
