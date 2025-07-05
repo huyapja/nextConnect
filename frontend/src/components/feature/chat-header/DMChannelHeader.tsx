@@ -21,14 +21,12 @@ import clsx from 'clsx'
 import { useStringee } from '@/utils/StringeeProvider'
 import { useStringeeToken } from '@/hooks/useStringeeToken'
 import { FaPhoneFlip } from 'react-icons/fa6'
-import { toast } from 'sonner'
 
 interface DMChannelHeaderProps {
   channelData: DMChannelListItem
 }
 
 export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
-  
   const { currentUser } = useContext(UserContext)
   // const { client: globalClient } = useGlobalStringee()
 
@@ -59,7 +57,6 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
   const { userId } = useStringeeToken()
 
   // console.log(peerUser, userId);
-  
 
   return (
     <PageHeader>

@@ -4,7 +4,6 @@ import { toast } from 'sonner'
 import { settingCallEvents } from './stringee/callEventHandlers'
 import { initStringeeClient } from './stringee/initClient'
 import { useOutgoingCallAudio } from './stringee/sound/useOutgoingCallAudio'
-import { useIncomingCallAudio } from './stringee/sound/useInComingCallAudio'
 
 const initialCallState = {
   currentCall: null,
@@ -47,7 +46,6 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
   const [state, dispatch] = useReducer(callReducer, initialCallState)
 
   const { play: playRingtone, stop: stopRingtone } = useOutgoingCallAudio()
-  const { play: playIncomingRingtone, stop: stopIncomingRingtone } = useIncomingCallAudio()
 
   const clearAudioElements = () => {
     const container = document.getElementById('audio_container')
@@ -57,6 +55,7 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
   const resetCallState = () => {
     dispatch({ type: 'RESET' })
     clearAudioElements()
+    stopRingtone()
   }
 
   // 📲 Xử lý cuộc gọi đến
@@ -67,12 +66,9 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
     dispatch({ type: 'SET_IS_INCOMING', payload: true })
     dispatch({ type: 'SET_IS_CONNECTING', payload: true })
 
-    playIncomingRingtone() // 🔔 Play ngay khi có cuộc gọi
-
     settingCallEvents(
       incomingCall,
       () => {
-        stopIncomingRingtone() // 🛑 Tắt khi kết thúc
         resetCallState()
       },
       (val) => dispatch({ type: 'SET_IS_IN_CALL', payload: val }),
@@ -93,30 +89,10 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [token])
 
-  // ✅ Kiểm tra mic chỉ khi user bắt đầu cuộc gọi
-  const checkMicrophone = async (): Promise<boolean> => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      stream.getTracks().forEach((t) => t.stop())
-      dispatch({ type: 'SET_HAS_MICROPHONE', payload: true })
-      return true
-    } catch (err) {
-      console.warn('[❌] Mic error:', err)
-      dispatch({ type: 'SET_HAS_MICROPHONE', payload: false })
-      return false
-    }
-  }
-
   // 📞 Gọi đi
   const makeCall = async (to: string, isVideoCall = false) => {
     if (state.currentCall) {
       toast.error('📞 Bạn đang trong một cuộc gọi khác')
-      return
-    }
-
-    const hasMic = await checkMicrophone()
-    if (!hasMic) {
-      toast.error('Không thể gọi – trình duyệt không cấp quyền micro')
       return
     }
 
@@ -135,7 +111,6 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
     settingCallEvents(
       call,
       () => {
-        stopRingtone()
         resetCallState()
       },
       (val) => {
@@ -148,7 +123,6 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
     call.makeCall((res: any) => {
       console.log('[📞] Make call result', res)
       if (res.r !== 0) {
-        stopRingtone()
         resetCallState()
       }
     })
@@ -162,7 +136,6 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
       console.log('[🔚] Call ended by user', res)
       if (res?.r === 0) {
         resetCallState()
-        stopRingtone()
       } else {
         console.warn('[⚠️] Call hangup failed:', res)
       }

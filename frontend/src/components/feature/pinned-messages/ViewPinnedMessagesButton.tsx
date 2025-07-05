@@ -25,7 +25,14 @@ export const ViewPinnedMessagesButton = ({ pinnedMessagesString }: ViewPinnedMes
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger>
-        <Button size='1' variant='soft' color='gray' aria-label='View pinned messages' title='View pinned messages'>
+        <Button
+          className='cursor-pointer'
+          size='1'
+          variant='soft'
+          color='gray'
+          aria-label='View pinned messages'
+          title='View pinned messages'
+        >
           <RiPushpinLine size='14' />
           {pinnedMessages}
         </Button>

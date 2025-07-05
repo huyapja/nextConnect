@@ -19,7 +19,7 @@ import { ChannelIcon } from '@/utils/layout/channelIcon'
 import { useSidebarMode } from '@/utils/layout/sidebar'
 import { truncateText } from '@/utils/textUtils/truncateText'
 import clsx from 'clsx'
-import { useFrappePostCall } from 'frappe-react-sdk'
+import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { GoPlus } from 'react-icons/go'
 import { HiCheck } from 'react-icons/hi'
@@ -37,7 +37,6 @@ import ThreadsCustom from '../threads/ThreadsCustom'
 import { MessageSaved } from './DirectMessageSaved'
 import { ScrollArea } from '@radix-ui/themes'
 
-
 import { pinnedChannelsAtom, togglePinnedChannelAtom } from '@/utils/atoms/PinnedAtom'
 
 type UnifiedChannel = ChannelWithUnreadCount | DMChannelWithUnreadCount | any
@@ -46,6 +45,7 @@ export const DirectMessageList = () => {
   const { title, labelID } = useSidebarMode()
   const enriched = useEnrichedSortedChannels(labelID ? undefined : 0)
   const { call, loading } = useFrappePostCall('raven.api.raven_channel.mark_selected_channels_done')
+  const { mutate } = useSWRConfig()
 
   const handleMarkAllDone = async () => {
     // Lọc các channel chưa được đánh dấu là done
@@ -55,6 +55,7 @@ export const DirectMessageList = () => {
 
       if (res?.message?.status === 'success') {
         toast.success(`Đã đánh dấu tất cả các kênh thành đã xong`)
+        mutate('channel_list')
       } else {
         toast.warning('Không thể đánh dấu các kênh')
       }
@@ -314,7 +315,6 @@ export const DirectMessageItemElement = ({
   const { workspaceID, channelID } = useParams<{ workspaceID: string; channelID: string }>()
 
   const manuallyMarked = useAtomValue(manuallyMarkedAtom)
-  const { clearManualMark } = useChannelActions()
   const { markAsDone, markAsNotDone } = useChannelDone()
 
   const { title, labelID } = useSidebarMode()
@@ -325,7 +325,7 @@ export const DirectMessageItemElement = ({
   const peerUser = useGetUser(peerUserId || '')
   const isActiveRaw = useIsUserActive(peerUserId || '')
   const isActive = !!peerUserId && isActiveRaw
-  
+
   const isSelectedChannel = channelID === channel.name
   const isManuallyMarked = manuallyMarked.has(channel.name)
   const isChannelDone = channel.is_done === 1
@@ -355,17 +355,7 @@ export const DirectMessageItemElement = ({
   const shouldShowBadge = channel.unread_count > 0 || isManuallyMarked
 
   const handleNavigate = () => {
-    // const lastRead = lastReadStorage.get(channel.name)
-
-    // const params = new URLSearchParams()
-
-    // if (lastRead) {
-    //   params.set('message_id', lastRead)
-    //   params.set('message_source', 'read') // 👈 phân biệt nguồn
-    // }
-
     navigate(`/${workspaceID}/${channel.name}`)
-    clearManualMark(channel.name)
   }
 
   const handleMarkToggle = (e: React.MouseEvent) => {

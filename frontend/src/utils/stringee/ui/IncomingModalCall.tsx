@@ -21,7 +21,7 @@ const IncomingCallModal = () => {
     }
   }, [currentCall, isIncoming])
 
-  // 🔊 Play âm thanh chỉ khi modal mở (đã render UI → browser cho phép)
+  // Play âm thanh chỉ khi modal mở (đã render UI → browser cho phép)
   useEffect(() => {
     if (open) {
       playIncomingSound()
@@ -32,21 +32,21 @@ const IncomingCallModal = () => {
     return () => stopIncomingSound()
   }, [open])
 
-  // 🧼 Không cần render gì nếu không có cuộc gọi
+  // Không cần render gì nếu không có cuộc gọi
   if (!currentCall || !isIncoming) return null
 
   const handleAnswer = () => {
     currentCall.answer((res: any) => {
       console.log('[✅] Answered', res)
       setOpen(false)
-      stopIncomingSound() // 🛑 Dừng âm khi trả lời
+      stopIncomingSound() // Dừng âm khi trả lời
     })
   }
 
   const handleReject = () => {
     rejectCall()
     setOpen(false)
-    stopIncomingSound() // 🛑 Dừng âm khi từ chối
+    stopIncomingSound() // Dừng âm khi từ chối
   }
 
   return (
