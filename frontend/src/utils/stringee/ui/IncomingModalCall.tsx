@@ -8,11 +8,11 @@ import { useIncomingCallAudio } from '../sound/useInComingCallAudio'
 const IncomingCallModal = () => {
   const { currentCall, isIncoming, rejectCall } = useStringee()
   const [open, setOpen] = useState(false)
-
   const { play: playIncomingSound, stop: stopIncomingSound } = useIncomingCallAudio()
+
   const user = useGetUser(currentCall?.fromNumber)
 
-  // Điều khiển mở modal
+  // 🚪 Điều khiển modal mở/đóng
   useEffect(() => {
     if (currentCall && isIncoming) {
       setOpen(true)
@@ -21,7 +21,7 @@ const IncomingCallModal = () => {
     }
   }, [currentCall, isIncoming])
 
-  // Chỉ play âm thanh khi modal hiển thị
+  // Play âm thanh chỉ khi modal mở (đã render UI → browser cho phép)
   useEffect(() => {
     if (open) {
       playIncomingSound()
@@ -32,18 +32,21 @@ const IncomingCallModal = () => {
     return () => stopIncomingSound()
   }, [open])
 
+  // Không cần render gì nếu không có cuộc gọi
   if (!currentCall || !isIncoming) return null
 
   const handleAnswer = () => {
     currentCall.answer((res: any) => {
       console.log('[✅] Answered', res)
       setOpen(false)
+      stopIncomingSound() // Dừng âm khi trả lời
     })
   }
 
   const handleReject = () => {
     rejectCall()
     setOpen(false)
+    stopIncomingSound() // Dừng âm khi từ chối
   }
 
   return (

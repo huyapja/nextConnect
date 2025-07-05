@@ -47,3 +47,21 @@ def get_stringee_token():
 	except Exception as e:
 		frappe.log_error(f"[Stringee] Tạo token thất bại: {str(e)}")
 		frappe.throw(_("Không thể tạo token Stringee"))
+
+@frappe.whitelist(methods=["GET"])
+def check_user_busy(user_id):
+    """Kiểm tra trạng thái bận của user (dùng khi load lần đầu)"""
+    is_busy = frappe.cache().get_value(f'stringee_busy:{user_id}')
+    return {"busy": bool(is_busy)}
+
+@frappe.whitelist(methods=["POST"])
+def mark_user_busy(user_id: str):
+    """Đánh dấu user đang trong cuộc gọi"""
+    frappe.cache().set_value(f'stringee_busy:{user_id}', 1)
+    frappe.publish_realtime(f'stringee_user_busy:{user_id}', {'busy': True})
+
+@frappe.whitelist(methods=["POST"])
+def mark_user_idle(user_id: str):
+    """Đánh dấu user đã kết thúc cuộc gọi"""
+    frappe.cache().set_value(f'stringee_busy:{user_id}', 0)
+    frappe.publish_realtime(f'stringee_user_busy:{user_id}', {'busy': False})

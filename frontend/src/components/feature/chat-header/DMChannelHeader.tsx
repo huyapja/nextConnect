@@ -21,14 +21,14 @@ import clsx from 'clsx'
 import { useStringee } from '@/utils/StringeeProvider'
 import { useStringeeToken } from '@/hooks/useStringeeToken'
 import { FaPhoneFlip } from 'react-icons/fa6'
+import { useSetUserBusy } from '@/hooks/useSetUserBusy'
 import { toast } from 'sonner'
-
+import { useUserBusyRealtimeListener } from '@/hooks/useUserBusyStatusListener'
 interface DMChannelHeaderProps {
   channelData: DMChannelListItem
 }
 
 export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
-  
   const { currentUser } = useContext(UserContext)
   // const { client: globalClient } = useGlobalStringee()
 
@@ -54,12 +54,14 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
 
   const userLabels = enrichedChannel?.user_labels || []
 
-  const { makeCall, hasMicrophone } = useStringee()
+  const { makeCall } = useStringee()
 
   const { userId } = useStringeeToken()
 
-  // console.log(peerUser, userId);
-  
+  const { useCheckUserBusy } = useSetUserBusy()
+
+  const { isBusy, isChecking, error } = useCheckUserBusy(peerUserId)
+  useUserBusyRealtimeListener(peerUserId)
 
   return (
     <PageHeader>
@@ -149,13 +151,24 @@ export const DMChannelHeader = ({ channelData }: DMChannelHeaderProps) => {
             <button
               title={`Gọi cho ${userName}`}
               className='cursor-pointer bg-transparent'
-              onClick={() => {
-                // if (!hasMicrophone) {
-                //   toast.error('Không thể tạo được cuộc gọi, hãy kiểm tra lại mic và audio hoặc F5 lại trang')
-                //   return
-                // }
+              onClick={async () => {
                 if (!peerUserId || peerUserId === userId) {
                   console.warn('❌ Không thể gọi cho chính mình hoặc peerUserId không hợp lệ')
+                  return
+                }
+
+                if (isChecking) {
+                  toast.loading('Đang kiểm tra trạng thái...')
+                  return
+                }
+
+                if (error) {
+                  toast.error('Lỗi khi kiểm tra trạng thái người dùng')
+                  return
+                }
+
+                if (isBusy) {
+                  toast.error(`${userName} đang trong cuộc gọi khác. Vui lòng thử lại sau`)
                   return
                 }
 

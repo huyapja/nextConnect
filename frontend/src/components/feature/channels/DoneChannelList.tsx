@@ -3,13 +3,14 @@ import { useEnrichedSortedChannels } from '@/utils/channel/ChannelAtom'
 import { DirectMessageItem } from '../direct-messages/DirectMessageListCustom'
 import { Tooltip } from '@radix-ui/themes'
 import { HiCheck } from 'react-icons/hi'
-import { useFrappePostCall } from 'frappe-react-sdk'
+import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
 import { toast } from 'sonner'
 
 export const DoneChannelList = () => {
   const doneChannels = useEnrichedSortedChannels(1)
 
   const { call, loading } = useFrappePostCall('raven.api.raven_channel.mark_selected_channels_not_done')
+  const { mutate } = useSWRConfig()
 
   const handleMarkAllDone = async () => {
     // Lọc các channel được đánh dấu là done
@@ -19,6 +20,7 @@ export const DoneChannelList = () => {
 
       if (res?.message?.status === 'success') {
         toast.success(`Đã đánh dấu tất cả các kênh thành chưa xong`)
+        mutate('channel_list')
       } else {
         toast.warning('Không thể đánh dấu các kênh')
       }

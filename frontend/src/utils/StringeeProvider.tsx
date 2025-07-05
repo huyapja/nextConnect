@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { settingCallEvents } from './stringee/callEventHandlers'
 import { initStringeeClient } from './stringee/initClient'
 import { useOutgoingCallAudio } from './stringee/sound/useOutgoingCallAudio'
+import { useSetUserBusy } from '@/hooks/useSetUserBusy'
 
 const initialCallState = {
   currentCall: null,
@@ -37,8 +38,13 @@ function callReducer(state: any, action: any) {
 
 // Context
 const StringeeContext = createContext<any>(null)
-export const useStringee = () => useContext(StringeeContext)
-
+export const useStringee = () => {
+  const context = useContext(StringeeContext)
+  if (!context) {
+    throw new Error('useStringee must be used within a <StringeeProvider>')
+  }
+  return context
+}
 // Hàm kiểm tra mic tái sử dụng
 export const StringeeProvider = ({ children }: { children: React.ReactNode }) => {
   const { token, userId } = useStringeeToken()
@@ -46,6 +52,7 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
   const [state, dispatch] = useReducer(callReducer, initialCallState)
 
   const { play: playRingtone, stop: stopRingtone } = useOutgoingCallAudio()
+  const { markUserBusy, markUserIdle } = useSetUserBusy()
 
   const clearAudioElements = () => {
     const container = document.getElementById('audio_container')
@@ -53,20 +60,28 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
   }
 
   const resetCallState = () => {
+    const call = state.currentCall
+    const peerId = call?.toNumber || call?.fromNumber
+
+    if (userId) markUserIdle(userId)
+    if (peerId) markUserIdle(peerId)
+
     dispatch({ type: 'RESET' })
     clearAudioElements()
+    stopRingtone()
   }
 
   // 📲 Xử lý cuộc gọi đến
   const handleIncomingCall = (incomingCall: any) => {
-    console.log('[📲] Incoming call received')
+    console.log('[📲] Incoming call received', incomingCall)
+
     dispatch({ type: 'SET_CURRENT_CALL', payload: incomingCall })
     dispatch({ type: 'SET_IS_INCOMING', payload: true })
     dispatch({ type: 'SET_IS_CONNECTING', payload: true })
 
     settingCallEvents(
       incomingCall,
-      resetCallState,
+      resetCallState, // 👈 Gọi resetCallState khi kết thúc
       (val) => dispatch({ type: 'SET_IS_IN_CALL', payload: val }),
       (val) => dispatch({ type: 'SET_IS_CONNECTING', payload: val })
     )
@@ -85,30 +100,10 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [token])
 
-  // ✅ Kiểm tra mic chỉ khi user bắt đầu cuộc gọi
-  const checkMicrophone = async (): Promise<boolean> => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      stream.getTracks().forEach((t) => t.stop())
-      dispatch({ type: 'SET_HAS_MICROPHONE', payload: true })
-      return true
-    } catch (err) {
-      console.warn('[❌] Mic error:', err)
-      dispatch({ type: 'SET_HAS_MICROPHONE', payload: false })
-      return false
-    }
-  }
-
   // 📞 Gọi đi
   const makeCall = async (to: string, isVideoCall = false) => {
     if (state.currentCall) {
       toast.error('📞 Bạn đang trong một cuộc gọi khác')
-      return
-    }
-
-    const hasMic = await checkMicrophone()
-    if (!hasMic) {
-      toast.error('Không thể gọi – trình duyệt không cấp quyền micro')
       return
     }
 
@@ -126,10 +121,7 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
 
     settingCallEvents(
       call,
-      () => {
-        stopRingtone()
-        resetCallState()
-      },
+      resetCallState,
       (val) => {
         dispatch({ type: 'SET_IS_IN_CALL', payload: val })
         if (val) stopRingtone()
@@ -138,9 +130,10 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
     )
 
     call.makeCall((res: any) => {
-      console.log('[📞] Make call result', res)
-      if (res.r !== 0) {
-        stopRingtone()
+      if (res.r === 0) {
+        markUserBusy(userId)
+        markUserBusy(to)
+      } else {
         resetCallState()
       }
     })
@@ -152,12 +145,7 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
 
     call.hangup((res: any) => {
       console.log('[🔚] Call ended by user', res)
-      if (res?.r === 0) {
-        resetCallState()
-        stopRingtone()
-      } else {
-        console.warn('[⚠️] Call hangup failed:', res)
-      }
+      resetCallState()
     })
   }
 
@@ -168,7 +156,6 @@ export const StringeeProvider = ({ children }: { children: React.ReactNode }) =>
     call.reject((res: any) => {
       console.log('[❌] Call rejected', res)
       resetCallState()
-      stopRingtone()
     })
   }
 
