@@ -21,7 +21,6 @@ import eventBus from '@/utils/event-emitter'
 import { SidebarMode, SidebarModeProvider, useSidebarMode } from '@/utils/layout/sidebar'
 import { showNotification } from '@/utils/pushNotifications'
 import { hasRavenUserRole } from '@/utils/roles'
-import { CircleUserListProvider } from '@/utils/users/CircleUserListProvider'
 import { UserListProvider } from '@/utils/users/UserListProvider'
 import { useFrappeEventListener, useSWRConfig } from 'frappe-react-sdk'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
@@ -150,7 +149,6 @@ const MainPageContent = () => {
       <HStack gap='0' className={`flex h-screen ${mode}`}>
         {/* Sidebar cố định chỉ hiện khi desktop */}
         {!isMobile && !isTablet && <WorkspacesSidebar />}
-
         {isMobile ? (
           // ==============================
           // 📱 MOBILE LAYOUT
