@@ -83,7 +83,6 @@ export const ChannelDetails = ({ channelData, channelMembers, allowSettingChange
           </Flex>
           {allowSettingChange && (
             <EditChannelNameButton
-              groupImage={channelData.group_image}
               channelID={channelData.name}
               channel_name={channelData.channel_name}
               className=''

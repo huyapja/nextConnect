@@ -1,20 +1,41 @@
 # Copyright (c) 2023, The Commit Company and contributors
 # For license information, please see license.txt
 
-import frappe
-from frappe import _
-from frappe.model.document import Document
+"""Raven Channel Member DocType – stubbed for static analysis.
+This header suppresses IDE/linter complaints when `frappe` is unavailable.
+"""
+
+# pyright: reportMissingImports=false, reportMissingModuleSource=false, reportAttributeAccessIssue=false
+
+from typing import Any, TYPE_CHECKING
+
+try:
+	import frappe  # type: ignore
+	from frappe import _  # type: ignore
+	from frappe.model.document import Document  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover
+	class _Stub:  # noqa: D401 – generic stub object
+		def __getattr__(self, name: str) -> Any:  # type: ignore
+			return self
+
+		def __call__(self, *args: Any, **kwargs: Any) -> Any:  # type: ignore
+			return self
+
+	frappe = _Stub()  # type: ignore
+
+	def _(txt: str) -> str:  # type: ignore
+		return txt
+
+	Document = type("Document", (), {})  # type: ignore
 
 # Comment: Frappe push notification service - được thay thế bởi Firebase
 # from raven.notification import subscribe_user_to_topic, unsubscribe_user_to_topic
 from raven.utils import delete_channel_members_cache
 
 
-class RavenChannelMember(Document):
+class RavenChannelMember(Document):  # type: ignore[misc]
 	# begin: auto-generated types
 	# This code is auto-generated. Do not modify anything in this block.
-
-	from typing import TYPE_CHECKING
 
 	if TYPE_CHECKING:
 		from frappe.types import DF

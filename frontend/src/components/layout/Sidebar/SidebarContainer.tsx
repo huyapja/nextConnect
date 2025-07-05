@@ -37,6 +37,8 @@ import PushNotificationToggle from '@/components/feature/userSettings/PushNotifi
 import { __ } from '@/utils/translations'
 import { UserContext } from '../../../utils/auth/UserProvider'
 import { useUserData } from '@/hooks/useUserData'
+import { BsBoxArrowRight, BsBoxArrowLeft } from 'react-icons/bs'
+import { useIsLaptop } from '@/hooks/useMediaQuery'
 
 export const useMentionUnreadCount = () => {
   const { data: mentionsCount, mutate } = useFrappeGetCall<{ message: number }>(

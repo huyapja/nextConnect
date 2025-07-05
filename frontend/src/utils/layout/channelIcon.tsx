@@ -20,7 +20,8 @@ import {
 const ImageViewer = lazy(() => import('@/components/common/ImageViewer'))
 
 interface ChannelIconProps extends React.ComponentProps<'svg'> {
-  type: 'Private' | 'Open'
+  type: 'Private' | 'Public' | 'Open'
+  size?: number | string
   groupImage?: string
   isInDetails?: boolean
   canUserView?: boolean

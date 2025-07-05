@@ -1,14 +1,35 @@
-import frappe
-from frappe import _
+"""Raven Poll API – includes stub imports for static analysis.
+This block prevents IDE/type-checker errors when the `frappe` package is
+unavailable (outside Frappe bench). It doesn't affect runtime in production.
+"""
 
+# pyright: reportMissingImports=false, reportMissingModuleSource=false, reportAttributeAccessIssue=false
+
+from typing import Any, Optional
+
+try:
+	import frappe  # type: ignore
+	from frappe import _  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover
+	class _FrappeStub:  # noqa: D401
+		def __getattr__(self, name: str) -> Any:  # type: ignore
+			return self
+
+		def __call__(self, *args: Any, **kwargs: Any) -> Any:  # type: ignore
+			return self
+
+	frappe = _FrappeStub()  # type: ignore
+
+	def _(txt: str) -> str:  # type: ignore
+		return txt
 
 @frappe.whitelist(methods=["POST"])
 def create_poll(
 	channel_id: str,
 	question: str,
 	options: list,
-	is_multi_choice: bool = None,
-	is_anonymous: bool = None,
+	is_multi_choice: Optional[bool] = None,
+	is_anonymous: Optional[bool] = None,
 ) -> str:
 	"""
 	Create a new poll in the Raven Poll doctype.

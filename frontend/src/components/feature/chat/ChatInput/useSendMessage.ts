@@ -2,9 +2,7 @@ import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
 import { UserContext } from '@/utils/auth/UserProvider'
 import { useUpdateLastMessageDetails } from '@/utils/channel/ChannelListProvider'
 import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
-import { useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
 import { useContext, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Message } from '../../../../../../types/Messaging/Message'
 // import { useOnlineStatus } from '../../network/useNetworkStatus'
@@ -45,9 +43,6 @@ export const useSendMessage = (
   )
   const { updateLastMessageForChannel } = useUpdateLastMessageDetails()
   const { currentUser } = useContext(UserContext)
-  const { workspaceID } = useParams()
-  const navigate = useNavigate()
-  const { mutate } = useSWRConfig()
   const { workspaceID } = useParams()
   const navigate = useNavigate()
   const { mutate } = useSWRConfig()
@@ -147,7 +142,6 @@ export const useSendMessage = (
     const actualChannelID = await handleDraftChannel(channelID)
 
     const res = await call({
-      channel_id: actualChannelID,
       channel_id: actualChannelID,
       text: content,
       client_id,
