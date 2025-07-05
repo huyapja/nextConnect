@@ -1,7 +1,7 @@
 import { Box, Flex } from '@radix-ui/themes'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { ThreadMessages } from './ThreadMessages'
-import { useFrappeGetDoc } from 'frappe-react-sdk'
+import { useFrappeGetDoc, useFrappeEventListener } from 'frappe-react-sdk'
 import { ErrorBanner } from '@/components/layout/AlertBanner/ErrorBanner'
 import { FullPageLoader } from '@/components/layout/Loaders/FullPageLoader'
 import { ThreadHeader } from './ThreadHeader'
@@ -9,11 +9,19 @@ import { Message } from '../../../../../../types/Messaging/Message'
 import useThreadPageActive from '@/hooks/useThreadPageActive'
 
 const ThreadDrawer = () => {
-  const { threadID } = useParams()
+  const { workspaceID, channelID, threadID } = useParams<{ workspaceID: string; channelID: string; threadID: string }>()
+  const navigate = useNavigate()
+
   const { data, error, isLoading } = useFrappeGetDoc<Message>('Raven Message', threadID, threadID, {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
     keepPreviousData: false
+  })
+
+  useFrappeEventListener('thread_deleted', (event) => {
+    if (event.thread_id === threadID && workspaceID && channelID) {
+      navigate(`/${workspaceID}/${channelID}`)
+    }
   })
 
   useThreadPageActive(threadID)

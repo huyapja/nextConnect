@@ -21,12 +21,10 @@ const useCreateThread = (messageID: string) => {
       .then((res) => {
         toast.success('Thread created')
 
-        if (title === 'Chủ đề') {
-          eventBus.emit('thread:created', {
-            threadId: res.message.thread_id,
-            messageId: messageID
-          })
-        }
+        eventBus.emit('thread:created', {
+          threadId: res.message.thread_id,
+          messageId: messageID
+        })
 
         navigate(`/${workspaceID}/${res.message.channel_id}/thread/${res.message.thread_id}`)
       })

@@ -45,9 +45,14 @@ const MentionsList: React.FC = () => {
   const { call } = useContext(FrappeContext) as FrappeConfig
   const { workspaceID } = useParams<{ workspaceID: string }>()
   const [hiddenMentionIds, setHiddenMentionIds] = useState<Set<string>>(new Set())
+  const [hiddenMentionIds, setHiddenMentionIds] = useState<Set<string>>(new Set())
   const location = useLocation()
   const searchParams = new URLSearchParams(location.search)
   const messageParams = searchParams.get('message_id')
+
+  const { mutate: mutateUnreadCount, data: unreadCount } = useFrappeGetCall(
+    'raven.api.mentions.get_unread_mention_count'
+  )
 
   const { mutate: mutateUnreadCount, data: unreadCount } = useFrappeGetCall(
     'raven.api.mentions.get_unread_mention_count'
@@ -66,6 +71,33 @@ const MentionsList: React.FC = () => {
     [call]
   )
 
+  const {
+    data,
+    size,
+    isLoading,
+    setSize,
+    mutate: mutateMentionsList
+  } = useSWRInfinite(getKey, fetcher, { revalidateOnFocus: false })
+
+  // Refetch nếu unreadCount thay đổi
+  const previousUnreadRef = useRef<number | undefined>(undefined)
+  useEffect(() => {
+    if (previousUnreadRef.current === undefined) {
+      previousUnreadRef.current = unreadCount
+      return
+    }
+
+    if (unreadCount !== previousUnreadRef.current) {
+      mutateMentionsList(data, true) // tránh flash
+      previousUnreadRef.current = unreadCount
+    }
+  }, [unreadCount, mutateMentionsList, data])
+
+  // Realtime: cập nhật khi nhận sự kiện socket
+  useFrappeEventListener('raven_mention', () => {
+    mutateMentionsList(data, true)
+    mutateUnreadCount()
+  })
   const {
     data,
     size,
@@ -129,6 +161,23 @@ const MentionsList: React.FC = () => {
       return next
     })
   }, [])
+
+  // === Ẩn tất cả lượt nhắc
+  const { call: hideAllMentions, loading: isHidingAll } = useFrappePostCall(
+    'raven.api.mentions.hide_all_mentions'
+  )
+
+  const handleHideAll = async () => {
+    try {
+      await hideAllMentions({})
+      // Ẩn toàn bộ trong UI
+      setHiddenMentionIds(new Set(mentions.map((m) => m.name)))
+      mutateUnreadCount({ message: 0 }, false)
+      toast.success('Đã ẩn toàn bộ lượt nhắc')
+    } catch (err: any) {
+      toast.error(err.message || 'Không thể ẩn lượt nhắc')
+    }
+  }
 
   const handleMentionRead = () => {
     mutateUnreadCount((prev: { message: number }) => {
@@ -241,14 +290,19 @@ const MentionItem: React.FC<{
     const w = mention.workspace ?? workspaceID
     if (mention.is_thread) {
       return `/${w}/threads/${mention.channel_id}?message_id=${mention.name}`
+      return `/${w}/threads/${mention.channel_id}?message_id=${mention.name}`
     }
     return `/${w}/${mention.channel_id}?message_id=${mention.name}`
+    return `/${w}/${mention.channel_id}?message_id=${mention.name}`
   }, [mention, workspaceID])
-
   const handleClickHide = () => {
     call({ mention_id: mention.mention_id })
       .then(() => {
         onHide(mention.name)
+        if (!isRead) {
+          setIsRead(true)
+          onMarkReadSuccess?.()
+        }
       })
       .catch((err) => {
         toast.error(err.message)
@@ -305,9 +359,12 @@ const ChannelContext: React.FC<{ mention: MentionObject }> = ({ mention }) => {
       <Box className='w-full'>
         <HStack className='w-full items-center flex-nowrap gap-2'>
           <Text size='2' weight='medium' className='truncate'>
+        <HStack className='w-full items-center flex-nowrap gap-2'>
+          <Text size='2' weight='medium' className='truncate'>
             {senderName}
           </Text>
           {mention.is_thread ? (
+            <HStack gap='1' align='center' className='shrink-0'>
             <HStack gap='1' align='center' className='shrink-0'>
               <BiMessageAltDetail size={14} />
             </HStack>
@@ -330,6 +387,7 @@ const ChannelContext: React.FC<{ mention: MentionObject }> = ({ mention }) => {
 }
 
 const MessageContent: React.FC<{ content: string }> = ({ content }) => (
+  <div className='text-sm line-clamp-2 text-ellipsis [&_.mention]:text-accent-11'>{parse(content)}</div>
   <div className='text-sm line-clamp-2 text-ellipsis [&_.mention]:text-accent-11'>{parse(content)}</div>
 )
 

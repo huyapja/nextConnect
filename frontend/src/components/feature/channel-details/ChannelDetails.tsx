@@ -93,7 +93,8 @@ export const ChannelDetails = ({ channelData, channelMembers, allowSettingChange
           )}
         </Flex>
       </Box>
-      <ChannelPushNotificationToggle channelID={channelData.name} channelMember={channelMember} />
+      {/* Commented out to hide Push Notifications */}
+      {/* <ChannelPushNotificationToggle channelID={channelData.name} channelMember={channelMember} /> */}
 
       <Box className={'p-4 rounded-md border border-gray-6'}>
         <Flex direction='column' gap='4'>

@@ -62,7 +62,7 @@ export const ThreadHeader = () => {
               color='gray'
               aria-label='Close thread'
               title='Close thread'
-              onClick={() => navigate('../', { replace: true })}
+              onClick={() => navigate('../../', { replace: true })}
             >
               <AiOutlineClose size='16' />
             </IconButton>
@@ -86,8 +86,7 @@ const DeleteThreadButton = () => {
           detail: { thread_id: threadID }
         })
       )
-
-      navigate('../')
+      
       return Promise.resolve()
     })
 
@@ -116,7 +115,6 @@ const LeaveThreadButton = () => {
 
   const onLeaveThread = () => {
     const promise = call({ channel_id: threadID }).then(() => {
-      navigate('../')
       mutate(['channel_members', threadID])
 
       return Promise.resolve()

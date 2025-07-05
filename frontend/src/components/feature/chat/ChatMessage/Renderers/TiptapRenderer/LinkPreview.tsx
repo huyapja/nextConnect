@@ -198,17 +198,20 @@ const YoutubePreview = ({ href, messageID }: { href: string; messageID: string }
   if (!embedUrl) return null
 
   return (
-    <div data-youtube-video className='pt-2'>
-      <iframe
-        src={embedUrl}
-        width='480'
-        height='270'
-        title='YouTube video player'
-        frameBorder='0'
-        allow='accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; modestbranding=1'
-        referrerPolicy='strict-origin-when-cross-origin'
-        allowFullScreen
-      ></iframe>
+    <div data-youtube-video className='pt-2 w-full max-w-xl'>
+      <div className='relative overflow-hidden rounded-lg shadow-sm bg-gray-100 dark:bg-gray-800'>
+        <div className='aspect-video'>
+          <iframe
+            src={embedUrl}
+            title='YouTube video player'
+            className='absolute inset-0 w-full h-full rounded-lg'
+            allow='accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; modestbranding=1'
+            referrerPolicy='strict-origin-when-cross-origin'
+            allowFullScreen
+            loading='lazy'
+          />
+        </div>
+      </div>
     </div>
   )
 }

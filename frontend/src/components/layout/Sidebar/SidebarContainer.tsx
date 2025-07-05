@@ -1,7 +1,6 @@
 import { useSidebarMode } from '@/utils/layout/sidebar'
-import { Tooltip } from '@radix-ui/themes'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FiPhoneMissed } from 'react-icons/fi'
+import { Tooltip, Box, DropdownMenu, IconButton, Separator } from '@radix-ui/themes'
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import {
   HiOutlineAtSymbol,
   HiOutlineChatAlt2,
@@ -26,8 +25,18 @@ import clsx from 'clsx'
 import { useFrappeEventListener, useFrappeGetCall } from 'frappe-react-sdk'
 import { FiChevronDown, FiChevronRight } from 'react-icons/fi'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useIsLaptop } from '@/hooks/useMediaQuery'
-import { BsBoxArrowLeft, BsBoxArrowRight } from 'react-icons/bs'
+import { LuNavigation, LuSettings } from 'react-icons/lu'
+import { UserAvatar } from '@/components/common/UserAvatar'
+import { BsEmojiSmile } from 'react-icons/bs'
+import useCurrentRavenUser from '@/hooks/useCurrentRavenUser'
+import { useIsUserActive } from '@/hooks/useIsUserActive'
+import { MdOutlineExitToApp } from 'react-icons/md'
+import { SetUserAvailabilityMenu } from '@/components/feature/userSettings/AvailabilityStatus/SetUserAvailabilityMenu'
+import { SetCustomStatusModal } from '@/components/feature/userSettings/CustomStatus/SetCustomStatusModal'
+import PushNotificationToggle from '@/components/feature/userSettings/PushNotifications/PushNotificationToggle'
+import { __ } from '@/utils/translations'
+import { UserContext } from '../../../utils/auth/UserProvider'
+import { useUserData } from '@/hooks/useUserData'
 
 export const useMentionUnreadCount = () => {
   const { data: mentionsCount, mutate } = useFrappeGetCall<{ message: number }>(
@@ -97,7 +106,7 @@ export default function SidebarContainer({ sidebarRef }: { sidebarRef: React.Ref
 
   return (
     <div
-      className={`relative transition-all duration-300 ease-in-out
+      className={`relative transition-all duration-300 ease-in-out flex flex-col h-full
         dark:bg-gray-1`}
     >
       <div className={`flex items-center ${isIconOnly ? 'justify-center' : 'justify-between'}`}>
@@ -119,7 +128,13 @@ export default function SidebarContainer({ sidebarRef }: { sidebarRef: React.Ref
         </div>
       </div>
 
-      {(tempMode === 'default' || isIconOnly) && <FilterList />}
+      <div className="flex-1">
+        {tempMode === 'default' && <FilterList />}
+        {isIconOnly && <FilterList />}
+      </div>
+      
+      {/* Footer at the very bottom */}
+      <SidebarFooterInFilter />
     </div>
   )
 }
@@ -317,5 +332,94 @@ export const FilterList = React.memo(({ onClose }: { onClose?: () => void }) => 
 
   return (
     <ul className={clsx('space-y-1 text-sm text-gray-12', isIconOnly ? 'px-1' : 'px-3 py-2')}>{renderedFilterItems}</ul>
+  )
+})
+
+// New component for footer
+export const SidebarFooterInFilter = React.memo(() => {
+  const [isUserStatusModalOpen, setUserStatusModalOpen] = useState(false)
+  const navigate = useNavigate()
+  const { tempMode } = useSidebarMode()
+  const isIconOnly = tempMode === 'show-only-icons'
+  
+  // For copied components from SidebarFooter
+  const userData = useUserData()
+  const { logout } = useContext(UserContext)
+  const { myProfile } = useCurrentRavenUser()
+  const isActive = useIsUserActive(userData.name)
+
+  return (
+    <>
+      {/* Footer with copied components */}
+      <div className={clsx('flex justify-between items-center pt-2 pb-2', isIconOnly ? 'px-1' : 'px-3')}>
+        {/* Left side - User Avatar with Options */}
+        <div className="">
+          <DropdownMenu.Root>
+            <Tooltip content='Options' side={isIconOnly ? 'right' : 'top'}>
+              <DropdownMenu.Trigger>
+                <IconButton
+                  aria-label='Options'
+                  color='gray'
+                  variant='ghost'
+                  className='p-0 bg-transparent hover:bg-transparent'
+                >
+                  <UserAvatar
+                    src={myProfile?.user_image}
+                    alt={myProfile?.full_name}
+                    size='2'
+                    className='hover:shadow-sm transition-all duration-200'
+                    availabilityStatus={myProfile?.availability_status}
+                    isActive={isActive}
+                  />
+                </IconButton>
+              </DropdownMenu.Trigger>
+            </Tooltip>
+            <DropdownMenu.Content variant='soft'>
+              <SetUserAvailabilityMenu />
+              <DropdownMenu.Item
+                color='gray'
+                className={'flex justify-normal gap-2'}
+                onClick={() => setUserStatusModalOpen(true)}
+              >
+                <BsEmojiSmile size='14' /> {__('Set custom status')}
+              </DropdownMenu.Item>
+              <PushNotificationToggle />
+              <DropdownMenu.Separator />
+              <DropdownMenu.Item color='red' className={'flex justify-normal gap-2'} onClick={logout}>
+                <MdOutlineExitToApp size='14' /> {__('Log Out')}
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
+        </div>
+
+        {/* Right side - Settings and Workspace Explorer */}
+        <div className="flex items-center gap-2">
+          <Tooltip content='Settings' side={isIconOnly ? 'right' : 'top'}>
+            <IconButton
+              aria-label='Settings'
+              size='3'
+              color='gray'
+              variant='ghost'
+              onClick={() => navigate('/settings/profile')}
+            >
+              <LuSettings size='18' />
+            </IconButton>
+          </Tooltip>
+          <Tooltip content='Workspace Explorer' side={isIconOnly ? 'right' : 'top'}>
+            <IconButton
+              aria-label='Workspace Explorer'
+              size='3'
+              color='gray'
+              variant='ghost'
+              onClick={() => navigate('/workspace-explorer')}
+            >
+              <LuNavigation size='18' />
+            </IconButton>
+          </Tooltip>
+        </div>
+      </div>
+      
+      <SetCustomStatusModal isOpen={isUserStatusModalOpen} onOpenChange={setUserStatusModalOpen} />
+    </>
   )
 })

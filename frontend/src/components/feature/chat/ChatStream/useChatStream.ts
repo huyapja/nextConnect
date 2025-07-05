@@ -1,5 +1,5 @@
 // useChatStream.ts - Updated for better initial load handling with new message tracking
-import { MutableRefObject, useCallback, useEffect } from 'react'
+import { MutableRefObject, useCallback, useEffect, useRef } from 'react'
 import { VirtuosoHandle } from 'react-virtuoso'
 import { useMessageAPI } from './useMessageAPI'
 import { useMessageHighlight } from './useMessageHighlight'
@@ -18,6 +18,7 @@ const useChatStream = (
   // Initialize all state and refs
   const messageState = useMessageState()
   const { scrollToBottom, scrollToMessage: scrollToMessageElement } = useScrollBehavior(virtuosoRef)
+  const loadingRef = useRef(false)
 
   // Handle message highlighting
   useMessageHighlight(messageState.highlightedMessage, messageState.setHighlightedMessage)
@@ -111,12 +112,46 @@ const useChatStream = (
   }, [channelID])
 
   // Scroll to message function
-  const scrollToMessage = (messageID: string) => {
-    if (messages) {
-      scrollToMessageElement(messageID, messages)
-      messageState.setHighlightedMessage(messageID)
-    } else {
+  const scrollToMessage = async (messageID: string) => {
+    if (!messages) {
       messageState.setSearchParams({ message_id: messageID })
+      messageState.setHighlightedMessage(messageID)
+      return
+    }
+    let found = messages.findIndex((msg) => msg.name === messageID)
+    let tryCount = 0
+    // Lặp load cho đến khi tìm thấy message hoặc không còn hasOlderMessages/hasNewMessages
+    while (
+      found === -1 &&
+      tryCount < 20 &&
+      (!api.data || api.data.message.has_old_messages || api.data.message.has_new_messages)
+    ) {
+      if (api.data && api.data.message.has_old_messages) {
+        await loadOlderMessages()
+      } else if (api.data && api.data.message.has_new_messages) {
+        await loadNewerMessages()
+      } else {
+        break
+      }
+      found = messages.findIndex((msg) => msg.name === messageID)
+      tryCount++
+    }
+    // Chỉ scroll khi đã load đủ, không còn hasOlderMessages/hasNewMessages
+    if (found !== -1 && api.data && !api.data.message.has_old_messages && !api.data.message.has_new_messages) {
+      // Đợi message render xong trong DOM rồi mới scroll
+      let rafCount = 0
+      const scrollWhenReady = () => {
+        const el = document.getElementById(`message-${messageID}`)
+        if (el) {
+          scrollToMessageElement(messageID, messages)
+          messageState.setHighlightedMessage(messageID)
+        } else if (rafCount < 20) {
+          rafCount++
+          requestAnimationFrame(scrollWhenReady)
+        }
+      }
+      requestAnimationFrame(scrollWhenReady)
+    } else {
       messageState.setHighlightedMessage(messageID)
     }
   }

@@ -282,6 +282,7 @@ class RavenChannelMember(Document):
 			doctype="Raven Channel",
 			docname=self.channel_id,
 		)
+
 	def on_trash(self):
 		# Comment: Frappe push notification service - được thay thế bởi Firebase
 		# unsubscribe_user_to_topic(self.channel_id, self.user_id)
@@ -402,7 +403,7 @@ class RavenChannelMember(Document):
 			# Send a system message to the channel mentioning the member who became admin
 			member_name = frappe.get_cached_value("Raven User", self.user_id, "full_name")
 			text = (
-				f"{member_name} được chỉ định làm quản trị viên." if self.is_admin else f"{member_name} không còn là quản trị viên."
+				f"{member_name} đã trở thành admin." if self.is_admin else f"{member_name} không còn là admin."
 			)
 			message_doc = frappe.get_doc(
 				{

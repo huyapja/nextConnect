@@ -185,7 +185,7 @@ const TiptapThread = forwardRef(
     const [enterKeyBehaviour] = useAtom(EnterKeyBehaviourAtom)
 
     const handleMessageSendAction = (editor: any) => {
-      const hasContent = editor.getText().trim()?.length > 0
+      const hasContent = !editor.isEmpty
       let html = ''
       let json = {}
       if (hasContent) {
@@ -217,6 +217,7 @@ const TiptapThread = forwardRef(
     }
     // this is a dummy extension only to create custom keydown behavior
     const KeyboardHandler = Extension.create({
+      priority: 1000,
       name: 'keyboardHandler',
       addKeyboardShortcuts() {
         return {

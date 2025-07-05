@@ -4,7 +4,7 @@ import { useGetUserRecords } from '@/hooks/useGetUserRecords'
 import { UserContext } from '@/utils/auth/UserProvider'
 import { DMChannelListItem } from '@/utils/channel/ChannelListProvider'
 import { DateMonthYear } from '@/utils/dateConversions'
-import { Box, Flex, Link, Separator, Text } from '@radix-ui/themes'
+import { Box, Flex, Text } from '@radix-ui/themes'
 import { useContext, useMemo } from 'react'
 import { Message } from '../../../../../types/Messaging/Message'
 import { MessageContent, MessageSenderAvatar, UserHoverCard } from '../chat/ChatMessage/MessageItem'
@@ -36,34 +36,29 @@ export const MessageBox = ({ message, handleScrollToMessage }: MessageBoxProps) 
     }
   }, [channelData])
 
+  const handleClick = () => {
+    if (handleScrollToMessage) {
+      handleScrollToMessage(message.name, channel_id, message.workspace)
+    }
+  }
+
   return (
     <Flex
       direction='column'
       gap='2'
-      className='group
-        hover:bg-gray-100
-                            dark:hover:bg-gray-4
-                            p-2
-                            rounded-md'
+      className='group hover:bg-gray-100 dark:hover:bg-gray-4 p-2 rounded-md cursor-pointer transition-colors duration-150 border border-transparent hover:border-primary-6'
+      onClick={handleClick}
+      tabIndex={0}
+      role='button'
+      aria-label={`Đi tới tin nhắn trong kênh ${channelName}`}
     >
       <Flex gap='2'>
         <Text as='span' size='1'>
           {channelName}
         </Text>
-        <Separator orientation='vertical' />
         <Text as='span' size='1' color='gray'>
           <DateMonthYear date={creation} />
         </Text>
-
-        {handleScrollToMessage ? (
-          <Link
-            size='1'
-            className='invisible group-hover:visible cursor-pointer'
-            onClick={() => handleScrollToMessage(message.name, channel_id, message.workspace)}
-          >
-            Xem trong kênh
-          </Link>
-        ) : null}
       </Flex>
 
       <Flex gap='3'>
@@ -72,7 +67,13 @@ export const MessageBox = ({ message, handleScrollToMessage }: MessageBoxProps) 
           <Box>
             <UserHoverCard user={user} userID={owner} isActive={false} />
           </Box>
-          <MessageContent message={message} user={user} currentUser={currentUser} />
+          <MessageContent 
+            message={message} 
+            user={user} 
+            currentUser={currentUser} 
+            removePendingMessage={() => {}} 
+            sendOnePendingMessage={() => {}} 
+          />
         </Flex>
       </Flex>
     </Flex>

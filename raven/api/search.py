@@ -107,7 +107,7 @@ def get_search_result(
     elif filter_type == "File":
         query = query.where(message.message_type == "File")
         if search_text:
-            query = query.where(message.file.like(f"/private/files/%{search_text}%"))
+            query = query.where(message.file.like(f"%{search_text}%"))
         if file_type:
             if file_type == "pdf":
                 query = query.where(file_doc.file_type == "pdf")
