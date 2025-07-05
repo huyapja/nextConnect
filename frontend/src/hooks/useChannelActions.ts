@@ -8,7 +8,8 @@ import { useAtom, useSetAtom } from 'jotai'
 export const useChannelActions = () => {
   const { pushChannel, removeChannel, selectedChannels } = useCircleUserList()
   const { updateCount } = useUnreadMessageCount()
-  const { call } = useFrappePostCall('raven.api.raven_channel_member.mark_channel_as_unread')
+  const { call: markUnreadAPI } = useFrappePostCall('raven.api.raven_channel_member.mark_channel_as_unread')
+  const { call: markReadAPI } = useFrappePostCall('raven.api.raven_channel_member.mark_channel_as_read')
 
   const [manuallyMarked] = useAtom(manuallyMarkedAtom)
   const addManuallyMarked = useSetAtom(addToMarked)
@@ -25,7 +26,7 @@ export const useChannelActions = () => {
   }
 
   const markAsUnread = async (channel: any) => {
-    await call({ channel_id: channel.name })
+    await markUnreadAPI({ channel_id: channel.name })
     addManuallyMarked(channel.name)
     updateCount(
       (prev): any => {
@@ -48,6 +49,21 @@ export const useChannelActions = () => {
     )
   }
 
+  const markAsRead = async (channel: any) => {
+    await markReadAPI({ channel_id: channel.name })
+    removeManuallyMarked(channel.name)
+    updateCount(
+      (prev): any => {
+        if (!prev) return prev
+        const newList = prev.message?.map((item) =>
+          item.name === channel.name ? { ...item, unread_count: 0 } : item
+        )
+        return { message: newList }
+      },
+      { revalidate: false }
+    )
+  }
+
   const clearManualMark = (channelId: string) => {
     removeManuallyMarked(channelId)
   }
@@ -60,6 +76,7 @@ export const useChannelActions = () => {
     isPinned,
     togglePin,
     markAsUnread,
+    markAsRead,
     clearManualMark,
     isManuallyMarked,
     manuallyMarked // nếu cần dùng để mergeUnread

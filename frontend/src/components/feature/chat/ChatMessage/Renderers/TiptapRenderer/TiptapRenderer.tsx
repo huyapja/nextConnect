@@ -98,7 +98,6 @@ export const TiptapRenderer = ({
   showLinkPreview = true,
   ...props
 }: TiptapRendererProps) => {
-  // Kiểm tra xem tin nhắn có chỉ chứa emoji không
   const messageText = message.text || message.content || ''
   const isEmojiOnly = isOnlyEmoji(messageText)
 
@@ -233,12 +232,11 @@ export const TiptapRenderer = ({
   })
 
   const isCurrentUser = currentUser === message?.owner
-  function hasWhiteSpace(s: string) {
-    return s.indexOf(' ') >= 0
-  }
+  const hasWhiteSpace = (s: string) => s.indexOf(' ') >= 0
 
   const text = message.content || ''
   const isNoSpaceText = text.trim().length > 0 && !hasWhiteSpace(text)
+
   return (
     <Box
       style={

@@ -38,7 +38,6 @@ export const useMessageLoading = (
               })
                 .then((res: any) => {
                   const mergedMessages = [...d.message.messages, ...(res?.message.messages ?? [])]
-
                   return {
                     message: {
                       messages: mergedMessages,

@@ -58,10 +58,11 @@ def extract_text_from_file(file_url):
     return "[Định dạng file không hỗ trợ]"
 
 # Helper: Xây dựng context từ các tin nhắn gần nhất
-def build_context(conversation_id, model="gpt-3.5-turbo"):
-    MAX_TOTAL_TOKENS = 3000
-    MAX_FILE_TOKENS = 1500
-    MAX_MESSAGE_COUNT = 50
+def build_context(conversation_id, model="gpt-4o"):
+    # Cấu hình tokens để hỗ trợ 5 files (5MB mỗi file) + text 11,000 từ
+    MAX_TOTAL_TOKENS = 80000      # Tổng tokens cho input (trong giới hạn 128K của GPT-4o)
+    MAX_FILE_TOKENS = 10000       # Mỗi file tối đa 10K tokens (≈ 5MB content)
+    MAX_MESSAGE_COUNT = 100       # Tăng số message để lưu đủ history với files
 
     try:
         encoding = tiktoken.encoding_for_model(model)
@@ -81,8 +82,22 @@ def build_context(conversation_id, model="gpt-3.5-turbo"):
         limit_page_length=MAX_MESSAGE_COUNT
     )[::-1]
 
-    context = []
-    total_tokens = 0
+    # Thêm system message để ghi đè thông tin mặc định
+    system_message = {
+        "role": "system",
+        "content": """Bạn là trợ lý AI tiên tiến được hỗ trợ bởi mô hình GPT-4o của OpenAI. 
+
+Hướng dẫn trả lời:
+- Hãy trả lời một cách chính xác, chi tiết và thông minh
+- Sử dụng tiếng Việt tự nhiên và thân thiện
+- Khi được hỏi về kiến thức chuyên môn, hãy đi sâu vào chi tiết
+- Nếu cần giải quyết vấn đề phức tạp, hãy phân tích từng bước
+- Khi không chắc chắn, hãy thừa nhận và đưa ra các khả năng
+- Luôn cố gắng cung cấp giá trị thực sự trong mỗi câu trả lời"""
+    }
+    
+    context = [system_message]
+    total_tokens = token_len(system_message["content"])
 
     for msg in messages:
         content = msg.message or ""
@@ -95,7 +110,8 @@ def build_context(conversation_id, model="gpt-3.5-turbo"):
             if file_tokens == 0:
                 continue
             elif file_tokens > MAX_FILE_TOKENS:
-                approx_summary = file_text.strip()[:1500]
+                # Rút gọn file quá lớn nhưng giữ nhiều nội dung hơn (cho files 5MB)
+                approx_summary = file_text.strip()[:7500]  # Tăng từ 1500 lên 7500 chars
                 content += (
                     "\n\n[Nội dung file tóm tắt:]\n"
                     + approx_summary +
@@ -133,10 +149,12 @@ def call_openai(context):
         return "Không thể kết nối OpenAI. Vui lòng kiểm tra cấu hình API key."
 
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4o",
         messages=context,
-        temperature=0.7,
-        max_tokens=2000
+        temperature=0.3,  # Giảm temperature để có response ổn định và chính xác hơn
+        max_tokens=8000,  # Tăng max_tokens để có response đầy đủ cho các files lớn
+        top_p=0.9,        # Thêm top_p để kiểm soát chất lượng response
+        frequency_penalty=0.1  # Giảm lặp lại
     )
     return response.choices[0].message.content
 
@@ -176,7 +194,7 @@ def get_messages(conversation_id=None):
 
 
 @frappe.whitelist()
-def send_message(conversation_id, message, is_user=True, message_type="Text", file=None):
+def send_message(conversation_id, message, is_user=True, message_type="Text", file=None, trigger_ai=True):
     try:
         if not frappe.db.exists("ChatConversation", conversation_id):
             frappe.throw(_("Cuộc trò chuyện không tồn tại"))
@@ -186,13 +204,14 @@ def send_message(conversation_id, message, is_user=True, message_type="Text", fi
         # Commit message trước khi enqueue AI reply
         frappe.db.commit()
 
-        if is_user:
+        # Chỉ trigger AI reply nếu trigger_ai = True và là user message
+        if is_user and trigger_ai:
             # Delay nhỏ để đảm bảo message đã được commit
             frappe.enqueue(
                 "raven.api.chatbot.handle_ai_reply",
                 conversation_id=conversation_id,
                 now=False,
-                timeout=300  # 5 phút timeout
+                timeout=600  # 10 phút timeout cho files lớn
             )
 
         return chat_message.name
@@ -205,8 +224,51 @@ def send_message(conversation_id, message, is_user=True, message_type="Text", fi
         frappe.throw(_("Có lỗi xảy ra khi gửi tin nhắn"))
 
 
-def handle_ai_reply(conversation_id):
+@frappe.whitelist()
+def trigger_ai_reply(conversation_id, message_text=None):
+    """
+    API để trigger AI reply cho conversation sau khi upload files
+    """
     try:
+        if not frappe.db.exists("ChatConversation", conversation_id):
+            frappe.throw(_("Cuộc trò chuyện không tồn tại"))
+        
+        # Tạo message từ user nếu có message_text
+        if message_text:
+            create_message(conversation_id, message_text, is_user=True, message_type="Text")
+            frappe.db.commit()
+        
+        # Enqueue AI reply
+        frappe.enqueue(
+            "raven.api.chatbot.handle_ai_reply",
+            conversation_id=conversation_id,
+            now=False,
+            timeout=600  # 10 phút timeout cho files lớn
+        )
+        
+        return {"success": True, "message": "AI reply đã được trigger"}
+        
+    except Exception as e:
+        frappe.log_error(
+            f"{str(e)}\n{traceback.format_exc()}",
+            "Trigger AI Reply Error"
+        )
+        frappe.throw(_("Có lỗi xảy ra khi gọi AI reply"))
+
+
+def handle_ai_reply(conversation_id):
+    # Tạo lock key để tránh duplicate processing
+    lock_key = f"ai_reply_lock_{conversation_id}"
+    
+    try:
+        # Kiểm tra xem có process nào đang xử lý conversation này không
+        if frappe.cache().get(lock_key):
+            frappe.logger().info(f"[AI SKIPPED] Another AI reply process is already running for conversation {conversation_id}")
+            return
+        
+        # Set lock với timeout 60 giây
+        frappe.cache().setex(lock_key, 60, "processing")
+        
         max_retries = 5
         delay_base = 1
         context = []
@@ -236,6 +298,21 @@ def handle_ai_reply(conversation_id):
             )
             return
 
+        # Kiểm tra xem có AI message nào đang pending không (tránh duplicate reply)
+        recent_ai_messages = frappe.get_all(
+            "ChatMessage",
+            filters={
+                "parent": conversation_id,
+                "is_user": 0,
+                "creation": [">=", frappe.utils.add_to_date(frappe.utils.now(), minutes=-2)]
+            },
+            limit_page_length=1
+        )
+        
+        if recent_ai_messages:
+            frappe.logger().info(f"[AI SKIPPED] Recent AI message found for conversation {conversation_id}, skipping duplicate reply")
+            return
+
         ai_reply = call_openai(context)
         chat_message = create_message(conversation_id, ai_reply, is_user=False)
         frappe.db.commit()
@@ -250,11 +327,16 @@ def handle_ai_reply(conversation_id):
             after_commit=True
         )
 
+        frappe.logger().info(f"[AI SUCCESS] AI reply completed for conversation {conversation_id}")
+
     except Exception as e:
         frappe.log_error(
             f"Error handling AI reply:\n{str(e)}\n{traceback.format_exc()}",
             "AI Handler Error"
         )
+    finally:
+        # Luôn clear lock khi hoàn thành
+        frappe.cache().delete(lock_key)
 
 
 

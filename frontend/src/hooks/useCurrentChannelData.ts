@@ -57,8 +57,8 @@ export const useCurrentChannelData = (channelID: string) => {
       // Kiểm tra nếu là draft channel (bắt đầu bằng "_")
       if (channelID.startsWith('_')) {
         const userID = channelID.substring(1) // Bỏ dấu "_" ở đầu
-        const user = enabledUsers?.find((u) => u.name === userID)
-
+        const user = enabledUsers?.find(u => u.name === userID)
+        
         if (user) {
           // Tạo virtual DM channel cho user này
           const virtualDMChannel: DMChannelListItem = {
@@ -81,7 +81,7 @@ export const useCurrentChannelData = (channelID: string) => {
             user_labels: [],
             peer_user_id: userID
           }
-
+          
           return {
             channelData: virtualDMChannel,
             type: 'dm' as const

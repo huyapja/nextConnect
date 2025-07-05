@@ -6,7 +6,7 @@ import { RavenChannel } from '@/types/RavenChannelManagement/RavenChannel'
 import { RavenMessage } from '@/types/RavenMessaging/RavenMessage'
 import { getTimePassed } from '@/utils/dateConversions'
 import { ChannelIcon } from '@/utils/layout/channelIcon'
-import { Box, Button, Flex, Link, Text } from '@radix-ui/themes'
+import { Box, Flex, Link, Text } from '@radix-ui/themes'
 import {
   FrappeConfig,
   FrappeContext,
@@ -130,6 +130,23 @@ const MentionsList: React.FC = () => {
     })
   }, [])
 
+  // === Ẩn tất cả lượt nhắc
+  const { call: hideAllMentions, loading: isHidingAll } = useFrappePostCall(
+    'raven.api.mentions.hide_all_mentions'
+  )
+
+  const handleHideAll = async () => {
+    try {
+      await hideAllMentions({})
+      // Ẩn toàn bộ trong UI
+      setHiddenMentionIds(new Set(mentions.map((m) => m.name)))
+      mutateUnreadCount({ message: 0 }, false)
+      toast.success('Đã ẩn toàn bộ lượt nhắc')
+    } catch (err: any) {
+      toast.error(err.message || 'Không thể ẩn lượt nhắc')
+    }
+  }
+
   const handleMentionRead = () => {
     mutateUnreadCount((prev: { message: number }) => {
       const count = prev?.message ?? 0
@@ -244,11 +261,14 @@ const MentionItem: React.FC<{
     }
     return `/${w}/${mention.channel_id}?message_id=${mention.name}`
   }, [mention, workspaceID])
-
   const handleClickHide = () => {
     call({ mention_id: mention.mention_id })
       .then(() => {
         onHide(mention.name)
+        if (!isRead) {
+          setIsRead(true)
+          onMarkReadSuccess?.()
+        }
       })
       .catch((err) => {
         toast.error(err.message)

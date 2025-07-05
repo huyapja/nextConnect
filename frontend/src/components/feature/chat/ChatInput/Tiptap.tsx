@@ -28,7 +28,7 @@ import html from 'highlight.js/lib/languages/xml'
 import { useAtom } from 'jotai'
 import { common, createLowlight } from 'lowlight'
 import { Plugin } from 'prosemirror-state'
-import React, { Suspense, forwardRef, lazy, useContext, useEffect, useImperativeHandle, useRef } from 'react'
+import React, { Suspense, forwardRef, lazy, useContext, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { BiPlus } from 'react-icons/bi'
 import { useParams } from 'react-router-dom'
 import tippy from 'tippy.js'
@@ -111,6 +111,8 @@ export interface MemberSuggestions extends UserFields {
   is_member: boolean
 }
 
+const MAX_LENGTH = 1000
+
 const Tiptap = forwardRef(
   (
     {
@@ -183,7 +185,9 @@ const Tiptap = forwardRef(
     const [enterKeyBehaviour] = useAtom(EnterKeyBehaviourAtom)
 
     const handleMessageSendAction = (editor: any) => {
-      const hasContent = editor.getText().trim()?.length > 0
+      // Một số trường hợp (ví dụ chỉ dán link) getText() trả về chuỗi rỗng
+      // nhưng editor vẫn có nội dung (node Link). Sử dụng !editor.isEmpty để kiểm tra.
+      const hasContent = !editor.isEmpty
       let html = ''
       let json = {}
       if (hasContent) {
@@ -215,6 +219,7 @@ const Tiptap = forwardRef(
     }
     // this is a dummy extension only to create custom keydown behavior
     const KeyboardHandler = Extension.create({
+      priority: 1000, // Ưu tiên cao để không bị extension khác (ví dụ Link) override
       name: 'keyboardHandler',
       addKeyboardShortcuts() {
         return {
@@ -562,6 +567,7 @@ const Tiptap = forwardRef(
     ]
 
     const [content, setContent] = useStickyState(defaultText, sessionStorageKey, disableSessionStorage)
+    const [charCount, setCharCount] = useState(defaultText.length)
 
     const isDesktop = useIsDesktop()
 
@@ -570,15 +576,25 @@ const Tiptap = forwardRef(
         extensions,
         content,
         editorProps: {
-          handleTextInput() {
+          handleTextInput(view, from, to, text) {
             onUserType?.()
+            // Chặn nhập quá 1000 ký tự khi chỉnh sửa
+            if (isEdit) {
+              const plainText = view.state.doc.textContent
+              if (plainText.length + text.length - (to - from) > MAX_LENGTH) {
+                return true // chặn nhập
+              }
+            }
+            return false
           },
           attributes: {
-            class: 'tiptap-editor' + (replyMessage ? ' replying' : '') + (isEdit ? ' editing-message' : '')
+            class: 'tiptap-editor' + (replyMessage ? ' replying' : '') + (isEdit ? ' editing-message' : ''),
+            ...(isEdit ? { maxlength: String(MAX_LENGTH) } : {})
           }
         },
         onUpdate({ editor }) {
           setContent(editor.getHTML())
+          if (isEdit) setCharCount(editor.getText().length)
         }
       },
       [replyMessage, onUserType]
@@ -674,6 +690,11 @@ const Tiptap = forwardRef(
         <EditorContext.Provider value={{ editor }}>
           {slotBefore}
           <EditorContent editor={editor} />
+          {isEdit && (
+            <div style={{ textAlign: 'right', fontSize: 12, color: charCount > MAX_LENGTH ? 'red' : 'gray' }}>
+              {charCount}/{MAX_LENGTH} ký tự
+            </div>
+          )}
           <ToolPanel>
             <TextFormattingMenu />
             <RightToolbarButtons

@@ -291,12 +291,18 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
     const handleRangeChanged = useDebounceDynamic(
       useCallback(
         (range: any) => {
-          if (!messages || !chatState.isInitialLoadComplete || !chatState.isVirtuosoReady || chatState.isScrolling)
+          // Safety checks for all required conditions
+          if (!Array.isArray(messages) || !chatState.isInitialLoadComplete || !chatState.isVirtuosoReady || chatState.isScrolling) {
             return
+          }
+          
+          // Additional safety check for range object
+          if (!range || typeof range.startIndex !== 'number' || typeof range.endIndex !== 'number') {
+            return
+          }
 
           const shouldLoadNewer =
             hasNewMessages &&
-            range &&
             range.endIndex >= messages.length - 5 &&
             !chatState.isLoadingMessages &&
             !chatState.hasInitialLoadedWithMessageId
@@ -308,11 +314,14 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
             })
           }
 
-          // Batch process visible messages
-          if (range && newMessageIds.size > 0) {
-            const visibleMessages = messages.slice(range.startIndex, range.endIndex + 1)
+          // Batch process visible messages with safety checks
+          if (newMessageIds.size > 0 && range.startIndex >= 0 && range.endIndex < messages.length) {
+            const visibleMessages = messages.slice(
+              Math.max(0, range.startIndex), 
+              Math.min(messages.length, range.endIndex + 1)
+            )
             const messagesToMark = visibleMessages
-              .filter((message: any) => message.name && newMessageIds.has(message.name))
+              .filter((message: any) => message && message.name && newMessageIds.has(message.name))
               .map((message: any) => message.name)
 
             if (messagesToMark.length > 0) {
@@ -331,6 +340,8 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
           chatState.isScrolling,
           chatState.isLoadingMessages,
           chatState.hasInitialLoadedWithMessageId,
+          hasOlderMessages,
+          loadOlderMessages,
           newMessageIds,
           markMessageAsSeen,
           safeSetTimeout
@@ -355,8 +366,9 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
 
     // Tối ưu target index calculation
     const targetIndex = useMemo(() => {
-      if (!messageId || !messages?.length) return undefined
-      return messages.findIndex((msg) => msg.name === messageId)
+      if (!messageId || !Array.isArray(messages) || messages.length === 0) return undefined
+      const index = messages.findIndex((msg) => msg.name === messageId)
+      return index >= 0 ? index : undefined
     }, [messageId, messages])
 
     // Tối ưu scroll to target
@@ -415,14 +427,19 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
       pendingMessages: PendingMessage[] | undefined,
       userID: string
     ) => {
+      // Ensure we always return an array, never undefined
       if (!messages && !pendingMessages) return []
+      
+      // Safely handle messages array
+      const safeMessages = Array.isArray(messages) ? messages : []
+      const safePendingMessages = Array.isArray(pendingMessages) ? pendingMessages : []
 
-      const processedMessages = (messages ?? []).map((m: any) => ({
+      const processedMessages = safeMessages.map((m: any) => ({
         ...m,
         sort_time: m.sort_parent_time || m.resend_at || new Date(m.creation || m.modified || 0).getTime()
       }))
 
-      const pending = (pendingMessages ?? []).map((m) => {
+      const pending = safePendingMessages.map((m) => {
         const ext = m.fileMeta?.name ? getFileExtension(m.fileMeta.name) : ''
         const fixedType = m.message_type === 'File' && isImageFile(ext) ? 'Image' : m.message_type
 
@@ -476,8 +493,13 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
 
     const itemRenderer = useCallback(
       (index: number) => {
-        const message = combinedMessages?.[index]
-        if (!message) return null
+        // Safety checks for index and data
+        if (!Array.isArray(combinedMessages) || index < 0 || index >= combinedMessages.length) {
+          return null
+        }
+        
+        const message = combinedMessages[index]
+        if (!message || !message.name) return null
 
         return (
           <MemoizedMessageRow
@@ -535,7 +557,10 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
 
     const handleRangeChangedWithCheck = useCallback(
       (range: any) => {
-        if (!messages || !chatState.isInitialLoadComplete || !chatState.isVirtuosoReady) return
+        if (!Array.isArray(messages) || !chatState.isInitialLoadComplete || !chatState.isVirtuosoReady) return
+        
+        // Additional safety check for range
+        if (!range || typeof range.startIndex !== 'number' || typeof range.endIndex !== 'number') return
 
         if (initialRenderRef.current) {
           initialRenderRef.current = false
@@ -567,19 +592,45 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
     )
 
     const scrollActionToBottom = useCallback(() => {
-      if (virtuosoRef.current && messages?.length) {
-        scheduleFrame(() => {
-          virtuosoRef.current?.scrollToIndex({
-            index: messages.length - 1,
-            behavior: 'auto',
-            align: 'end'
-          })
-        })
-      }
-    }, [messages?.length, scheduleFrame])
+      if (!virtuosoRef.current || !combinedMessages?.length) return;
+      const tryScroll = () => {
+        const totalMessages = Array.isArray(messages) ? messages.length : 0;
+        if (combinedMessages.length < totalMessages && hasOlderMessages) {
+          loadOlderMessages().finally(() => {
+            setTimeout(tryScroll, 100);
+          });
+        } else {
+          scheduleFrame(() => {
+            virtuosoRef.current?.scrollToIndex({
+              index: combinedMessages.length - 1,
+              behavior: 'smooth',
+              align: 'end'
+            });
+            // Sau khi scroll, scrollToIndex lại lần nữa để đảm bảo luôn ở đáy
+            setTimeout(() => {
+              virtuosoRef.current?.scrollToIndex({
+                index: combinedMessages.length - 1,
+                behavior: 'smooth',
+                align: 'end'
+              });
+            }, 150);
+          });
+        }
+      };
+      tryScroll();
+    }, [combinedMessages?.length, messages, hasOlderMessages, loadOlderMessages, scheduleFrame]);
 
     const computeItemKey = useCallback((index: number, item: any) => {
-      return item?.name || `fallback-${index >= 0 ? index : Math.random()}`
+      // Ensure we have valid index and item
+      if (typeof index !== 'number' || index < 0) {
+        return `fallback-invalid-${Math.random()}`
+      }
+      
+      if (!item || typeof item !== 'object') {
+        return `fallback-no-item-${index}`
+      }
+      
+      return item.name || `fallback-${index}`
     }, [])
 
     // Tối ưu styles với stable reference
@@ -599,7 +650,16 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
     )
 
     const isMobile = useIsMobile()
-    const hasMessages = combinedMessages?.length > 0
+    const hasMessages = Array.isArray(combinedMessages) && combinedMessages.length > 0
+    const safeInitialIndex = useMemo(() => {
+      if (!hasMessages) return 0
+      
+      if (isSavedMessage && typeof targetIndex === 'number' && targetIndex >= 0) {
+        return Math.min(targetIndex, combinedMessages.length - 1)
+      }
+      
+      return Math.max(0, combinedMessages.length - 1)
+    }, [hasMessages, isSavedMessage, targetIndex, combinedMessages?.length])
 
     return (
       <div className={`relative h-full flex flex-col overflow-hidden ${isMobile ? 'pb-4' : 'pb-16'} sm:pb-0`}>
@@ -615,7 +675,7 @@ const ChatStream = forwardRef<VirtuosoHandle, Props>(
             data={combinedMessages}
             itemContent={itemRenderer}
             followOutput={chatState.isAtBottom || !chatState.initialRenderComplete ? 'auto' : false}
-            initialTopMostItemIndex={!isSavedMessage ? (combinedMessages?.length ?? 0) - 1 : targetIndex}
+            initialTopMostItemIndex={safeInitialIndex}
             atTopStateChange={handleAtTopStateChange}
             atBottomStateChange={handleAtBottomStateChange}
             rangeChanged={handleRangeChangedWithCheck}
