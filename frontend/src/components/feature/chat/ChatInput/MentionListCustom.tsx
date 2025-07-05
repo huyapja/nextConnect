@@ -131,9 +131,7 @@ const MentionsList: React.FC = () => {
   }, [])
 
   // === Ẩn tất cả lượt nhắc
-  const { call: hideAllMentions, loading: isHidingAll } = useFrappePostCall(
-    'raven.api.mentions.hide_all_mentions'
-  )
+  const { call: hideAllMentions, loading: isHidingAll } = useFrappePostCall('raven.api.mentions.hide_all_mentions')
 
   const handleHideAll = async () => {
     try {
